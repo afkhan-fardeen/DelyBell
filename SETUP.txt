@@ -1,0 +1,214 @@
+================================================================================
+SHOPIFY DELYBELL INTEGRATION - COMPLETE SETUP GUIDE
+================================================================================
+
+PREREQUISITES
+-------------
+- Node.js (v14 or higher)
+- npm or yarn
+- Delybell API credentials (access key and secret key)
+- Shopify store (or dev store)
+- ngrok (for local development with webhooks)
+
+INSTALLATION
+------------
+1. Install dependencies:
+   npm install
+
+2. Copy environment template:
+   cp env.example .env
+
+3. Edit .env file with your credentials (see CONFIGURATION section below)
+
+SHOPIFY APP SETUP
+-----------------
+1. Create Shopify app at: https://partners.shopify.com/ (or use existing store)
+
+2. Get your API credentials:
+   - API Key (Client ID)
+   - API Secret (Client Secret)
+
+3. Configure app settings:
+   - App URL: https://your-ngrok-url.ngrok-free.dev
+   - Redirect URLs: https://your-ngrok-url.ngrok-free.dev/auth/callback
+   - Scopes: read_orders,write_orders
+   - Legacy install flow: true
+   - Embedded: true
+
+4. Release the app version after configuration
+
+NGROK SETUP (FOR LOCAL DEVELOPMENT)
+------------------------------------
+1. Install ngrok:
+   npm install -g ngrok
+
+2. Start ngrok:
+   ngrok http 3000
+
+3. Copy the HTTPS URL (e.g., https://abc123.ngrok-free.dev)
+
+4. Update .env file:
+   SHOPIFY_HOST=abc123.ngrok-free.dev (without https://)
+
+5. Update Shopify app settings with the ngrok URL
+
+6. IMPORTANT: ngrok URL changes every restart (free plan)
+   - Update .env and Shopify app settings each time
+   - Or use ngrok reserved domain (paid plan)
+
+CONFIGURATION (.env FILE)
+-------------------------
+Required variables:
+
+# Shopify Configuration
+SHOPIFY_API_KEY=your_shopify_api_key
+SHOPIFY_API_SECRET=your_shopify_api_secret
+SHOPIFY_SCOPES=read_orders,write_orders
+SHOPIFY_HOST=your-ngrok-url.ngrok-free.dev
+
+# Delybell API Configuration
+DELYBELL_API_URL=https://new.api.delybell.com
+DELYBELL_ACCESS_KEY=your_delybell_access_key
+DELYBELL_SECRET_KEY=your_delybell_secret_key
+
+# Server Configuration
+PORT=3000
+
+# Order Processing Configuration
+DEFAULT_SERVICE_TYPE_ID=1
+
+# Destination Location (where orders are delivered TO)
+DEFAULT_DESTINATION_BLOCK_ID=5
+DEFAULT_DESTINATION_ROAD_ID=1447
+DEFAULT_DESTINATION_BUILDING_ID=1
+
+# Pickup Location (where orders are shipped FROM)
+# IMPORTANT: Must match EXACTLY what's registered in Delybell system
+DEFAULT_PICKUP_BLOCK_ID=5
+DEFAULT_PICKUP_ROAD_ID=1447
+DEFAULT_PICKUP_BUILDING_ID=1
+DEFAULT_PICKUP_ADDRESS=Building 1, Road 1447, Block 5
+DEFAULT_PICKUP_CUSTOMER_NAME=Shopify Store
+DEFAULT_PICKUP_MOBILE_NUMBER=+97300000000
+
+IMPORTANT ADDRESS REQUIREMENTS
+-------------------------------
+1. PICKUP ADDRESS:
+   - Must match EXACTLY what's registered in Delybell system
+   - Configure DEFAULT_PICKUP_ADDRESS in .env
+   - Format: "Building X, Road Y, Block Z"
+
+2. DESTINATION ADDRESS:
+   - Must be in STANDARD STRUCTURED FORMAT (not single line)
+   - Format: "Building X, Road Y, Block Z"
+   - Required for auto-assignment to drivers based on location blocks
+
+STARTING THE APPLICATION
+------------------------
+1. Start ngrok (in separate terminal):
+   ngrok http 3000
+
+2. Update .env with ngrok URL if it changed
+
+3. Start the server:
+   npm start
+   or
+   npm run dev
+
+4. Server runs on: http://localhost:3000
+
+INSTALLING THE APP ON SHOPIFY
+------------------------------
+1. Visit installation URL:
+   https://your-ngrok-url.ngrok-free.dev/auth/install?shop=your-shop.myshopify.com
+
+2. Shopify will show permission screen - click "Install"
+
+3. After installation, you'll be redirected to /auth/success
+
+4. App is now installed and authenticated
+
+REGISTERING WEBHOOKS
+--------------------
+Webhooks are automatically registered when you install the app, or you can register manually:
+
+POST https://your-ngrok-url.ngrok-free.dev/api/webhooks/register
+
+Required webhooks:
+- orders/create - Triggers when new order is created
+- orders/updated - Triggers when order is updated
+
+TESTING
+-------
+1. Health check:
+   GET https://your-ngrok-url.ngrok-free.dev/health
+
+2. Test Delybell API:
+   GET https://your-ngrok-url.ngrok-free.dev/api/service-types
+
+3. Create test order in Shopify store
+
+4. Check server logs for order processing
+
+5. Verify order appears in Delybell system
+
+TROUBLESHOOTING
+---------------
+1. OAuth errors:
+   - Verify redirect URL matches exactly in Shopify app settings
+   - Check SHOPIFY_HOST in .env matches ngrok URL (without https://)
+   - Ensure app version is released in Shopify
+
+2. Webhook not receiving orders:
+   - Verify webhook URL is accessible (use ngrok)
+   - Check webhook is registered in Shopify
+   - Check server logs for webhook requests
+
+3. Address mapping errors:
+   - Verify block/road/building IDs exist in Delybell
+   - Use /api/blocks, /api/roads, /api/buildings endpoints to find correct IDs
+   - Ensure pickup address matches registered Delybell address exactly
+
+4. API authentication errors:
+   - Verify Delybell API credentials in .env
+   - Check API URL is correct: https://new.api.delybell.com
+   - Test credentials using /api/service-types endpoint
+
+SECURITY NOTES
+--------------
+- NEVER commit .env file to version control
+- .env is already in .gitignore
+- Use HTTPS in production
+- Rotate API keys regularly
+- Store Shopify sessions securely (database recommended for production)
+
+API ENDPOINTS
+-------------
+Health: GET /health
+Auth Install: GET /auth/install?shop=your-shop.myshopify.com
+Auth Callback: GET /auth/callback
+Auth Check: GET /auth/check?shop=your-shop.myshopify.com
+
+Webhooks:
+- POST /webhooks/orders/create
+- POST /webhooks/orders/updated
+
+API:
+- POST /api/sync-orders
+- POST /api/process-order/:orderId
+- GET /api/service-types
+- GET /api/blocks
+- GET /api/roads?block_id=1
+- GET /api/buildings?road_id=1
+- GET /api/track/:orderId
+- POST /api/webhooks/register
+
+For complete API documentation, see API_DOCUMENTATION.md
+
+SUPPORT
+-------
+For API documentation: See API_DOCUMENTATION.md
+For Delybell API reference: https://documenter.getpostman.com/view/37966240/2sB34eKND9
+
+================================================================================
+

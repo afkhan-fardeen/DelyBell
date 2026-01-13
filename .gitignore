@@ -1,9 +1,42 @@
+# Dependencies
 node_modules/
+package-lock.json
+
+# Environment variables (NEVER commit these!)
 .env
-.DS_Store
+.env.local
+.env.*.local
+*.env
+
+# Logs
 *.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+server.log
+ngrok.log
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Build outputs
 dist/
 build/
+*.swp
+*.swo
+*~
 
-node_modules
-.env*
+# IDE
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# Test coverage
+coverage/
+.nyc_output/
+
+# Temporary files
+*.tmp
+*.temp

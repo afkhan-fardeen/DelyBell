@@ -62,21 +62,20 @@ This project uses the Delybell External APIs. For complete API documentation, pl
 
 ## 🚀 Quick Start
 
-**See [SETUP_GUIDE.md](./SETUP_GUIDE.md) for complete setup instructions.**
+**See [SETUP.txt](./SETUP.txt) for complete setup instructions.**
 
 ### Quick Steps:
 1. Install dependencies: `npm install`
-2. Install ngrok: `npm install -g ngrok`
-3. Start ngrok: `ngrok http 3000` (copy the URL)
-4. Update `.env` with your ngrok URL (without `https://`)
-5. Update Shopify app settings with ngrok URL
-6. Start server: `npm start`
-7. Install app: Visit `https://YOUR-NGROK-URL/auth/install?shop=delybell.myshopify.com`
+2. Copy `env.example` to `.env` and configure your credentials
+3. Install ngrok: `npm install -g ngrok`
+4. Start ngrok: `ngrok http 3000` (copy the URL)
+5. Update `.env` with your ngrok URL (without `https://`)
+6. Update Shopify app settings with ngrok URL
+7. Start server: `npm start`
+8. Install app: Visit `https://YOUR-NGROK-URL/auth/install?shop=your-shop.myshopify.com`
 
 ### Documentation:
-- **[SETUP_GUIDE.md](./SETUP_GUIDE.md)** ⭐ - Complete setup guide with ngrok
-- **[SHOPIFY_APP_CREATION_GUIDE.md](./SHOPIFY_APP_CREATION_GUIDE.md)** - Creating Shopify app
-- **[TESTING.md](./TESTING.md)** - Testing without Shopify
+- **[SETUP.txt](./SETUP.txt)** ⭐ - Complete setup guide (all-in-one)
 - **[API_DOCUMENTATION.md](./API_DOCUMENTATION.md)** - Delybell API reference
 
 ### 2. Delybell API Setup
