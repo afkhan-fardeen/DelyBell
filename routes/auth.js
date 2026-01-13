@@ -1,0 +1,191 @@
+const express = require('express');
+const router = express.Router();
+const shopifyClient = require('../services/shopifyClient');
+const sessionStorage = require('../services/sessionStorage');
+
+/**
+ * OAuth Install Route
+ * Redirects user to Shopify OAuth authorization page
+ * GET /auth/install?shop=your-shop.myshopify.com
+ */
+router.get('/install', async (req, res) => {
+  try {
+    const { shop } = req.query;
+
+    if (!shop) {
+      return res.status(400).send('Missing shop parameter. Use: /auth/install?shop=your-shop.myshopify.com');
+    }
+
+    // Validate shop domain format
+    if (!shop.includes('.myshopify.com')) {
+      return res.status(400).send('Invalid shop domain. Must be in format: your-shop.myshopify.com');
+    }
+
+    // Use Shopify library's OAuth flow (works with ngrok HTTPS URLs)
+    await shopifyClient.shopify.auth.begin({
+      shop,
+      callbackPath: '/auth/callback',
+      isOnline: false,
+      rawRequest: req,
+      rawResponse: res,
+    });
+  } catch (error) {
+    console.error('OAuth install error:', error);
+    res.status(500).send(`OAuth install failed: ${error.message}`);
+  }
+});
+
+/**
+ * OAuth Callback Route
+ * Handles the callback from Shopify after authorization
+ * GET /auth/callback?shop=...&code=...&hmac=...
+ */
+router.get('/callback', async (req, res) => {
+  try {
+    const { shop, code } = req.query;
+
+    if (!shop || !code) {
+      return res.status(400).send('Missing required parameters: shop or code');
+    }
+
+    // Use Shopify library's callback handler (works with ngrok HTTPS URLs)
+    const callbackResponse = await shopifyClient.shopify.auth.callback({
+      rawRequest: req,
+      rawResponse: res,
+    });
+
+    // Store the session
+    const session = callbackResponse.session;
+    if (session && session.id) {
+      await sessionStorage.storeSession(session.id, session);
+      console.log('✅ Installed for shop:', session.shop);
+    } else {
+      throw new Error('Failed to create session');
+    }
+
+    // Redirect to success page
+    res.redirect('/auth/success');
+  } catch (error) {
+    console.error('OAuth callback failed:', error);
+    res.status(500).send(`OAuth callback failed: ${error.message}`);
+  }
+});
+
+/**
+ * OAuth Success Page
+ * Shows success message after installation
+ */
+router.get('/success', (req, res) => {
+  res.send('🎉 App installed successfully!');
+});
+
+/**
+ * Check if shop is authenticated
+ * GET /auth/check?shop=your-shop.myshopify.com
+ */
+router.get('/check', async (req, res) => {
+  try {
+    let { shop } = req.query;
+
+    if (!shop) {
+      return res.status(400).json({
+        success: false,
+        error: 'Shop parameter is required',
+      });
+    }
+
+    // Normalize shop parameter
+    shop = shop.trim().toLowerCase();
+    if (!shop.includes('.myshopify.com')) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid shop domain format',
+      });
+    }
+    shop = shop.replace(/^https?:\/\//, '').split('/')[0];
+
+    // Try to get session using shopifyClient method (which handles session ID generation)
+    try {
+      const session = await shopifyClient.getSession(shop);
+      
+      // Debug: Check all stored sessions
+      const allSessions = sessionStorage.getAllSessionIds();
+      console.log('All stored session IDs:', allSessions);
+
+      if (session && session.accessToken) {
+        res.json({
+          success: true,
+          authenticated: true,
+          shop: session.shop || shop,
+          expiresAt: session.expires,
+          sessionId: session.id,
+        });
+      } else {
+        res.json({
+          success: true,
+          authenticated: false,
+          shop,
+          installUrl: `/auth/install?shop=${shop}`,
+          allSessions, // Debug info
+        });
+      }
+    } catch (sessionError) {
+      console.error('Session error:', sessionError);
+      // If getSession fails, check if we have any sessions at all
+      const allSessions = sessionStorage.getAllSessionIds();
+      res.json({
+        success: true,
+        authenticated: false,
+        shop,
+        installUrl: `/auth/install?shop=${shop}`,
+        error: sessionError.message,
+        allSessions, // Debug info
+      });
+    }
+  } catch (error) {
+    console.error('Auth check error:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message,
+    });
+  }
+});
+
+/**
+ * Debug endpoint - List all sessions
+ * GET /auth/debug/sessions
+ */
+router.get('/debug/sessions', (req, res) => {
+  const allSessions = sessionStorage.getAllSessionIds();
+  res.json({
+    totalSessions: allSessions.length,
+    sessionIds: allSessions,
+  });
+});
+
+/**
+ * Debug endpoint - Show OAuth configuration
+ * GET /auth/debug/config
+ */
+router.get('/debug/config', (req, res) => {
+  const config = require('../config');
+  const hostName = config.shopify.hostName || 'localhost:3000';
+  // For localhost, use http://, for production/ngrok use https://
+  const protocol = hostName.includes('localhost') ? 'http' : 'https';
+  const redirectUrl = `${protocol}://${hostName}/auth/callback`;
+  
+  res.json({
+    hostName: hostName,
+    redirectUrl: redirectUrl,
+    callbackPath: '/auth/callback',
+    protocol: protocol,
+    apiKey: config.shopify.apiKey ? `${config.shopify.apiKey.substring(0, 8)}...` : 'NOT SET',
+    message: 'Make sure this redirectUrl matches EXACTLY in Shopify app settings',
+    note: hostName.includes('localhost') 
+      ? 'Using http:// for localhost (Shopify allows this for custom apps)'
+      : 'Using https:// for production/ngrok',
+  });
+});
+
+module.exports = router;
+
