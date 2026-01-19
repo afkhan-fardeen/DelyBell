@@ -4,6 +4,7 @@ A production-ready Shopify app that automatically syncs orders from Shopify stor
 
 ## 📚 Documentation
 
+- **[File Reference Guide](./FILE_REFERENCE.md)** - ⭐ **Complete file reference** - Every file explained
 - **[Complete Documentation](./DOCUMENTATION.md)** - Full API reference, architecture, and usage guide
 - **[Production Deployment Guide](./PRODUCTION_GUIDE.md)** - Step-by-step production deployment instructions
 - **[Shopify App Store Guide](./SHOPIFY_APP_STORE_GUIDE.md)** - ⭐ **Publish as Public App** - Complete App Store publishing guide
