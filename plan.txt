@@ -1,1 +1,0 @@
-I have a shopify website, where people place order , and i have this api's for a custom website so i basically need to make a custom app for the shopify where we can get al the order placed on shpofiyy in this custom website so we can process them. 

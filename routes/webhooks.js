@@ -135,24 +135,22 @@ router.post('/orders/create', async (req, res) => {
     }
 
     // Process the order
-    // Address mapping configuration - can be set via environment variables or defaults
-    // IMPORTANT: Pickup address must match EXACTLY what's registered in Delybell system
-    // Destination address must be in standard format for auto-assignment
+    // ⚠️ CRITICAL REQUIREMENTS:
+    // 1. Pickup address MUST use Babybow's registered Delybell address (hardcoded)
+    // 2. Destination address MUST be parsed from Shopify shipping address (NO defaults)
+    // These are REQUIRED for Delybell's auto-assignment system to function correctly
+    
+    // Pickup is always Babybow - no configuration needed (hardcoded in addressMapper)
+    // Destination MUST come from Shopify address - no defaults allowed
+    
     const mappingConfig = {
       service_type_id: parseInt(process.env.DEFAULT_SERVICE_TYPE_ID) || 1,
-      destination: {
-        block_id: parseInt(process.env.DEFAULT_DESTINATION_BLOCK_ID) || 5,
-        road_id: parseInt(process.env.DEFAULT_DESTINATION_ROAD_ID) || 1447,
-        building_id: parseInt(process.env.DEFAULT_DESTINATION_BUILDING_ID) || 1,
-      },
+      // ⚠️ CRITICAL: Do NOT provide destination mapping - it will be parsed from Shopify address
+      // Only test endpoints should provide destination mapping
+      destination: null, // Will be parsed from Shopify shipping address
       pickup: {
-        block_id: parseInt(process.env.DEFAULT_PICKUP_BLOCK_ID) || 5,
-        road_id: parseInt(process.env.DEFAULT_PICKUP_ROAD_ID) || 1447,
-        building_id: parseInt(process.env.DEFAULT_PICKUP_BUILDING_ID) || 1,
-        // Pickup address must match registered Delybell address exactly
-        address: process.env.DEFAULT_PICKUP_ADDRESS || '',
-        customer_name: process.env.DEFAULT_PICKUP_CUSTOMER_NAME || '',
-        mobile_number: process.env.DEFAULT_PICKUP_MOBILE_NUMBER || '',
+        // Pickup config will be overridden by Babybow values in orderTransformer
+        // This is just a placeholder - actual values come from addressMapper.getBabybowPickupConfig()
       },
     };
 

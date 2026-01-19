@@ -1,6 +1,16 @@
 # Shopify Delybell Integration App
 
-A custom Shopify app that automatically syncs orders from your Shopify store to Delybell's external order processing system. This app retrieves orders placed on Shopify and processes them using Delybell's External APIs.
+A production-ready Shopify app that automatically syncs orders from Shopify stores to Delybell's delivery management system. When customers place orders, they are automatically processed and dispatched through Delybell.
+
+## 📚 Documentation
+
+- **[Complete Documentation](./DOCUMENTATION.md)** - Full API reference, architecture, and usage guide
+- **[Production Deployment Guide](./PRODUCTION_GUIDE.md)** - Step-by-step production deployment instructions
+- **[Shopify App Store Guide](./SHOPIFY_APP_STORE_GUIDE.md)** - ⭐ **Publish as Public App** - Complete App Store publishing guide
+- **[Developer Guide](./DEVELOPER_GUIDE.md)** - Technical guide for developers
+- **[App Store Checklist](./APP_STORE_CHECKLIST.md)** - Quick reference checklist
+- **[Client Setup Guide](./CLIENT_SETUP.md)** - Quick setup guide for Delybell clients
+- **[Quick Start Guide](#-quick-start)** - Get started in 5 minutes
 
 ## Features
 
@@ -15,7 +25,6 @@ A custom Shopify app that automatically syncs orders from your Shopify store to 
 
 This project uses the Delybell External APIs. For complete API documentation, please refer to:
 
-- **API Documentation:** [API_DOCUMENTATION.md](./API_DOCUMENTATION.md)
 - **Postman Documentation:** [https://documenter.getpostman.com/view/37966240/2sB34eKND9](https://documenter.getpostman.com/view/37966240/2sB34eKND9)
 
 ## Prerequisites
@@ -30,7 +39,7 @@ This project uses the Delybell External APIs. For complete API documentation, pl
 
 1. **Clone or navigate to the project directory:**
    ```bash
-   cd Shopify
+   cd DelyBell
    ```
 
 2. **Install dependencies:**
@@ -62,42 +71,31 @@ This project uses the Delybell External APIs. For complete API documentation, pl
 
 ## 🚀 Quick Start
 
-**See [SETUP.txt](./SETUP.txt) for complete setup instructions.**
-
-### Quick Steps:
+### Setup Steps:
 1. Install dependencies: `npm install`
 2. Copy `env.example` to `.env` and configure your credentials
-3. Install ngrok: `npm install -g ngrok`
+3. Install ngrok: `npm install -g ngrok` (for local development)
 4. Start ngrok: `ngrok http 3000` (copy the URL)
 5. Update `.env` with your ngrok URL (without `https://`)
 6. Update Shopify app settings with ngrok URL
 7. Start server: `npm start`
 8. Install app: Visit `https://YOUR-NGROK-URL/auth/install?shop=your-shop.myshopify.com`
 
-### Documentation:
-- **[SETUP.txt](./SETUP.txt)** ⭐ - Complete setup guide (all-in-one)
-- **[API_DOCUMENTATION.md](./API_DOCUMENTATION.md)** - Delybell API reference
-
-### 2. Delybell API Setup
+### Delybell API Setup
 
 1. Obtain your Delybell API credentials (access key and secret key)
 2. Configure the base URL (usually `https://api.delybell.com`)
 3. Test the connection using the service types endpoint
 
-### 3. Address Mapping Configuration
+### Address Mapping
 
-**Important:** You need to map Shopify addresses to Delybell's block/road/building IDs. This can be done in two ways:
+The app automatically parses Shopify shipping addresses and maps them to Delybell's structured address format:
+- **Pickup Address**: Hardcoded to company address (Babybow) - Block 1, Road 114, Building 417, Ras Ruman
+- **Destination Address**: Parsed from Shopify order's shipping address
+- Address components (Block, Road, Building) are extracted and converted to Delybell IDs using master data APIs
+- Zip codes are used as fallback for Block numbers (common in Bahrain)
 
-**Option A: Manual Mapping (Quick Start)**
-- Update the `mappingConfig` in `routes/webhooks.js` or `routes/api.js` with default block/road/building IDs
-- This is a temporary solution for testing
-
-**Option B: Dynamic Mapping (Recommended)**
-- Implement address lookup using Delybell's master APIs (blocks, roads, buildings)
-- Use geocoding or address matching to find the correct IDs
-- Store mappings in a database for future use
-
-### 4. Run the Application
+### Run the Application
 
 **Development mode:**
 ```bash
@@ -134,7 +132,7 @@ curl -X POST http://localhost:3000/test/process-mock-order \
   }'
 ```
 
-See [TESTING.md](./TESTING.md) for complete testing guide without Shopify.
+See test files in `/test` directory for testing examples.
 
 ### API Endpoints
 
@@ -257,38 +255,47 @@ Shopify will automatically send order data to this endpoint when a new order is 
 ## Project Structure
 
 ```
-Shopify/
+DelyBell/
 ├── config.js                 # Configuration file
 ├── server.js                  # Main server file
 ├── package.json              # Dependencies
-├── .env.example             # Environment variables template
+├── env.example              # Environment variables template
 ├── services/
 │   ├── delybellClient.js    # Delybell API client
 │   ├── shopifyClient.js     # Shopify API client
 │   ├── orderTransformer.js  # Order transformation logic
-│   └── orderProcessor.js    # Order processing workflow
+│   ├── orderProcessor.js    # Order processing workflow
+│   ├── addressMapper.js     # Address parsing from Shopify
+│   └── addressIdMapper.js   # Address ID lookup from Delybell
 ├── routes/
 │   ├── api.js               # API endpoints
-│   └── webhooks.js          # Webhook handlers
-└── API_DOCUMENTATION.md     # Delybell API documentation
+│   ├── webhooks.js          # Webhook handlers
+│   ├── auth.js              # Shopify OAuth
+│   └── test.js              # Test endpoints
+├── middleware/
+│   └── webhookVerification.js # Webhook HMAC verification
+└── test/                     # Test scripts
 ```
 
 ## Configuration
 
+### Environment Variables
+
+See `env.example` for all required environment variables. Key variables:
+
+- `DELYBELL_API_URL` - Delybell API base URL
+- `DELYBELL_ACCESS_KEY` - Delybell API access key
+- `DELYBELL_SECRET_KEY` - Delybell API secret key
+- `SHOPIFY_API_KEY` - Shopify app API key
+- `SHOPIFY_API_SECRET` - Shopify app API secret
+- `DEFAULT_SERVICE_TYPE_ID` - Default service type (default: 1)
+
 ### Address Mapping
 
-The app requires mapping Shopify addresses to Delybell's hierarchical address system (Block → Road → Building). You can:
-
-1. Use Delybell's master APIs to search and find matching IDs
-2. Store address mappings in a database
-3. Use geocoding services to match coordinates
-4. Configure default mappings for testing
-
-### Service Type
-
-Default service type ID is set to `1`. You can:
-- Fetch available service types using `/api/service-types`
-- Configure the service type per order or globally
+- **Pickup Address**: Hardcoded in `services/addressMapper.js` (Babybow company address)
+- **Destination Address**: Automatically parsed from Shopify shipping address
+- Address parsing extracts Block, Road, Building numbers and converts them to Delybell IDs
+- Uses zip code as fallback for Block number if not found in address text
 
 ## Troubleshooting
 

@@ -31,10 +31,19 @@ router.post('/sync-orders', async (req, res) => {
     console.log(`Found ${orders.length} orders to process`);
 
     // Process orders
+    // ⚠️ CRITICAL: 
+    // - Pickup is always Babybow (hardcoded in orderTransformer)
+    // - Destination MUST be parsed from each Shopify order's shipping address
+    // - NO defaults allowed for real orders
+    
     const mappingConfig = {
-      service_type_id: req.body.service_type_id || 1,
-      destination: req.body.destination_mapping || {},
-      pickup: req.body.pickup_mapping || {},
+      service_type_id: req.body.service_type_id || parseInt(process.env.DEFAULT_SERVICE_TYPE_ID) || 1,
+      // Destination will be parsed from each order's shipping address
+      // Do NOT provide destination mapping - it will be parsed per order
+      destination: null,
+      pickup: {
+        // Pickup will be overridden by Babybow values in orderTransformer
+      },
     };
 
     const results = await orderProcessor.processOrdersBatch(
@@ -95,10 +104,19 @@ router.post('/process-order/:orderId', async (req, res) => {
     }
 
     // Process order
+    // ⚠️ CRITICAL: 
+    // - Pickup is always Babybow (hardcoded in orderTransformer)
+    // - Destination MUST be parsed from Shopify order's shipping address
+    // - NO defaults allowed for real orders
+    
     const mappingConfig = {
-      service_type_id: req.body.service_type_id || 1,
-      destination: req.body.destination_mapping || {},
-      pickup: req.body.pickup_mapping || {},
+      service_type_id: req.body.service_type_id || parseInt(process.env.DEFAULT_SERVICE_TYPE_ID) || 1,
+      // Destination will be parsed from order's shipping address
+      // Do NOT provide destination mapping - it will be parsed from order
+      destination: null,
+      pickup: {
+        // Pickup will be overridden by Babybow values in orderTransformer
+      },
     };
 
     const result = await orderProcessor.processOrder(order, session, mappingConfig);

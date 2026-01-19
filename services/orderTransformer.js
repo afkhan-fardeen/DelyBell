@@ -1,16 +1,22 @@
 /**
  * Order Transformer Service
  * Transforms Shopify order data to Delybell API format
+ * 
+ * ⚠️ CRITICAL: This service converts human-readable address numbers to Delybell IDs
+ * by looking them up in Delybell master data.
  */
+
+const addressMapper = require('./addressMapper');
+const addressIdMapper = require('./addressIdMapper');
 
 class OrderTransformer {
   /**
    * Transform Shopify order to Delybell order format
    * @param {Object} shopifyOrder - Shopify order object
    * @param {Object} mappingConfig - Configuration for mapping Shopify fields to Delybell fields
-   * @returns {Object} Delybell order format
+   * @returns {Promise<Object>} Delybell order format
    */
-  transformShopifyToDelybell(shopifyOrder, mappingConfig = {}) {
+  async transformShopifyToDelybell(shopifyOrder, mappingConfig = {}) {
     // Extract shipping address (destination) - fallback to billing if missing
     const shippingAddress = shopifyOrder.shipping_address || shopifyOrder.billing_address;
     
@@ -22,71 +28,157 @@ class OrderTransformer {
       throw new Error('Order must have a shipping address or billing address');
     }
 
+    // ⚠️ CRITICAL: Pickup address MUST use company's registered Delybell address
+    // This is hardcoded for ALL Shopify stores - same pickup location for all orders
+    // Address: Building 417, Road 114, Block 306, Ras Ruman
+    // Mapping: Block 306 → Block ID 1, Road 114 → Road ID 114, Building 417 → Building ID 417
+    const companyPickup = addressMapper.getBabybowPickupConfig();
+    
+    // Use hardcoded IDs (we know them from registration - more reliable than lookup)
+    // Block Number 306 → Block ID 1
+    // Road Number 114 → Road ID 114  
+    // Building Number 417 → Building ID 417
+    console.log(`📍 Using company pickup address: ${companyPickup.address}`);
+    console.log(`   Block Number ${companyPickup.block_number} → Block ID ${companyPickup.block_id}`);
+    console.log(`   Road Number ${companyPickup.road_number} → Road ID ${companyPickup.road_id}`);
+    console.log(`   Building Number ${companyPickup.building_number} → Building ID ${companyPickup.building_id}`);
+    
+    // Pickup config with hardcoded IDs (from registration)
+    const pickupConfig = {
+      address: companyPickup.address,
+      block_id: companyPickup.block_id,      // Block ID 1 (from Block Number 306)
+      road_id: companyPickup.road_id,      // Road ID 114 (from Road Number 114)
+      building_id: companyPickup.building_id, // Building ID 417 (from Building Number 417)
+      customer_name: mappingConfig.pickup?.customer_name || companyPickup.customer_name,
+      mobile_number: mappingConfig.pickup?.mobile_number || companyPickup.mobile_number,
+    };
+
+    // ⚠️ CRITICAL VALIDATION: Destination address mapping MUST come from Shopify address
+    // Default destination values are NOT allowed for real orders - only for testing
+    // If mappingConfig.destination is provided, it means it's from test endpoint (allow it)
+    // Otherwise, we MUST parse the Shopify shipping address and lookup IDs
+    
+    let destinationIds; // Will contain block_id, road_id, building_id
+    let flatNumber = 'N/A'; // Flat number from parsed address
+    
+    if (mappingConfig.destination && mappingConfig.destination.block_id && mappingConfig.destination.road_id) {
+      // This is from test endpoint - use provided IDs directly (already looked up)
+      console.log('⚠️ Using provided destination IDs (test mode)');
+      destinationIds = {
+        block_id: mappingConfig.destination.block_id,
+        road_id: mappingConfig.destination.road_id,
+        building_id: mappingConfig.destination.building_id || null,
+      };
+      flatNumber = mappingConfig.destination.flat_number || 'N/A';
+    } else {
+      // Real order - MUST parse from Shopify address and lookup IDs
+      console.log('📍 Parsing destination address from Shopify shipping address...');
+      const addressNumbers = addressMapper.parseShopifyAddress(shippingAddress);
+      
+      if (!addressMapper.isValidMapping(addressNumbers)) {
+        const addressPreview = [
+          shippingAddress.address1,
+          shippingAddress.address2,
+          shippingAddress.city,
+        ].filter(Boolean).join(', ') || 'No address provided';
+        
+        // Check what was found vs what's missing
+        const parsed = addressMapper.parseShopifyAddress(shippingAddress);
+        let missingFields = [];
+        if (!parsed || !parsed.block_number) missingFields.push('Block');
+        if (!parsed || !parsed.road_number) missingFields.push('Road');
+        
+        const missingText = missingFields.length > 0 
+          ? `Missing: ${missingFields.join(', ')}. ` 
+          : '';
+        
+        throw new Error(
+          'CRITICAL: Cannot map destination address to Delybell structured format. ' +
+          `${missingText}` +
+          'The shipping address must contain Block and Road information in a parseable format. ' +
+          `Received address: "${addressPreview}". ` +
+          'Expected format: "Building X, Road Y, Block Z" or "Building: X, Road: Y, Block: Z" or similar. ' +
+          'Order rejected - address mapping is mandatory for Delybell auto-assignment. ' +
+          'Please ensure customer addresses include Block and Road numbers.'
+        );
+      }
+      
+      flatNumber = addressNumbers.flat_number || 'N/A';
+      
+      // Extract area name from shipping address city (e.g., "Ras Ruman", "Al Hajiyat")
+      // This is used to disambiguate blocks with the same code number
+      const areaName = shippingAddress.city ? shippingAddress.city.trim() : null;
+      
+      console.log(`✅ Parsed address numbers: Block ${addressNumbers.block_number}, Road ${addressNumbers.road_number}, Building ${addressNumbers.building_number || 'N/A'}${areaName ? `, Area: ${areaName}` : ''}`);
+      
+      // ⚠️ CRITICAL STEP: Convert numbers to Delybell IDs
+      // Block Number (929) → Block ID (370) - matched by code AND area name
+      // Road Number (3953) → Road ID (XXXX)
+      // Building Number (2733) → Building ID (YYYY)
+      console.log('🔍 Looking up Delybell IDs from address numbers...');
+      destinationIds = await addressIdMapper.convertNumbersToIds(addressNumbers, areaName);
+      
+      console.log(`✅ Mapped to Delybell IDs: Block ID ${destinationIds.block_id}, Road ID ${destinationIds.road_id}, Building ID ${destinationIds.building_id || 'N/A'}`);
+    }
+
     // Calculate total weight from line items
     const totalWeight = this.calculateTotalWeight(shopifyOrder.line_items);
 
     // Build package details from line items
     const packageDetails = this.buildPackageDetails(shopifyOrder.line_items);
 
-    // Map addresses to Delybell format
-    // Note: You'll need to map Shopify addresses to Delybell's block/road/building IDs
-    // This requires additional API calls or a mapping table
-    const destinationMapping = this.mapAddressToDelybell(
-      shippingAddress,
-      mappingConfig.destination
-    );
-    const pickupMapping = this.mapAddressToDelybell(
-      billingAddress,
-      mappingConfig.pickup
-    );
-
     // Build Delybell order object according to API specification
+    // Simplified payload - only required fields
     const delybellOrder = {
       // Mandatory fields
-      order_type: 1, // Domestic = 1, International = 2 (currently only support Domestic)
-      service_type_id: mappingConfig.service_type_id || 1,
+      order_type: 1, // Domestic = 1, International = 2 (currently only Domestic is supported)
+      service_type_id: mappingConfig.service_type_id || 1, // Provided by the List of Services API
       customer_input_order_id: shopifyOrder.order_number?.toString() || shopifyOrder.id?.toString(),
-      
-      // Pickup (Sender) Information
-      // IMPORTANT: Pickup address must match EXACTLY what's registered in Delybell system
-      // Use configured pickup address from environment variables, not from Shopify billing address
-      pickup_customer_name: mappingConfig.pickup?.customer_name || billingAddress?.name || 'Shopify Store',
-      pickup_mobile_number: mappingConfig.pickup?.mobile_number || billingAddress?.phone || shopifyOrder.customer?.phone || '',
-      pickup_block_id: pickupMapping.block_id,
-      pickup_road_id: pickupMapping.road_id,
-      pickup_building_id: pickupMapping.building_id,
-      // Use configured pickup address (must match registered Delybell address exactly)
-      sender_address: mappingConfig.pickup?.address || this.formatAddress(billingAddress) || '',
 
-      // Destination (Recipient) Information (mandatory)
-      // IMPORTANT: Destination address must be in STANDARD FORMAT (not single line)
-      // Format: "Building X, Road Y, Block Z" for auto-assignment based on location blocks
+      // Destination (Recipient) Information
       destination_customer_name: shippingAddress?.name || 
         (shopifyOrder.customer?.first_name && shopifyOrder.customer?.last_name 
           ? `${shopifyOrder.customer.first_name} ${shopifyOrder.customer.last_name}` 
           : shopifyOrder.customer?.first_name || shopifyOrder.customer?.last_name || 'Customer'),
-      destination_mobile_number: shippingAddress?.phone || shopifyOrder.customer?.phone || '+97300000000', // Default phone if missing (mandatory field)
-      // Format destination address in standard structured format for auto-assignment
-      destination_address: this.formatDestinationAddress(shippingAddress, destinationMapping) || (shippingAddress?.address1 || 'Address not provided'),
+      destination_mobile_number: shippingAddress?.phone || shopifyOrder.customer?.phone || '+97300000000',
       
-      // Optional destination fields
-      destination_alternate_number: shippingAddress?.phone_alt || '',
-      destination_block_id: destinationMapping.block_id,
-      destination_road_id: destinationMapping.road_id,
-      destination_building_id: destinationMapping.building_id,
-      destination_flat_or_office_number: destinationMapping.flat_number || '',
+      // Optional: Alternate number (only include if exists)
+      ...(shippingAddress?.phone_alt && {
+        destination_alternate_number: shippingAddress.phone_alt,
+      }),
+      
+      // Structured address fields (REQUIRED for auto-assignment)
+      // These are Delybell IDs (looked up from human-readable numbers)
+      destination_block_id: destinationIds.block_id,
+      destination_road_id: destinationIds.road_id,
+      destination_building_id: destinationIds.building_id || null,
+      
+      // Optional: Flat/Office number
+      ...(flatNumber && flatNumber !== 'N/A' && {
+        destination_flat_or_office_number: flatNumber,
+      }),
 
-      // Mandatory: Delivery instructions
+      // Destination address (formatted display address)
+      destination_address: (() => {
+        // Parse address again to get numbers for display
+        const parsed = addressMapper.parseShopifyAddress(shippingAddress);
+        if (parsed && parsed.block_number && parsed.road_number) {
+          const parts = [];
+          if (flatNumber && flatNumber !== 'N/A') parts.push(flatNumber);
+          if (parsed.building_number) parts.push(`Building ${parsed.building_number}`);
+          parts.push(`Road ${parsed.road_number}`);
+          parts.push(`Block ${parsed.block_number}`);
+          return parts.join(', ');
+        }
+        // Fallback to original address format
+        return this.formatDestinationAddress(shippingAddress, null);
+      })(),
+
+      // Delivery instructions
       delivery_instructions: shopifyOrder.note || shippingAddress?.note || 'Handle with care',
 
       // Package Details (mandatory)
       package_details: this.formatPackageDetails(packageDetails),
-
-      // Optional: COD fields
-      ...(this.isCOD(shopifyOrder) && {
-        is_cod: true,
-        cod_amount: Math.round(parseFloat(shopifyOrder.total_price) || 0),
-      }),
     };
 
     return delybellOrder;
@@ -147,6 +239,60 @@ class OrderTransformer {
   }
 
   /**
+   * Get pickup date based on cutoff rule (12:00 PM Bahrain time)
+   * Orders placed before 12:00 PM → Same-day pickup
+   * Orders placed after 12:00 PM → Next-day pickup
+   * 
+   * @param {string} preferredDate - Optional preferred date (YYYY-MM-DD format) to override cutoff logic
+   * @returns {string} Pickup date in YYYY-MM-DD format
+   */
+  getPickupDate(preferredDate = null) {
+    // If preferred date is provided, use it (for testing/override)
+    if (preferredDate) {
+      const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+      if (dateRegex.test(preferredDate)) {
+        console.log(`📅 Using provided pickup date: ${preferredDate}`);
+        return preferredDate;
+      }
+      console.warn(`⚠️ Invalid pickup date format: ${preferredDate}. Using cutoff-based logic instead.`);
+    }
+    
+    // Step 1: Generate pickup date based on cutoff rule
+    const now = new Date();
+    const bahrainTime = new Date(now.toLocaleString("en-US", { timeZone: "Asia/Bahrain" }));
+    
+    const hour = bahrainTime.getHours();
+    const pickupDate = new Date(bahrainTime);
+    
+    if (hour >= 12) {
+      pickupDate.setDate(pickupDate.getDate() + 1);
+    }
+    
+    const formattedDate = pickupDate.toISOString().split("T")[0]; // YYYY-MM-DD
+    console.log(`📅 Pickup date calculated: ${formattedDate} (hour: ${hour}, ${hour >= 12 ? 'next-day' : 'same-day'})`);
+    
+    return formattedDate;
+  }
+
+  /**
+   * Get pickup slot (default: Morning = 1)
+   * Slot types: Morning = 1, Afternoon = 2, Evening = 3
+   * 
+   * @param {number} preferredSlot - Optional preferred slot (1, 2, or 3)
+   * @returns {number} Pickup slot (1, 2, or 3)
+   */
+  getPickupSlot(preferredSlot = null) {
+    // If preferred slot provided, use it
+    if (preferredSlot !== null && [1, 2, 3].includes(parseInt(preferredSlot))) {
+      return parseInt(preferredSlot);
+    }
+    
+    // Default: Morning (1)
+    const PICKUP_SLOT = parseInt(process.env.DEFAULT_PICKUP_SLOT_TYPE) || 1;
+    return PICKUP_SLOT;
+  }
+
+  /**
    * Check if order is Cash on Delivery
    * @param {Object} shopifyOrder - Shopify order object
    * @returns {boolean} True if COD
@@ -171,21 +317,31 @@ class OrderTransformer {
   }
 
   /**
-   * Map Shopify address to Delybell block/road/building IDs
-   * This is a placeholder - you'll need to implement actual mapping logic
-   * based on your address data or use Delybell's master APIs to find matching IDs
+   * Map Shopify address to Delybell structured address format
+   * 
+   * ⚠️ CRITICAL: Delybell requires structured address format with separate fields:
+   * - Block No (REQUIRED)
+   * - Road No (REQUIRED)
+   * - Building No (Optional but recommended)
+   * - Flat/Office Number (Optional, can be value or "N/A")
+   * 
+   * Single-line addresses are NOT accepted and will cause auto-assignment failures.
+   * 
    * @param {Object} address - Shopify address object
-   * @param {Object} mappingConfig - Pre-configured mapping (block_id, road_id, building_id)
-   * @returns {Object} Delybell address mapping
+   * @param {Object} mappingConfig - Pre-configured mapping (block_id, road_id, building_id, flat_number)
+   * @returns {Object} Delybell structured address mapping
    */
   mapAddressToDelybell(address, mappingConfig = {}) {
-    // If mapping config is provided, use it
-    if (mappingConfig.block_id && mappingConfig.road_id && mappingConfig.building_id) {
+    // Extract flat number (can be value or "N/A")
+    const flatNumber = mappingConfig.flat_number || this.extractFlatNumber(address) || 'N/A';
+    
+    // If mapping config provides required fields, use them
+    if (mappingConfig.block_id && mappingConfig.road_id) {
       return {
         block_id: mappingConfig.block_id,
         road_id: mappingConfig.road_id,
-        building_id: mappingConfig.building_id,
-        flat_number: mappingConfig.flat_number || this.extractFlatNumber(address),
+        building_id: mappingConfig.building_id || null, // Optional
+        flat_number: flatNumber,
       };
     }
 
@@ -194,28 +350,31 @@ class OrderTransformer {
     // 1. Searching Delybell's master APIs (blocks, roads, buildings) by address
     // 2. Using a mapping table/database
     // 3. Geocoding and matching coordinates
+    // 4. Parsing Shopify address fields to extract block/road/building numbers
     
-    // For now, return default values (these should be configured)
+    // For now, return values from config (these MUST be configured)
+    // Note: block_id and road_id are REQUIRED - validation happens at higher level
     return {
-      block_id: mappingConfig.block_id || 1,
-      road_id: mappingConfig.road_id || 1,
-      building_id: mappingConfig.building_id || 1,
-      flat_number: mappingConfig.flat_number || this.extractFlatNumber(address),
+      block_id: mappingConfig.block_id,
+      road_id: mappingConfig.road_id,
+      building_id: mappingConfig.building_id || null,
+      flat_number: flatNumber,
     };
   }
 
   /**
    * Extract flat number from address
+   * Returns "N/A" if not found (as per Delybell format requirements)
    * @param {Object} address - Address object
-   * @returns {string} Flat number
+   * @returns {string} Flat number or "N/A"
    */
   extractFlatNumber(address) {
-    if (!address) return '';
+    if (!address) return 'N/A';
     
     // Try to extract from address1 or address2
     const addressLine = address.address1 || address.address2 || '';
     const flatMatch = addressLine.match(/(?:flat|apt|apartment|unit|#)\s*([a-z0-9]+)/i);
-    return flatMatch ? flatMatch[1] : '';
+    return flatMatch ? flatMatch[1] : 'N/A';
   }
 
   /**
@@ -239,54 +398,85 @@ class OrderTransformer {
   }
 
   /**
-   * Format destination address in standard structured format
-   * IMPORTANT: Must be in format "Building X, Road Y, Block Z" for auto-assignment
-   * This is required because Delybell uses auto-assignment based on location blocks
+   * Format destination address for display purposes (OPTIONAL field)
+   * 
+   * ⚠️ IMPORTANT: This field is for DISPLAY/REFERENCE ONLY
+   * Delybell's routing engine uses the separate structured fields:
+   * - destination_block_id
+   * - destination_road_id
+   * - destination_building_id
+   * - destination_flat_or_office_number
+   * 
+   * This formatted string is NOT used for auto-assignment.
+   * Single-line addresses should NEVER be sent as the primary address.
+   * 
    * @param {Object} address - Shopify shipping address object
    * @param {Object} mapping - Delybell address mapping (block_id, road_id, building_id)
-   * @returns {string} Formatted destination address in standard format
+   * @returns {string} Formatted destination address for display (optional field)
    */
   formatDestinationAddress(address, mapping) {
-    if (!address) return '';
+    if (!address) {
+      throw new Error('CRITICAL: Shipping address is required for order processing');
+    }
     
     // Build structured address format: "Building X, Road Y, Block Z"
-    // This format is required for Delybell's auto-assignment system
+    // ⚠️ CRITICAL: This format is REQUIRED for Delybell's auto-assignment system
+    // Single-line addresses will NOT work - orders will fail to be assigned to drivers
     const parts = [];
     
-    // Add building information if available
+    // Priority 1: Use mapping IDs if provided (most reliable)
     if (mapping?.building_id) {
       parts.push(`Building ${mapping.building_id}`);
-    } else if (address.address1) {
-      // Try to extract building from address1
+    }
+    if (mapping?.road_id) {
+      parts.push(`Road ${mapping.road_id}`);
+    }
+    if (mapping?.block_id) {
+      parts.push(`Block ${mapping.block_id}`);
+    }
+    
+    // If we have all mapping IDs, we have a proper structured address
+    if (parts.length >= 3) {
+      // Add flat/office number if available
+      if (mapping?.flat_number) {
+        parts.push(`Flat ${mapping.flat_number}`);
+      }
+      return parts.join(', ');
+    }
+    
+    // Priority 2: Try to extract structured components from address fields
+    // Extract building from address1
+    if (!mapping?.building_id && address.address1) {
       const buildingMatch = address.address1.match(/building\s*(\d+)/i);
       if (buildingMatch) {
         parts.push(`Building ${buildingMatch[1]}`);
-      } else {
-        parts.push(address.address1);
+      } else if (address.address1.trim()) {
+        // If no building pattern found, use address1 as building reference
+        parts.push(`Building ${address.address1.trim()}`);
       }
     }
     
-    // Add road information
-    if (mapping?.road_id) {
-      parts.push(`Road ${mapping.road_id}`);
-    } else if (address.address2) {
+    // Extract road from address2
+    if (!mapping?.road_id && address.address2) {
       const roadMatch = address.address2.match(/road\s*(\d+)/i);
       if (roadMatch) {
         parts.push(`Road ${roadMatch[1]}`);
       } else {
-        parts.push(address.address2);
+        // Check if address2 contains road info
+        const roadInfo = address.address2.trim();
+        if (roadInfo && !roadInfo.match(/(?:flat|apt|apartment|unit|#)/i)) {
+          parts.push(`Road ${roadInfo}`);
+        }
       }
     }
     
-    // Add block information
-    if (mapping?.block_id) {
-      parts.push(`Block ${mapping.block_id}`);
-    } else if (address.city) {
+    // Extract block from city
+    if (!mapping?.block_id && address.city) {
       const blockMatch = address.city.match(/block\s*(\d+)/i);
       if (blockMatch) {
         parts.push(`Block ${blockMatch[1]}`);
-      } else {
-        parts.push(address.city);
+      } else if (address.city.trim()) {
+        parts.push(`Block ${address.city.trim()}`);
       }
     }
     
@@ -300,19 +490,49 @@ class OrderTransformer {
       }
     }
     
-    // If we have structured parts, return them
-    if (parts.length > 0) {
+    // Ensure we have at least Building, Road, Block structure
+    if (parts.length >= 3) {
       return parts.join(', ');
     }
     
-    // Fallback to standard format if no structured data found
-    const fallbackParts = [
-      address.address1,
-      address.address2,
-      address.city,
-    ].filter(Boolean);
+    // If we don't have proper structure, build it from available fields
+    // This ensures we always return structured format (not single line)
+    const structuredParts = [];
     
-    return fallbackParts.join(', ');
+    // Building component
+    if (address.address1) {
+      structuredParts.push(`Building ${address.address1.trim()}`);
+    } else {
+      structuredParts.push('Building Not Specified');
+    }
+    
+    // Road component
+    if (address.address2 && !address.address2.match(/(?:flat|apt|apartment|unit|#)/i)) {
+      structuredParts.push(`Road ${address.address2.trim()}`);
+    } else if (address.address2) {
+      // If address2 has flat info, use it for road reference
+      structuredParts.push(`Road ${address.address2.trim()}`);
+    } else {
+      structuredParts.push('Road Not Specified');
+    }
+    
+    // Block component
+    if (address.city) {
+      structuredParts.push(`Block ${address.city.trim()}`);
+    } else {
+      structuredParts.push('Block Not Specified');
+    }
+    
+    // Add flat if found
+    if (address.address2) {
+      const flatMatch = address.address2.match(/(?:flat|apt|apartment|unit|#)\s*([a-z0-9]+)/i);
+      if (flatMatch) {
+        structuredParts.push(`Flat ${flatMatch[1]}`);
+      }
+    }
+    
+    // Always return structured format (comma-separated, not single line)
+    return structuredParts.join(', ');
   }
 
   /**

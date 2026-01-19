@@ -4,6 +4,11 @@ const orderProcessor = require('../services/orderProcessor');
 const { generateMockShopifyOrder, generateMockShopifyOrders } = require('../test/mockShopifyOrder');
 
 /**
+ * ⚠️ NOTE: Test endpoints allow default destination mapping for testing purposes.
+ * Real orders (webhooks, API sync) will parse addresses from Shopify and reject if mapping fails.
+ */
+
+/**
  * Test endpoint to process a mock Shopify order
  * This allows testing Delybell integration without Shopify access
  */
@@ -15,20 +20,37 @@ router.post('/process-mock-order', async (req, res) => {
     console.log(`Processing mock Shopify order: ${mockOrder.order_number || mockOrder.id}`);
 
     // Process the order
-    // Note: You'll need to provide mapping config for addresses
+    // ⚠️ CRITICAL: Ensure pickup address is provided (from request body or environment)
+    const pickupMapping = req.body.pickup_mapping || {};
+    if (!pickupMapping.address) {
+      // Fallback to environment variable (REQUIRED)
+      pickupMapping.address = process.env.DEFAULT_PICKUP_ADDRESS || '';
+      pickupMapping.block_id = pickupMapping.block_id || parseInt(process.env.DEFAULT_PICKUP_BLOCK_ID) || 1;
+      pickupMapping.road_id = pickupMapping.road_id || parseInt(process.env.DEFAULT_PICKUP_ROAD_ID) || 1;
+      pickupMapping.building_id = pickupMapping.building_id || parseInt(process.env.DEFAULT_PICKUP_BUILDING_ID) || 1;
+      pickupMapping.customer_name = pickupMapping.customer_name || process.env.DEFAULT_PICKUP_CUSTOMER_NAME || '';
+      pickupMapping.mobile_number = pickupMapping.mobile_number || process.env.DEFAULT_PICKUP_MOBILE_NUMBER || '';
+    }
+    
     const mappingConfig = {
-      service_type_id: req.body.service_type_id || 1,
+      service_type_id: req.body.service_type_id || parseInt(process.env.DEFAULT_SERVICE_TYPE_ID) || 1,
       destination: req.body.destination_mapping || {
-        block_id: 1,
-        road_id: 1,
-        building_id: 1,
+        block_id: parseInt(process.env.DEFAULT_DESTINATION_BLOCK_ID) || 1,
+        road_id: parseInt(process.env.DEFAULT_DESTINATION_ROAD_ID) || 1,
+        building_id: parseInt(process.env.DEFAULT_DESTINATION_BUILDING_ID) || 1,
       },
-      pickup: req.body.pickup_mapping || {
-        block_id: 1,
-        road_id: 1,
-        building_id: 1,
-      },
+      pickup: pickupMapping,
     };
+    
+    // Validate pickup address is provided
+    if (!mappingConfig.pickup.address || mappingConfig.pickup.address.trim() === '') {
+      return res.status(400).json({
+        success: false,
+        error: 'CRITICAL: Pickup address is required. ' +
+               'Either provide pickup_mapping.address in request body or set DEFAULT_PICKUP_ADDRESS in environment variables.',
+        help: 'The pickup address MUST match exactly what is registered in Delybell system.',
+      });
+    }
 
     const result = await orderProcessor.processOrder(
       mockOrder,
@@ -68,19 +90,37 @@ router.post('/process-mock-orders', async (req, res) => {
     
     console.log(`Processing ${mockOrders.length} mock Shopify orders`);
 
+    // ⚠️ CRITICAL: Ensure pickup address is provided (from request body or environment)
+    const pickupMapping = req.body.pickup_mapping || {};
+    if (!pickupMapping.address) {
+      // Fallback to environment variable (REQUIRED)
+      pickupMapping.address = process.env.DEFAULT_PICKUP_ADDRESS || '';
+      pickupMapping.block_id = pickupMapping.block_id || parseInt(process.env.DEFAULT_PICKUP_BLOCK_ID) || 1;
+      pickupMapping.road_id = pickupMapping.road_id || parseInt(process.env.DEFAULT_PICKUP_ROAD_ID) || 1;
+      pickupMapping.building_id = pickupMapping.building_id || parseInt(process.env.DEFAULT_PICKUP_BUILDING_ID) || 1;
+      pickupMapping.customer_name = pickupMapping.customer_name || process.env.DEFAULT_PICKUP_CUSTOMER_NAME || '';
+      pickupMapping.mobile_number = pickupMapping.mobile_number || process.env.DEFAULT_PICKUP_MOBILE_NUMBER || '';
+    }
+    
     const mappingConfig = {
-      service_type_id: req.body.service_type_id || 1,
+      service_type_id: req.body.service_type_id || parseInt(process.env.DEFAULT_SERVICE_TYPE_ID) || 1,
       destination: req.body.destination_mapping || {
-        block_id: 1,
-        road_id: 1,
-        building_id: 1,
+        block_id: parseInt(process.env.DEFAULT_DESTINATION_BLOCK_ID) || 1,
+        road_id: parseInt(process.env.DEFAULT_DESTINATION_ROAD_ID) || 1,
+        building_id: parseInt(process.env.DEFAULT_DESTINATION_BUILDING_ID) || 1,
       },
-      pickup: req.body.pickup_mapping || {
-        block_id: 1,
-        road_id: 1,
-        building_id: 1,
-      },
+      pickup: pickupMapping,
     };
+    
+    // Validate pickup address is provided
+    if (!mappingConfig.pickup.address || mappingConfig.pickup.address.trim() === '') {
+      return res.status(400).json({
+        success: false,
+        error: 'CRITICAL: Pickup address is required. ' +
+               'Either provide pickup_mapping.address in request body or set DEFAULT_PICKUP_ADDRESS in environment variables.',
+        help: 'The pickup address MUST match exactly what is registered in Delybell system.',
+      });
+    }
 
     const results = [];
     for (const order of mockOrders) {

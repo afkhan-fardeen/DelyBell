@@ -1,20 +1,25 @@
 {
   "name": "shopify-delybell-integration",
   "version": "1.0.0",
-  "description": "Shopify app to integrate orders with Delybell External APIs",
+  "description": "Automatically sync Shopify orders to Delybell delivery management system",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
     "dev": "nodemon server.js",
-    "test:delybell": "node test/testDelybellAPI.js"
+    "test:delybell": "node test/testDelybellAPI.js",
+    "test:order": "node test/testOrderCreation.js",
+    "test:address": "node test/testAddressParser.js"
   },
   "keywords": [
     "shopify",
     "delybell",
     "integration",
-    "orders"
+    "orders",
+    "delivery",
+    "shipping",
+    "logistics"
   ],
-  "author": "",
+  "author": "Delybell",
   "license": "ISC",
   "dependencies": {
     "@shopify/shopify-api": "^9.0.0",
