@@ -58,7 +58,7 @@ In Render dashboard → Your Service → Environment, add:
 SHOPIFY_API_KEY=your_shopify_api_key_here
 SHOPIFY_API_SECRET=your_shopify_api_secret_here
 SHOPIFY_SCOPES=read_orders,write_orders
-SHOPIFY_HOST=delybell-shopify-app.onrender.com
+SHOPIFY_HOST=delybell.onrender.com
 
 # Delybell Configuration
 DELYBELL_API_URL=https://new.api.delybell.com
@@ -76,14 +76,14 @@ DEFAULT_PICKUP_CUSTOMER_NAME=Store
 DEFAULT_PICKUP_MOBILE_NUMBER=+97300000000
 ```
 
-**⚠️ Important:** Replace `SHOPIFY_HOST` with your actual Render URL after deployment!
+**⚠️ Important:** Set `SHOPIFY_HOST=delybell.onrender.com` (your actual Render URL)
 
 ### 1.4 Deploy
 
 1. Click **"Create Web Service"**
 2. Wait for build to complete (~2-3 minutes)
-3. Copy your app URL: `https://delybell-shopify-app.onrender.com`
-4. Test health check: `https://delybell-shopify-app.onrender.com/health`
+3. Copy your app URL: `https://delybell.onrender.com`
+4. Test health check: `https://delybell.onrender.com/health`
 
 ---
 
@@ -96,8 +96,8 @@ DEFAULT_PICKUP_MOBILE_NUMBER=+97300000000
 3. Choose **"Create app manually"**
 4. Fill in:
    - **App name:** `Delybell Order Sync` (or your name)
-   - **App URL:** `https://delybell-shopify-app.onrender.com/app`
-   - **Allowed redirection URL(s):** `https://delybell-shopify-app.onrender.com/auth/callback`
+   - **App URL:** `https://delybell.onrender.com/app`
+   - **Allowed redirection URL(s):** `https://delybell.onrender.com/auth/callback`
 5. Click **"Create app"**
 
 ### 2.2 Configure App Settings
@@ -106,18 +106,18 @@ Go to **"App setup"** tab:
 
 **App URL:**
 ```
-https://delybell-shopify-app.onrender.com/app
+https://delybell.onrender.com/app
 ```
 
 **Allowed redirection URL(s):**
 ```
-https://delybell-shopify-app.onrender.com/auth/callback
+https://delybell.onrender.com/auth/callback
 ```
 
 **Webhooks:**
-- `orders/create` → `https://delybell-shopify-app.onrender.com/webhooks/orders/create`
-- `orders/updated` → `https://delybell-shopify-app.onrender.com/webhooks/orders/update`
-- `app/uninstalled` → `https://delybell-shopify-app.onrender.com/webhooks/app/uninstalled`
+- `orders/create` → `https://delybell.onrender.com/webhooks/orders/create`
+- `orders/updated` → `https://delybell.onrender.com/webhooks/orders/update`
+- `app/uninstalled` → `https://delybell.onrender.com/webhooks/app/uninstalled`
 
 **Scopes (API access scopes):**
 - ✅ `read_orders` - Read orders
@@ -151,8 +151,8 @@ name = "Delybell Order Sync"
 # Replace with your actual Client ID from Partner Dashboard
 client_id = "YOUR_CLIENT_ID_FROM_PARTNER_DASHBOARD"
 
-# Replace with your Render URL
-application_url = "https://delybell-shopify-app.onrender.com"
+# Your Render URL
+application_url = "https://delybell.onrender.com"
 
 embedded = true
 
@@ -164,7 +164,7 @@ api_version = "2024-01"
 subscriptions = ["orders/create", "orders/updated", "app/uninstalled"]
 
 [app_proxy]
-url = "https://delybell-shopify-app.onrender.com"
+url = "https://delybell.onrender.com"
 subpath = "apps"
 prefix = "delybell"
 
@@ -273,12 +273,12 @@ Go to Partner Dashboard → Your App → **"App Store listing"**
 ### 5.2 Legal Pages
 
 Your app already includes:
-- ✅ Privacy Policy: `https://delybell-shopify-app.onrender.com/privacy-policy.html`
-- ✅ Terms of Service: `https://delybell-shopify-app.onrender.com/terms-of-service.html`
+- ✅ Privacy Policy: `https://delybell.onrender.com/privacy-policy.html`
+- ✅ Terms of Service: `https://delybell.onrender.com/terms-of-service.html`
 
 **Verify these URLs are accessible:**
-1. Visit: `https://delybell-shopify-app.onrender.com/privacy-policy.html`
-2. Visit: `https://delybell-shopify-app.onrender.com/terms-of-service.html`
+1. Visit: `https://delybell.onrender.com/privacy-policy.html`
+2. Visit: `https://delybell.onrender.com/terms-of-service.html`
 3. Ensure both pages load correctly
 
 ### 5.3 App Functionality Checklist
@@ -385,24 +385,24 @@ For significant changes:
 After deployment, your app will have these URLs:
 
 **Main App:**
-- App URL: `https://delybell-shopify-app.onrender.com/app`
-- API Root: `https://delybell-shopify-app.onrender.com/`
+- App URL: `https://delybell.onrender.com/app`
+- API Root: `https://delybell.onrender.com/`
 
 **OAuth:**
-- Install: `https://delybell-shopify-app.onrender.com/auth/install?shop=store.myshopify.com`
-- Callback: `https://delybell-shopify-app.onrender.com/auth/callback`
+- Install: `https://delybell.onrender.com/auth/install?shop=store.myshopify.com`
+- Callback: `https://delybell.onrender.com/auth/callback`
 
 **Webhooks:**
-- Orders Create: `https://delybell-shopify-app.onrender.com/webhooks/orders/create`
-- Orders Update: `https://delybell-shopify-app.onrender.com/webhooks/orders/update`
-- App Uninstall: `https://delybell-shopify-app.onrender.com/webhooks/app/uninstalled`
+- Orders Create: `https://delybell.onrender.com/webhooks/orders/create`
+- Orders Update: `https://delybell.onrender.com/webhooks/orders/update`
+- App Uninstall: `https://delybell.onrender.com/webhooks/app/uninstalled`
 
 **Legal:**
-- Privacy Policy: `https://delybell-shopify-app.onrender.com/privacy-policy.html`
-- Terms of Service: `https://delybell-shopify-app.onrender.com/terms-of-service.html`
+- Privacy Policy: `https://delybell.onrender.com/privacy-policy.html`
+- Terms of Service: `https://delybell.onrender.com/terms-of-service.html`
 
 **Health Check:**
-- Health: `https://delybell-shopify-app.onrender.com/health`
+- Health: `https://delybell.onrender.com/health`
 
 ---
 

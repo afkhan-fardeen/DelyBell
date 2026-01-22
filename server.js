@@ -46,42 +46,11 @@ app.use('/api', apiRoutes);
 // Test routes (for testing without Shopify access)
 app.use('/test', testRoutes);
 
-// Root endpoint (only for API documentation)
+// Root endpoint - Redirect to app installation page
 // Note: OAuth routes are registered before this, so /auth/* won't reach here
 app.get('/', (req, res) => {
-  res.json({
-    message: 'Shopify Delybell Integration API',
-    version: '1.0.0',
-    endpoints: {
-      health: '/health',
-      auth: {
-        install: 'GET /auth/install?shop=your-shop.myshopify.com',
-        callback: 'GET /auth/callback',
-        check: 'GET /auth/check?shop=your-shop.myshopify.com',
-        success: 'GET /auth/success',
-      },
-      webhooks: {
-        'orders/create': 'POST /webhooks/orders/create',
-        'orders/update': 'POST /webhooks/orders/update',
-        'app/uninstalled': 'POST /webhooks/app/uninstalled',
-      },
-      api: {
-        'sync-orders': 'POST /api/sync-orders',
-        'process-order': 'POST /api/process-order/:orderId',
-        'service-types': 'GET /api/service-types',
-        'blocks': 'GET /api/blocks',
-        'roads': 'GET /api/roads?block_id=1',
-        'buildings': 'GET /api/buildings?road_id=1',
-        'track': 'GET /api/track/:orderId',
-        'register-webhooks': 'POST /api/webhooks/register',
-      },
-      test: {
-        'mock-order-sample': 'GET /test/mock-order-sample',
-        'process-mock-order': 'POST /test/process-mock-order',
-        'process-mock-orders': 'POST /test/process-mock-orders',
-      },
-    },
-  });
+  // Redirect to /app which will show installation prompt
+  res.redirect('/app');
 });
 
 // Error handling middleware

@@ -1,6 +1,8 @@
 # Shopify Delybell Integration App
 
-A production-ready Shopify app that automatically syncs orders from Shopify stores to Delybell's delivery management system. When customers place orders, they are automatically processed and dispatched through Delybell.
+A **production-ready, installable Shopify App** that automatically syncs orders from Shopify stores to Delybell's delivery management system. This is a proper Shopify App (not just webhooks) - it can be installed from the Shopify App Store, has an embedded admin UI, and works like any professional Shopify app.
+
+**👉 See [WHAT_IS_THIS.md](./WHAT_IS_THIS.md) for a detailed explanation of what this project is.**
 
 ## 📚 Documentation
 
@@ -8,13 +10,21 @@ A production-ready Shopify app that automatically syncs orders from Shopify stor
 
 - **[🚀 Getting Started Guide](./GETTING_STARTED.md)** - ⭐ **START HERE** - Step-by-step path for new developers
 - **[🏪 Render + App Store Setup](./RENDER_APP_STORE_SETUP.md)** - ⭐ **MAKE IT INSTALLABLE** - Deploy on Render & publish to Shopify App Store
+- **[📤 App Store Submission](./APP_STORE_SUBMISSION.md)** - ⭐ **SUBMIT TO APP STORE** - Complete submission guide
 - **[✅ Installable App Checklist](./INSTALLABLE_APP_CHECKLIST.md)** - Quick checklist for deployment
+- **[🔗 Deployment URLs](./DEPLOYMENT_URLS.md)** - ⭐ **LIVE APP** - All URLs for your deployed app
 
 ### Deployment Guides
 
 - **[🚀 Render Deployment Guide](./RENDER_DEPLOYMENT.md)** - Complete Render deployment guide
 - **[⚡ Render Quick Start](./RENDER_QUICK_START.md)** - Quick deploy in 5 minutes
 - **[Free Tunneling Options](./FREE_TUNNELING_OPTIONS.md)** - Free alternatives to ngrok for local development
+
+## 🌐 Live App
+
+**Your app is deployed and live at:** [https://delybell.onrender.com](https://delybell.onrender.com)
+
+See **[Deployment URLs](./DEPLOYMENT_URLS.md)** for all important URLs and configuration details.
 
 ## Features
 

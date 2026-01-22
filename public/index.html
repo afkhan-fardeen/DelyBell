@@ -357,7 +357,42 @@
     async function loadAppStatus() {
       try {
         if (!shop) {
-          throw new Error('Shop parameter is missing');
+          // Show installation prompt if no shop parameter
+          const appContent = document.getElementById('app-content');
+          appContent.innerHTML = `
+            <div class="status-card">
+              <h2>Install Delybell Order Sync</h2>
+              <p style="margin-bottom: 24px; color: #6d7175;">To use this app, you need to install it in your Shopify store.</p>
+              
+              <div style="background: #f6f6f7; padding: 20px; border-radius: 8px; margin-bottom: 24px;">
+                <label for="shop-input" style="display: block; margin-bottom: 8px; font-weight: 500;">Enter your Shopify store domain:</label>
+                <input 
+                  type="text" 
+                  id="shop-input" 
+                  placeholder="your-store.myshopify.com" 
+                  style="width: 100%; padding: 12px; border: 2px solid #e1e3e5; border-radius: 6px; font-size: 14px; margin-bottom: 12px;"
+                />
+                <button 
+                  onclick="installFromInput()" 
+                  class="button"
+                  style="width: 100%;"
+                >
+                  Install App
+                </button>
+              </div>
+              
+              <div class="info-section">
+                <h2>How It Works</h2>
+                <ul>
+                  <li>Enter your Shopify store domain above</li>
+                  <li>You'll be redirected to Shopify to authorize the app</li>
+                  <li>Once installed, orders will sync automatically</li>
+                  <li>View synced orders in the app dashboard</li>
+                </ul>
+              </div>
+            </div>
+          `;
+          return;
         }
         
         // Check authentication status
@@ -573,6 +608,24 @@
           `;
         }
       }
+    }
+    
+    // Install app from input field
+    function installFromInput() {
+      const shopInput = document.getElementById('shop-input');
+      const shop = shopInput.value.trim();
+      
+      if (!shop) {
+        alert('Please enter your Shopify store domain');
+        return;
+      }
+      
+      if (!shop.includes('.myshopify.com')) {
+        alert('Please enter a valid Shopify store domain (e.g., your-store.myshopify.com)');
+        return;
+      }
+      
+      window.location.href = `/auth/install?shop=${shop}`;
     }
     
     // Load status on page load

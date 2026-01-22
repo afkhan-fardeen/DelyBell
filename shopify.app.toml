@@ -8,7 +8,7 @@ name = "Delybell Order Sync"
 client_id = "YOUR_CLIENT_ID"
 
 # App URL (your production domain)
-application_url = "https://your-app-domain.com"
+application_url = "https://delybell.onrender.com"
 
 # Embedded app configuration
 embedded = true
@@ -26,7 +26,7 @@ subscriptions = ["orders/create", "orders/updated", "app/uninstalled"]
 
 # App settings
 [app_proxy]
-url = "https://your-app-domain.com"
+url = "https://delybell.onrender.com"
 subpath = "apps"
 prefix = "delybell"
 
