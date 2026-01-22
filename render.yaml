@@ -1,0 +1,44 @@
+# Render.com Configuration File
+# This file configures your app for Render deployment
+# 
+# To use this file:
+# 1. Push to GitHub
+# 2. In Render dashboard, select "New" → "Blueprint"
+# 3. Connect your GitHub repo
+# 4. Render will auto-detect this file and configure the service
+#
+# OR manually create a Web Service and configure settings
+
+services:
+  - type: web
+    name: delybell-shopify-app
+    env: node
+    plan: starter  # Use 'free' for free tier (spins down when idle)
+    region: singapore  # Choose closest to your users
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /health
+    autoDeploy: true  # Auto-deploy on git push
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3000
+    # ⚠️ IMPORTANT: Add these environment variables in Render dashboard:
+    # 
+    # Shopify Configuration:
+    # - SHOPIFY_API_KEY=your_shopify_api_key
+    # - SHOPIFY_API_SECRET=your_shopify_api_secret
+    # - SHOPIFY_SCOPES=read_orders,write_orders
+    # - SHOPIFY_HOST=your-app-name.onrender.com (update after deployment!)
+    #
+    # Delybell Configuration:
+    # - DELYBELL_API_URL=https://new.api.delybell.com
+    # - DELYBELL_ACCESS_KEY=your_delybell_access_key
+    # - DELYBELL_SECRET_KEY=your_delybell_secret_key
+    #
+    # Order Processing:
+    # - DEFAULT_SERVICE_TYPE_ID=1
+    # - DEFAULT_PICKUP_SLOT_TYPE=1
+    # - DEFAULT_PICKUP_CUSTOMER_NAME=Store
+    # - DEFAULT_PICKUP_MOBILE_NUMBER=+97300000000

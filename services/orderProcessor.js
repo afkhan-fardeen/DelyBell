@@ -73,18 +73,32 @@ class OrderProcessor {
   /**
    * Process a Shopify order and create it in Delybell
    * @param {Object} shopifyOrder - Shopify order object
-   * @param {Object} session - Shopify session
-   * @param {Object} mappingConfig - Address mapping configuration
+   * @param {Object} session - Shopify session (contains shop domain)
+   * @param {Object} mappingConfig - Address mapping configuration (may contain shop domain)
    * @returns {Promise<Object>} Processing result
    */
   async processOrder(shopifyOrder, session, mappingConfig = {}) {
     try {
       console.log(`Processing Shopify order: ${shopifyOrder.order_number || shopifyOrder.id}`);
 
-      // Step 1: Transform Shopify order to Delybell format (async - includes ID lookup)
+      // Extract shop domain from session or mappingConfig
+      const shop = mappingConfig.shop || session?.shop || shopifyOrder.shop;
+      
+      if (!shop) {
+        console.warn('⚠️ Shop domain not found - pickup location may not be fetched correctly');
+      }
+
+      // Step 1: Transform Shopify order to Delybell format (async - includes ID lookup and pickup location fetch)
+      // Pass session to transformer so it can fetch store address from Shopify
+      const transformerConfig = {
+        ...mappingConfig,
+        session: session, // Pass session so transformer can fetch store address
+      };
+      
       const delybellOrderData = await orderTransformer.transformShopifyToDelybell(
         shopifyOrder,
-        mappingConfig
+        transformerConfig,
+        shop // Pass shop domain to fetch pickup location from Shopify store address
       );
 
       // Step 1.5: Validate destination address IDs exist in Delybell master data

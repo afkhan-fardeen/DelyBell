@@ -1,0 +1,37 @@
+# Shopify App Configuration
+# This file defines your app's structure for Shopify
+
+# App name (shown in Shopify admin)
+name = "Delybell Order Sync"
+
+# App client ID (from Shopify Partner Dashboard)
+client_id = "YOUR_CLIENT_ID"
+
+# App URL (your production domain)
+application_url = "https://your-app-domain.com"
+
+# Embedded app configuration
+embedded = true
+
+# App scopes (permissions)
+[access_scopes]
+# Read and write orders for automatic syncing
+scopes = "read_orders,write_orders"
+
+# Webhooks configuration
+# These will be registered automatically when app is installed
+[[webhooks]]
+api_version = "2024-01"
+subscriptions = ["orders/create", "orders/updated", "app/uninstalled"]
+
+# App settings
+[app_proxy]
+url = "https://your-app-domain.com"
+subpath = "apps"
+prefix = "delybell"
+
+# Build configuration
+[build]
+automatically_update_urls_on_dev = true
+dev_store_url = "your-dev-store.myshopify.com"
+include_config_on_deploy = true

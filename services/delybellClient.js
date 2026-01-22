@@ -210,6 +210,7 @@ class DelybellClient {
       throw error;
     }
   }
+
 }
 
 module.exports = new DelybellClient();

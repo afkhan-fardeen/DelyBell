@@ -1,0 +1,14 @@
+node_modules
+npm-debug.log
+.env
+.env.local
+.env.*.local
+.git
+.gitignore
+.vscode
+.idea
+*.log
+.DS_Store
+# Keep test/ for now (may be needed)
+# test/
+# *.test.js

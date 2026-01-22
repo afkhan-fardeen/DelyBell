@@ -8,15 +8,17 @@
 
 const addressMapper = require('./addressMapper');
 const addressIdMapper = require('./addressIdMapper');
+const pickupLocationService = require('./pickupLocationService');
 
 class OrderTransformer {
   /**
    * Transform Shopify order to Delybell order format
    * @param {Object} shopifyOrder - Shopify order object
    * @param {Object} mappingConfig - Configuration for mapping Shopify fields to Delybell fields
+   * @param {string} shop - Shopify shop domain (e.g., 'store.myshopify.com') - used to fetch pickup location
    * @returns {Promise<Object>} Delybell order format
    */
-  async transformShopifyToDelybell(shopifyOrder, mappingConfig = {}) {
+  async transformShopifyToDelybell(shopifyOrder, mappingConfig = {}, shop = null) {
     // Extract shipping address (destination) - fallback to billing if missing
     const shippingAddress = shopifyOrder.shipping_address || shopifyOrder.billing_address;
     
@@ -28,30 +30,30 @@ class OrderTransformer {
       throw new Error('Order must have a shipping address or billing address');
     }
 
-    // ⚠️ CRITICAL: Pickup address MUST use company's registered Delybell address
-    // This is hardcoded for ALL Shopify stores - same pickup location for all orders
-    // Address: Building 417, Road 114, Block 306, Ras Ruman
-    // Mapping: Block 306 → Block ID 1, Road 114 → Road ID 114, Building 417 → Building ID 417
-    const companyPickup = addressMapper.getBabybowPickupConfig();
+    // ⚠️ CRITICAL: Pickup address is fetched from Shopify store address
+    // Every Shopify store has a store address configured in Shopify settings
+    // We use that address as the pickup location
     
-    // Use hardcoded IDs (we know them from registration - more reliable than lookup)
-    // Block Number 306 → Block ID 1
-    // Road Number 114 → Road ID 114  
-    // Building Number 417 → Building ID 417
-    console.log(`📍 Using company pickup address: ${companyPickup.address}`);
-    console.log(`   Block Number ${companyPickup.block_number} → Block ID ${companyPickup.block_id}`);
-    console.log(`   Road Number ${companyPickup.road_number} → Road ID ${companyPickup.road_id}`);
-    console.log(`   Building Number ${companyPickup.building_number} → Building ID ${companyPickup.building_id}`);
+    // Get shop domain from order or parameter
+    const shopDomain = shop || shopifyOrder.shop || mappingConfig.shop;
     
-    // Pickup config with hardcoded IDs (from registration)
-    const pickupConfig = {
-      address: companyPickup.address,
-      block_id: companyPickup.block_id,      // Block ID 1 (from Block Number 306)
-      road_id: companyPickup.road_id,      // Road ID 114 (from Road Number 114)
-      building_id: companyPickup.building_id, // Building ID 417 (from Building Number 417)
-      customer_name: mappingConfig.pickup?.customer_name || companyPickup.customer_name,
-      mobile_number: mappingConfig.pickup?.mobile_number || companyPickup.mobile_number,
-    };
+    if (!shopDomain) {
+      throw new Error(
+        'Shop domain is required to fetch pickup location from Shopify store address. ' +
+        'The app uses the store address configured in Shopify settings as pickup location.'
+      );
+    }
+
+    // Get Shopify session from mappingConfig (passed from orderProcessor)
+    const session = mappingConfig.session || null;
+
+    // Fetch pickup location from Shopify store address
+    console.log(`📍 Fetching pickup location from Shopify store address for shop: ${shopDomain}`);
+    const pickupConfig = await pickupLocationService.getPickupLocation(shopDomain, session);
+    
+    console.log(`✅ Using pickup location from Shopify store address for shop ${shopDomain}:`);
+    console.log(`   Address: ${pickupConfig.address}`);
+    console.log(`   Block ID: ${pickupConfig.block_id}, Road ID: ${pickupConfig.road_id}, Building ID: ${pickupConfig.building_id || 'N/A'}`);
 
     // ⚠️ CRITICAL VALIDATION: Destination address mapping MUST come from Shopify address
     // Default destination values are NOT allowed for real orders - only for testing
@@ -134,7 +136,7 @@ class OrderTransformer {
       order_type: 1, // Domestic = 1, International = 2 (currently only Domestic is supported)
       service_type_id: mappingConfig.service_type_id || 1, // Provided by the List of Services API
       customer_input_order_id: shopifyOrder.order_number?.toString() || shopifyOrder.id?.toString(),
-
+      
       // Destination (Recipient) Information
       destination_customer_name: shippingAddress?.name || 
         (shopifyOrder.customer?.first_name && shopifyOrder.customer?.last_name 

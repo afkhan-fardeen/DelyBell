@@ -145,13 +145,12 @@ router.post('/orders/create', async (req, res) => {
     
     const mappingConfig = {
       service_type_id: parseInt(process.env.DEFAULT_SERVICE_TYPE_ID) || 1,
+      shop: shop, // Pass shop domain to fetch pickup location from Shopify store address
+      session: session, // Pass session so pickup location can be fetched from Shopify
       // ⚠️ CRITICAL: Do NOT provide destination mapping - it will be parsed from Shopify address
       // Only test endpoints should provide destination mapping
       destination: null, // Will be parsed from Shopify shipping address
-      pickup: {
-        // Pickup config will be overridden by Babybow values in orderTransformer
-        // This is just a placeholder - actual values come from addressMapper.getBabybowPickupConfig()
-      },
+      // Pickup location will be fetched from Shopify store address for this shop
     };
 
     console.log(`⚙️ Using mapping config:`, JSON.stringify(mappingConfig, null, 2));
@@ -209,6 +208,69 @@ router.post('/orders/update', async (req, res) => {
   } catch (error) {
     console.error('Webhook error:', error);
     res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * App Uninstall Webhook
+ * Handles app uninstallation - cleans up sessions and data
+ * POST /webhooks/app/uninstalled
+ */
+router.post('/app/uninstalled', async (req, res) => {
+  try {
+    console.log('🔔 App uninstall webhook received');
+    
+    // Parse webhook body
+    let shopifyData;
+    try {
+      shopifyData = parseWebhookBody(req);
+    } catch (parseError) {
+      console.error('❌ Failed to parse uninstall webhook:', parseError);
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid webhook payload',
+      });
+    }
+    
+    const shop = req.headers['x-shopify-shop-domain'] || shopifyData.domain;
+    
+    if (!shop) {
+      console.error('❌ Shop domain not found in uninstall webhook');
+      return res.status(400).json({
+        success: false,
+        error: 'Shop domain not found',
+      });
+    }
+    
+    console.log(`🗑️ Processing app uninstall for shop: ${shop}`);
+    
+    // Delete session from storage
+    try {
+      const session = await shopifyClient.getSession(shop);
+      if (session && session.id) {
+        await sessionStorage.deleteSession(session.id);
+        console.log(`✅ Deleted session for shop: ${shop}`);
+      }
+    } catch (sessionError) {
+      console.error('⚠️ Error deleting session (non-critical):', sessionError.message);
+    }
+    
+    // Note: Webhooks are automatically removed by Shopify when app is uninstalled
+    // No need to manually delete webhooks
+    
+    console.log(`✅ App uninstall processed for shop: ${shop}`);
+    
+    res.status(200).json({
+      success: true,
+      message: 'App uninstall processed',
+      shop,
+    });
+  } catch (error) {
+    console.error('❌ App uninstall webhook error:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message,
+    });
   }
 });
 

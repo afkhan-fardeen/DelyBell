@@ -38,12 +38,12 @@ router.post('/sync-orders', async (req, res) => {
     
     const mappingConfig = {
       service_type_id: req.body.service_type_id || parseInt(process.env.DEFAULT_SERVICE_TYPE_ID) || 1,
+      shop: shop, // Pass shop domain to fetch pickup location from Shopify store address
+      session: session, // Pass session so pickup location can be fetched from Shopify
       // Destination will be parsed from each order's shipping address
       // Do NOT provide destination mapping - it will be parsed per order
       destination: null,
-      pickup: {
-        // Pickup will be overridden by Babybow values in orderTransformer
-      },
+      // Pickup location will be fetched from Shopify store address for this shop
     };
 
     const results = await orderProcessor.processOrdersBatch(
@@ -111,12 +111,12 @@ router.post('/process-order/:orderId', async (req, res) => {
     
     const mappingConfig = {
       service_type_id: req.body.service_type_id || parseInt(process.env.DEFAULT_SERVICE_TYPE_ID) || 1,
+      shop: shop, // Pass shop domain to fetch pickup location from Shopify store address
+      session: session, // Pass session so pickup location can be fetched from Shopify
       // Destination will be parsed from order's shipping address
       // Do NOT provide destination mapping - it will be parsed from order
       destination: null,
-      pickup: {
-        // Pickup will be overridden by Babybow values in orderTransformer
-      },
+      // Pickup location will be fetched from Shopify store address for this shop
     };
 
     const result = await orderProcessor.processOrder(order, session, mappingConfig);
@@ -267,6 +267,11 @@ router.post('/webhooks/register', async (req, res) => {
       {
         topic: 'orders/updated', // Correct topic name (not orders/update)
         address: `${webhookUrl}/webhooks/orders/update`,
+        format: 'json',
+      },
+      {
+        topic: 'app/uninstalled',
+        address: `${webhookUrl}/webhooks/app/uninstalled`,
         format: 'json',
       },
     ];

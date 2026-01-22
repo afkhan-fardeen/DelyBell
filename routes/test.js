@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const orderProcessor = require('../services/orderProcessor');
+const pickupLocationService = require('../services/pickupLocationService');
 const { generateMockShopifyOrder, generateMockShopifyOrders } = require('../test/mockShopifyOrder');
 
 /**
@@ -20,37 +21,31 @@ router.post('/process-mock-order', async (req, res) => {
     console.log(`Processing mock Shopify order: ${mockOrder.order_number || mockOrder.id}`);
 
     // Process the order
-    // ⚠️ CRITICAL: Ensure pickup address is provided (from request body or environment)
-    const pickupMapping = req.body.pickup_mapping || {};
-    if (!pickupMapping.address) {
-      // Fallback to environment variable (REQUIRED)
-      pickupMapping.address = process.env.DEFAULT_PICKUP_ADDRESS || '';
-      pickupMapping.block_id = pickupMapping.block_id || parseInt(process.env.DEFAULT_PICKUP_BLOCK_ID) || 1;
-      pickupMapping.road_id = pickupMapping.road_id || parseInt(process.env.DEFAULT_PICKUP_ROAD_ID) || 1;
-      pickupMapping.building_id = pickupMapping.building_id || parseInt(process.env.DEFAULT_PICKUP_BUILDING_ID) || 1;
-      pickupMapping.customer_name = pickupMapping.customer_name || process.env.DEFAULT_PICKUP_CUSTOMER_NAME || '';
-      pickupMapping.mobile_number = pickupMapping.mobile_number || process.env.DEFAULT_PICKUP_MOBILE_NUMBER || '';
+    // Get shop domain from request or use test shop
+    const shop = req.body.shop || 'test-store.myshopify.com';
+    
+    // For test endpoints, try to get session if shop is provided
+    let session = null;
+    if (shop && shop !== 'test-store.myshopify.com') {
+      try {
+        const shopifyClient = require('../services/shopifyClient');
+        session = await shopifyClient.getSession(shop);
+      } catch (error) {
+        console.log(`⚠️ No session found for shop ${shop} - pickup location fetch may fail`);
+      }
     }
     
     const mappingConfig = {
       service_type_id: req.body.service_type_id || parseInt(process.env.DEFAULT_SERVICE_TYPE_ID) || 1,
+      shop: shop, // Pass shop domain to fetch pickup location from Shopify store address
+      session: session, // Pass session if available
       destination: req.body.destination_mapping || {
         block_id: parseInt(process.env.DEFAULT_DESTINATION_BLOCK_ID) || 1,
         road_id: parseInt(process.env.DEFAULT_DESTINATION_ROAD_ID) || 1,
         building_id: parseInt(process.env.DEFAULT_DESTINATION_BUILDING_ID) || 1,
       },
-      pickup: pickupMapping,
+      // Pickup location will be fetched from Shopify store address for this shop
     };
-    
-    // Validate pickup address is provided
-    if (!mappingConfig.pickup.address || mappingConfig.pickup.address.trim() === '') {
-      return res.status(400).json({
-        success: false,
-        error: 'CRITICAL: Pickup address is required. ' +
-               'Either provide pickup_mapping.address in request body or set DEFAULT_PICKUP_ADDRESS in environment variables.',
-        help: 'The pickup address MUST match exactly what is registered in Delybell system.',
-      });
-    }
 
     const result = await orderProcessor.processOrder(
       mockOrder,
@@ -90,37 +85,31 @@ router.post('/process-mock-orders', async (req, res) => {
     
     console.log(`Processing ${mockOrders.length} mock Shopify orders`);
 
-    // ⚠️ CRITICAL: Ensure pickup address is provided (from request body or environment)
-    const pickupMapping = req.body.pickup_mapping || {};
-    if (!pickupMapping.address) {
-      // Fallback to environment variable (REQUIRED)
-      pickupMapping.address = process.env.DEFAULT_PICKUP_ADDRESS || '';
-      pickupMapping.block_id = pickupMapping.block_id || parseInt(process.env.DEFAULT_PICKUP_BLOCK_ID) || 1;
-      pickupMapping.road_id = pickupMapping.road_id || parseInt(process.env.DEFAULT_PICKUP_ROAD_ID) || 1;
-      pickupMapping.building_id = pickupMapping.building_id || parseInt(process.env.DEFAULT_PICKUP_BUILDING_ID) || 1;
-      pickupMapping.customer_name = pickupMapping.customer_name || process.env.DEFAULT_PICKUP_CUSTOMER_NAME || '';
-      pickupMapping.mobile_number = pickupMapping.mobile_number || process.env.DEFAULT_PICKUP_MOBILE_NUMBER || '';
+    // Get shop domain from request or use test shop
+    const shop = req.body.shop || 'test-store.myshopify.com';
+    
+    // For test endpoints, try to get session if shop is provided
+    let session = null;
+    if (shop && shop !== 'test-store.myshopify.com') {
+      try {
+        const shopifyClient = require('../services/shopifyClient');
+        session = await shopifyClient.getSession(shop);
+      } catch (error) {
+        console.log(`⚠️ No session found for shop ${shop} - pickup location fetch may fail`);
+      }
     }
     
     const mappingConfig = {
       service_type_id: req.body.service_type_id || parseInt(process.env.DEFAULT_SERVICE_TYPE_ID) || 1,
+      shop: shop, // Pass shop domain to fetch pickup location from Shopify store address
+      session: session, // Pass session if available
       destination: req.body.destination_mapping || {
         block_id: parseInt(process.env.DEFAULT_DESTINATION_BLOCK_ID) || 1,
         road_id: parseInt(process.env.DEFAULT_DESTINATION_ROAD_ID) || 1,
         building_id: parseInt(process.env.DEFAULT_DESTINATION_BUILDING_ID) || 1,
       },
-      pickup: pickupMapping,
+      // Pickup location will be fetched from Shopify store address for this shop
     };
-    
-    // Validate pickup address is provided
-    if (!mappingConfig.pickup.address || mappingConfig.pickup.address.trim() === '') {
-      return res.status(400).json({
-        success: false,
-        error: 'CRITICAL: Pickup address is required. ' +
-               'Either provide pickup_mapping.address in request body or set DEFAULT_PICKUP_ADDRESS in environment variables.',
-        help: 'The pickup address MUST match exactly what is registered in Delybell system.',
-      });
-    }
 
     const results = [];
     for (const order of mockOrders) {
@@ -177,6 +166,72 @@ router.get('/mock-order-sample', (req, res) => {
     message: 'Sample mock Shopify order structure',
     order: sampleOrder,
     note: 'Use this structure to understand what data is needed for order processing',
+  });
+});
+
+/**
+ * Test pickup location fetching
+ * GET /test/pickup-location?shop=store.myshopify.com
+ */
+router.get('/pickup-location', async (req, res) => {
+  try {
+    const shop = req.query.shop || 'test-store.myshopify.com';
+    
+    console.log(`🧪 Testing pickup location fetch for shop: ${shop}`);
+    
+    // Try to get session for this shop
+    let session = null;
+    try {
+      const shopifyClient = require('../services/shopifyClient');
+      session = await shopifyClient.getSession(shop);
+      if (session) {
+        console.log(`✅ Session found for shop: ${shop}`);
+      } else {
+        console.log(`⚠️ No session found for shop: ${shop} - will try to fetch session during pickup location fetch`);
+      }
+    } catch (error) {
+      console.log(`⚠️ Could not get session: ${error.message}`);
+    }
+    
+    // Try to fetch pickup location from Shopify store address
+    const pickupLocation = await pickupLocationService.getPickupLocation(shop, session);
+    
+    // Get cached locations
+    const cachedLocations = pickupLocationService.getCachedLocations();
+    
+    res.json({
+      success: true,
+      shop: shop,
+      pickupLocation: pickupLocation,
+      fromShopify: pickupLocation.fromShopify || false,
+      cachedLocations: cachedLocations,
+      note: pickupLocation.fromShopify 
+        ? '✅ Pickup location fetched from Shopify store address'
+        : '⚠️ Pickup location source unknown',
+    });
+  } catch (error) {
+    console.error('Error testing pickup location:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message,
+      note: 'Make sure the shop has the app installed and has a store address configured in Shopify Admin → Settings → Store details. The address must contain Block and Road information.',
+    });
+  }
+});
+
+/**
+ * Clear pickup location cache
+ * POST /test/pickup-location/clear?shop=store.myshopify.com
+ */
+router.post('/pickup-location/clear', (req, res) => {
+  const shop = req.query.shop;
+  
+  pickupLocationService.clearCache(shop);
+  
+  res.json({
+    success: true,
+    message: shop ? `Cache cleared for shop: ${shop}` : 'All pickup location cache cleared',
+    cachedLocations: pickupLocationService.getCachedLocations(),
   });
 });
 

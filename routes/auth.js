@@ -42,9 +42,9 @@ router.get('/install', async (req, res) => {
  */
 router.get('/callback', async (req, res) => {
   try {
-    const { shop, code } = req.query;
+    const { shop: shopParam, code } = req.query;
 
-    if (!shop || !code) {
+    if (!shopParam || !code) {
       return res.status(400).send('Missing required parameters: shop or code');
     }
 
@@ -59,12 +59,50 @@ router.get('/callback', async (req, res) => {
     if (session && session.id) {
       await sessionStorage.storeSession(session.id, session);
       console.log('✅ Installed for shop:', session.shop);
+      
+      // Auto-register webhooks after successful installation
+      try {
+        const config = require('../config');
+        const hostName = config.shopify.hostName || 'localhost:3000';
+        const protocol = hostName.includes('localhost') ? 'http' : 'https';
+        const webhookUrl = `${protocol}://${hostName}`;
+        
+        const webhooks = [
+          {
+            topic: 'orders/create',
+            address: `${webhookUrl}/webhooks/orders/create`,
+            format: 'json',
+          },
+          {
+            topic: 'orders/updated',
+            address: `${webhookUrl}/webhooks/orders/update`,
+            format: 'json',
+          },
+          {
+            topic: 'app/uninstalled',
+            address: `${webhookUrl}/webhooks/app/uninstalled`,
+            format: 'json',
+          },
+        ];
+        
+        const registered = await shopifyClient.registerWebhooks(session, webhooks);
+        console.log(`✅ Auto-registered ${registered.length} webhooks for shop: ${session.shop}`);
+      } catch (webhookError) {
+        // Log error but don't fail installation - webhooks can be registered manually later
+        console.error('⚠️ Failed to auto-register webhooks (non-critical):', webhookError.message);
+      }
     } else {
       throw new Error('Failed to create session');
     }
 
-    // Redirect to success page
-    res.redirect('/auth/success');
+    // Redirect to admin app (embedded in Shopify admin)
+    // If embedded app, redirect to /app, otherwise to success page
+    const shopDomain = session.shop || shopParam;
+    if (shopDomain) {
+      res.redirect(`/app?shop=${shopDomain}`);
+    } else {
+      res.redirect('/auth/success');
+    }
   } catch (error) {
     console.error('OAuth callback failed:', error);
     res.status(500).send(`OAuth callback failed: ${error.message}`);
@@ -124,7 +162,7 @@ router.get('/check', async (req, res) => {
         res.json({
           success: true,
           authenticated: false,
-          shop,
+          shop: shop,
           installUrl: `/auth/install?shop=${shop}`,
           allSessions, // Debug info
         });
@@ -136,7 +174,7 @@ router.get('/check', async (req, res) => {
       res.json({
         success: true,
         authenticated: false,
-        shop,
+        shop: shop,
         installUrl: `/auth/install?shop=${shop}`,
         error: sessionError.message,
         allSessions, // Debug info

@@ -4,14 +4,17 @@ A production-ready Shopify app that automatically syncs orders from Shopify stor
 
 ## 📚 Documentation
 
-- **[File Reference Guide](./FILE_REFERENCE.md)** - ⭐ **Complete file reference** - Every file explained
-- **[Complete Documentation](./DOCUMENTATION.md)** - Full API reference, architecture, and usage guide
-- **[Production Deployment Guide](./PRODUCTION_GUIDE.md)** - Step-by-step production deployment instructions
-- **[Shopify App Store Guide](./SHOPIFY_APP_STORE_GUIDE.md)** - ⭐ **Publish as Public App** - Complete App Store publishing guide
-- **[Developer Guide](./DEVELOPER_GUIDE.md)** - Technical guide for developers
-- **[App Store Checklist](./APP_STORE_CHECKLIST.md)** - Quick reference checklist
-- **[Client Setup Guide](./CLIENT_SETUP.md)** - Quick setup guide for Delybell clients
-- **[Quick Start Guide](#-quick-start)** - Get started in 5 minutes
+### Essential Guides
+
+- **[🚀 Getting Started Guide](./GETTING_STARTED.md)** - ⭐ **START HERE** - Step-by-step path for new developers
+- **[🏪 Render + App Store Setup](./RENDER_APP_STORE_SETUP.md)** - ⭐ **MAKE IT INSTALLABLE** - Deploy on Render & publish to Shopify App Store
+- **[✅ Installable App Checklist](./INSTALLABLE_APP_CHECKLIST.md)** - Quick checklist for deployment
+
+### Deployment Guides
+
+- **[🚀 Render Deployment Guide](./RENDER_DEPLOYMENT.md)** - Complete Render deployment guide
+- **[⚡ Render Quick Start](./RENDER_QUICK_START.md)** - Quick deploy in 5 minutes
+- **[Free Tunneling Options](./FREE_TUNNELING_OPTIONS.md)** - Free alternatives to ngrok for local development
 
 ## Features
 
@@ -75,12 +78,15 @@ This project uses the Delybell External APIs. For complete API documentation, pl
 ### Setup Steps:
 1. Install dependencies: `npm install`
 2. Copy `env.example` to `.env` and configure your credentials
-3. Install ngrok: `npm install -g ngrok` (for local development)
-4. Start ngrok: `ngrok http 3000` (copy the URL)
-5. Update `.env` with your ngrok URL (without `https://`)
-6. Update Shopify app settings with ngrok URL
-7. Start server: `npm start`
-8. Install app: Visit `https://YOUR-NGROK-URL/auth/install?shop=your-shop.myshopify.com`
+3. **Set up tunneling** (choose one):
+   - **Cloudflare Tunnel (Recommended):** `brew install cloudflare/cloudflare/cloudflared` then run `npm run tunnel`
+   - **LocalTunnel:** `npm install -g localtunnel` then run `npm run tunnel:lt`
+   - See [Free Tunneling Options](./FREE_TUNNELING_OPTIONS.md) for more options
+4. Start tunnel in one terminal (copy the HTTPS URL)
+5. Update `.env` with your tunnel URL (without `https://`)
+6. Update Shopify app settings with tunnel URL
+7. Start server: `npm start` (in another terminal)
+8. Install app: Visit `https://YOUR-TUNNEL-URL/auth/install?shop=your-shop.myshopify.com`
 
 ### Delybell API Setup
 
@@ -91,7 +97,7 @@ This project uses the Delybell External APIs. For complete API documentation, pl
 ### Address Mapping
 
 The app automatically parses Shopify shipping addresses and maps them to Delybell's structured address format:
-- **Pickup Address**: Hardcoded to company address (Babybow) - Block 1, Road 114, Building 417, Ras Ruman
+- **Pickup Address**: Fetched from Delybell system for each Shopify store (e.g., Babybow.co)
 - **Destination Address**: Parsed from Shopify order's shipping address
 - Address components (Block, Road, Building) are extracted and converted to Delybell IDs using master data APIs
 - Zip codes are used as fallback for Block numbers (common in Bahrain)
@@ -293,7 +299,7 @@ See `env.example` for all required environment variables. Key variables:
 
 ### Address Mapping
 
-- **Pickup Address**: Hardcoded in `services/addressMapper.js` (Babybow company address)
+- **Pickup Address**: Fetched dynamically from Delybell API per store (see `services/pickupLocationService.js`)
 - **Destination Address**: Automatically parsed from Shopify shipping address
 - Address parsing extracts Block, Road, Building numbers and converts them to Delybell IDs
 - Uses zip code as fallback for Block number if not found in address text

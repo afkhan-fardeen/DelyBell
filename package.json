@@ -6,9 +6,12 @@
   "scripts": {
     "start": "node server.js",
     "dev": "nodemon server.js",
+    "tunnel": "cloudflared tunnel --url http://localhost:3000",
+    "tunnel:lt": "lt --port 3000",
     "test:delybell": "node test/testDelybellAPI.js",
     "test:order": "node test/testOrderCreation.js",
-    "test:address": "node test/testAddressParser.js"
+    "test:address": "node test/testAddressParser.js",
+    "test:pickup": "node test/testPickupLocation.js"
   },
   "keywords": [
     "shopify",
