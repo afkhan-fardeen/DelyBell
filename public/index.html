@@ -321,24 +321,55 @@
     let app;
     let shop;
     
-    // Get shop from URL query parameter
-    const urlParams = new URLSearchParams(window.location.search);
-    shop = urlParams.get('shop') || urlParams.get('shopOrigin');
-    
     // Get API key from server (injected in admin route)
     const apiKey = window.SHOPIFY_API_KEY || document.querySelector('meta[name="shopify-api-key"]')?.content;
     
-    if (shop && apiKey && apiKey !== 'YOUR_API_KEY') {
+    // Initialize App Bridge first to get shop from Shopify context
+    if (apiKey && apiKey !== 'YOUR_API_KEY' && apiKey !== '<%= SHOPIFY_API_KEY %>') {
       try {
         // Initialize App Bridge
         if (window['app-bridge']) {
           const AppBridge = window['app-bridge'].default;
           const createApp = AppBridge.default;
           
-          window.app = createApp({
+          // Try to get shop from URL first
+          const urlParams = new URLSearchParams(window.location.search);
+          shop = urlParams.get('shop') || urlParams.get('shopOrigin');
+          
+          // If no shop in URL, App Bridge will get it from Shopify context
+          // We'll initialize App Bridge without shopOrigin if not available
+          const appConfig = {
             apiKey: apiKey,
-            shopOrigin: shop,
-          });
+          };
+          
+          if (shop) {
+            appConfig.shopOrigin = shop;
+          }
+          
+          window.app = createApp(appConfig);
+          
+          // Try to get shop from App Bridge context if not in URL
+          if (!shop && window.app && window.app.getState) {
+            try {
+              const state = window.app.getState();
+              if (state && state.shop) {
+                shop = state.shop;
+              }
+            } catch (e) {
+              console.warn('Could not get shop from App Bridge state:', e);
+            }
+          }
+          
+          // Also try to get shop from window.location.hostname (for embedded apps)
+          if (!shop && window.location.hostname) {
+            // Shopify embedded apps are loaded from admin.shopify.com
+            // The shop might be in the referrer or we need to extract it differently
+            const hostname = window.location.hostname;
+            if (hostname.includes('admin.shopify.com')) {
+              // Try to get shop from document.referrer or other sources
+              // For now, we'll rely on the backend to extract it from headers
+            }
+          }
           
           // Set up title bar
           if (AppBridge.actions) {
@@ -350,6 +381,31 @@
         }
       } catch (appBridgeError) {
         console.warn('App Bridge initialization failed (non-critical):', appBridgeError);
+      }
+    }
+    
+    // Fallback: Get shop from various sources
+    if (!shop) {
+      // Try window.SHOPIFY_SHOP (injected by backend)
+      shop = window.SHOPIFY_SHOP;
+      
+      // Try URL query parameter
+      if (!shop) {
+        const urlParams = new URLSearchParams(window.location.search);
+        shop = urlParams.get('shop') || urlParams.get('shopOrigin');
+      }
+      
+      // Try App Bridge utils if available
+      if (!shop && window['app-bridge-utils']) {
+        try {
+          const utils = window['app-bridge-utils'];
+          if (utils.getSessionToken) {
+            // App Bridge utils might have shop info
+            // We'll rely on backend to provide it via window.SHOPIFY_SHOP
+          }
+        } catch (e) {
+          console.warn('Could not get shop from App Bridge utils:', e);
+        }
       }
     }
     

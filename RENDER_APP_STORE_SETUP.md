@@ -123,6 +123,41 @@ https://delybell.onrender.com/auth/callback
 - ✅ `read_orders` - Read orders
 - ✅ `write_orders` - Update orders (for tags)
 
+### 2.2.1 ⚠️ IMPORTANT: Make App Publicly Installable
+
+**To fix "can only be installed on stores that are part of the same organization" error:**
+
+1. Go to Partner Dashboard → Your App → **"App setup"** tab
+2. Scroll down to **"Distribution"** section
+3. Find **"App distribution"** setting
+4. Select one of these options:
+
+   **Option A: Public app (Recommended for testing)**
+   - Select **"Public"** 
+   - This allows ANY Shopify store to install your app
+   - App won't appear in App Store until you submit it
+   - Perfect for testing with stores like babybow.co
+
+   **Option B: App Store (Recommended for production)**
+   - Select **"App Store"**
+   - Complete App Store listing (see Step 5)
+   - Submit for review (see Step 6)
+   - Once approved, app appears in Shopify App Store
+   - Any store can install from App Store
+
+5. Click **"Save"**
+
+**⚠️ If you don't see "Distribution" section:**
+- Your app might be in "Development" mode
+- Go to Partner Dashboard → Your App → **"Overview"**
+- Look for **"App status"** or **"Distribution"**
+- Change from "Development" to "Public" or "App Store"
+
+**After making it public:**
+- ✅ Any Shopify store can install via: `https://delybell.onrender.com/app?shop=store.myshopify.com`
+- ✅ Stores like babybow.co can install without organization restrictions
+- ✅ OAuth flow will work for all stores
+
 ### 2.3 Copy API Credentials
 
 From **"Client credentials"** section, copy:

@@ -46,11 +46,54 @@ app.use('/api', apiRoutes);
 // Test routes (for testing without Shopify access)
 app.use('/test', testRoutes);
 
-// Root endpoint - Redirect to app installation page
+// Root endpoint - Show message directing to /app
 // Note: OAuth routes are registered before this, so /auth/* won't reach here
 app.get('/', (req, res) => {
-  // Redirect to /app which will show installation prompt
-  res.redirect('/app');
+  res.send(`
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <title>Delybell Order Sync</title>
+      <style>
+        body {
+          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          min-height: 100vh;
+          margin: 0;
+          background: #f6f6f7;
+        }
+        .container {
+          text-align: center;
+          padding: 40px;
+          background: white;
+          border-radius: 8px;
+          box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        h1 { color: #202223; margin-bottom: 16px; }
+        p { color: #6d7175; margin-bottom: 24px; }
+        a {
+          display: inline-block;
+          padding: 12px 24px;
+          background: #008060;
+          color: white;
+          text-decoration: none;
+          border-radius: 6px;
+          font-weight: 500;
+        }
+        a:hover { background: #006e52; }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <h1>🚚 Delybell Order Sync</h1>
+        <p>Please access the app at:</p>
+        <a href="/app">Go to App →</a>
+      </div>
+    </body>
+    </html>
+  `);
 });
 
 // Error handling middleware

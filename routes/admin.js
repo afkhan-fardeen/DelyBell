@@ -10,7 +10,24 @@ const config = require('../config');
  */
 router.get('/app', async (req, res) => {
   try {
-    const { shop } = req.query;
+    // Try to get shop from query parameter first
+    let { shop } = req.query;
+    
+    // If not in query, try to get from Shopify headers (for embedded apps)
+    if (!shop) {
+      // Shopify passes shop domain in various headers for embedded apps
+      shop = req.headers['x-shopify-shop-domain'] || 
+             req.headers['x-shopify-shop'] ||
+             req.headers['shop'];
+      
+      // Also check referer header for shop domain pattern
+      if (!shop && req.headers.referer) {
+        const refererMatch = req.headers.referer.match(/admin\.shopify\.com\/store\/([^\/]+)/);
+        if (refererMatch) {
+          shop = refererMatch[1] + '.myshopify.com';
+        }
+      }
+    }
     
     // If no shop parameter, show installation prompt
     if (!shop) {
@@ -123,10 +140,12 @@ router.get('/app', async (req, res) => {
             type="text" 
             id="shop" 
             name="shop" 
-            placeholder="your-store.myshopify.com" 
+            placeholder="babybow.co or babybow.myshopify.com" 
             required
-            pattern=".*\\.myshopify\\.com$"
           />
+          <small style="display: block; margin-top: 4px; color: #6d7175; font-size: 12px;">
+            You can enter either your custom domain (e.g., babybow.co) or your Shopify domain (e.g., babybow.myshopify.com)
+          </small>
         </div>
         <button type="submit" class="button">Install App</button>
       </form>
@@ -134,12 +153,14 @@ router.get('/app', async (req, res) => {
     
     <div class="info">
       <strong>How to install:</strong><br>
-      Enter your Shopify store domain (e.g., my-store.myshopify.com) and click "Install App". 
-      You'll be redirected to Shopify to authorize the app.
+      Enter your Shopify store domain. You can use:<br>
+      • Your custom domain: <strong>babybow.co</strong> (we'll convert it automatically)<br>
+      • Or your Shopify domain: <strong>babybow.myshopify.com</strong><br><br>
+      Then click "Install App" to authorize the app in your Shopify store.
     </div>
   </div>
   
-  <script>
+      <script>
     function installApp(event) {
       event.preventDefault();
       let shop = document.getElementById('shop').value.trim();
@@ -153,10 +174,25 @@ router.get('/app', async (req, res) => {
       // Remove trailing slash and path
       shop = shop.split('/')[0];
       
-      // Validate shop domain
+      // If it's a custom domain (not .myshopify.com), try to convert it
+      // Note: This is a guess - user should know their actual myshopify.com domain
       if (!shop.includes('.myshopify.com')) {
-        alert('Please enter a valid Shopify store domain (e.g., your-store.myshopify.com)');
-        return;
+        // Try common patterns: babybow.co -> babybow.myshopify.com
+        // Remove .co, .com, .net, etc. and add .myshopify.com
+        const domainParts = shop.split('.');
+        if (domainParts.length >= 2) {
+          const storeName = domainParts[0]; // e.g., "babybow"
+          shop = storeName + '.myshopify.com';
+          
+          // Confirm with user
+          const confirmed = confirm(\`We'll use "\${shop}" for installation.\\n\\nIf this is incorrect, please enter your actual Shopify store domain (e.g., your-store.myshopify.com) instead.\\n\\nClick OK to continue or Cancel to enter the correct domain.\`);
+          if (!confirmed) {
+            return;
+          }
+        } else {
+          alert('Please enter your Shopify store domain:\\n\\n• Custom domain: babybow.co → babybow.myshopify.com\\n• Or enter directly: your-store.myshopify.com');
+          return;
+        }
       }
       
       // Ensure it ends with .myshopify.com
@@ -226,6 +262,15 @@ router.get('/app', async (req, res) => {
       html = html.replace(
         /window\.SHOPIFY_API_KEY\s*\|\|\s*['"]YOUR_API_KEY['"]/g,
         `'${config.shopify.apiKey}'`
+      );
+    }
+    
+    // Inject shop parameter into HTML if we have it (for embedded apps)
+    if (shop) {
+      // Add shop to window object so frontend can access it
+      html = html.replace(
+        /<script>/,
+        `<script>window.SHOPIFY_SHOP = '${shop}';`
       );
     }
     
