@@ -142,7 +142,16 @@ router.get('/app', async (req, res) => {
   <script>
     function installApp(event) {
       event.preventDefault();
-      const shop = document.getElementById('shop').value.trim();
+      let shop = document.getElementById('shop').value.trim();
+      
+      // Normalize shop domain
+      shop = shop.toLowerCase();
+      
+      // Remove protocol if present
+      shop = shop.replace(/^https?:\/\//, '');
+      
+      // Remove trailing slash and path
+      shop = shop.split('/')[0];
       
       // Validate shop domain
       if (!shop.includes('.myshopify.com')) {
@@ -150,8 +159,14 @@ router.get('/app', async (req, res) => {
         return;
       }
       
-      // Redirect to install URL
-      window.location.href = \`/auth/install?shop=\${shop}\`;
+      // Ensure it ends with .myshopify.com
+      if (!shop.endsWith('.myshopify.com')) {
+        alert('Shop domain must end with .myshopify.com');
+        return;
+      }
+      
+      // Redirect to install URL with normalized shop
+      window.location.href = \`/auth/install?shop=\${encodeURIComponent(shop)}\`;
     }
   </script>
 </body>

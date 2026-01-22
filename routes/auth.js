@@ -10,18 +10,34 @@ const sessionStorage = require('../services/sessionStorage');
  */
 router.get('/install', async (req, res) => {
   try {
-    const { shop } = req.query;
+    let { shop } = req.query;
 
     if (!shop) {
       return res.status(400).send('Missing shop parameter. Use: /auth/install?shop=your-shop.myshopify.com');
     }
 
+    // Normalize shop parameter (Shopify library requires clean format)
+    shop = shop.trim().toLowerCase();
+    
+    // Remove protocol if present
+    shop = shop.replace(/^https?:\/\//, '');
+    
+    // Remove trailing slash and path
+    shop = shop.split('/')[0];
+    
     // Validate shop domain format
     if (!shop.includes('.myshopify.com')) {
       return res.status(400).send('Invalid shop domain. Must be in format: your-shop.myshopify.com');
     }
+    
+    // Ensure it ends with .myshopify.com (no extra characters)
+    if (!shop.endsWith('.myshopify.com')) {
+      return res.status(400).send('Invalid shop domain. Must end with .myshopify.com');
+    }
 
-    // Use Shopify library's OAuth flow (works with ngrok HTTPS URLs)
+    console.log(`🔐 Starting OAuth for shop: ${shop}`);
+
+    // Use Shopify library's OAuth flow
     await shopifyClient.shopify.auth.begin({
       shop,
       callbackPath: '/auth/callback',
@@ -31,6 +47,11 @@ router.get('/install', async (req, res) => {
     });
   } catch (error) {
     console.error('OAuth install error:', error);
+    console.error('Error details:', {
+      message: error.message,
+      stack: error.stack,
+      shop: req.query.shop,
+    });
     res.status(500).send(`OAuth install failed: ${error.message}`);
   }
 });
