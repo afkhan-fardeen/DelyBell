@@ -554,27 +554,39 @@
           loadingDetails.textContent = `Checking authentication for ${shop}...`;
         }
         
-        // Add timeout to prevent hanging
+        // Add timeout to prevent hanging (reduced to 5 seconds)
         const controller = new AbortController();
         const timeoutId = setTimeout(() => {
-          console.warn('[Delybell] Request timeout after 10 seconds');
+          console.warn('[Delybell] Request timeout after 5 seconds');
+          if (loadingDetails) {
+            loadingDetails.textContent = 'Request timed out - check server logs';
+          }
           controller.abort();
-        }, 10000); // 10 second timeout
+        }, 5000); // 5 second timeout
         
         let authResponse;
         try {
           const startTime = Date.now();
           authResponse = await fetch(`/auth/check?shop=${encodeURIComponent(shop)}`, {
-            signal: controller.signal
+            signal: controller.signal,
+            headers: {
+              'Accept': 'application/json',
+            }
           });
           const duration = Date.now() - startTime;
           console.log(`[Delybell] Auth check response received in ${duration}ms, status: ${authResponse.status}`);
           clearTimeout(timeoutId);
+          
+          if (!authResponse.ok) {
+            const errorText = await authResponse.text();
+            console.error('[Delybell] Auth check failed:', authResponse.status, errorText);
+            throw new Error(`Auth check failed: ${authResponse.status} ${authResponse.statusText}`);
+          }
         } catch (fetchError) {
           clearTimeout(timeoutId);
           if (fetchError.name === 'AbortError') {
-            console.error('[Delybell] Request timed out');
-            throw new Error('Request timed out. Please check your connection and try again.');
+            console.error('[Delybell] Request timed out after 5 seconds');
+            throw new Error('Request timed out. The server may be slow or unresponsive. Check server logs for details.');
           }
           console.error('[Delybell] Fetch error:', fetchError);
           throw fetchError;
