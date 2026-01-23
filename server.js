@@ -5,6 +5,7 @@ const config = require('./config');
 const webhookRoutes = require('./routes/webhooks');
 const apiRoutes = require('./routes/api');
 const authRoutes = require('./routes/auth');
+const customAppRoutes = require('./routes/custom-app');
 const adminRoutes = require('./routes/admin');
 const verifyWebhook = require('./middleware/webhookVerification');
 
@@ -32,6 +33,9 @@ app.get('/health', (req, res) => {
 
 // OAuth routes (must be before webhooks)
 app.use('/auth', authRoutes);
+
+// Custom App routes (no OAuth, uses Admin API tokens)
+app.use('/custom-app', customAppRoutes);
 
 // Admin routes (embedded app interface)
 app.use('/', adminRoutes);

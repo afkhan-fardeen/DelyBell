@@ -718,23 +718,49 @@
                 <div class="section-title">Install the App</div>
               </div>
               <div class="section-body">
-                <p style="margin-bottom: 20px; color: #666666; font-size: 13px;">Click the button below to install and authorize the app:</p>
-                <a href="/auth/install?shop=${shop}" class="button">Install App</a>
+                <p style="margin-bottom: 24px; color: #666666; font-size: 13px;">Click the button below to install. You'll be redirected to Shopify to authorize the app - it only takes a few seconds!</p>
+                <a href="/auth/install?shop=${shop}" class="button" style="width: 100%; text-align: center; display: block;">Install App</a>
               </div>
             </div>
             
             <div class="section">
               <div class="section-header">
-                <div class="section-title">Installation Guide</div>
+                <div class="section-title">What Happens Next</div>
               </div>
               <div class="section-body">
                 <ul class="info-list">
-                  <li>Click "Install App" to begin the installation process</li>
-                  <li>You'll be redirected to Shopify to authorize the app</li>
-                  <li>Grant the required permissions (read and write orders)</li>
-                  <li>Once installed, orders will sync automatically</li>
-                  <li>Return to this dashboard to view synced orders</li>
+                  <li>Click "Install App" above</li>
+                  <li>You'll be redirected to Shopify</li>
+                  <li>Click "Install" to authorize</li>
+                  <li>You'll be redirected back here</li>
+                  <li>Orders will start syncing automatically!</li>
                 </ul>
+              </div>
+            </div>
+            
+            <div class="section">
+              <div class="section-header">
+                <div class="section-title">Alternative: Use Custom App (Advanced)</div>
+              </div>
+              <div class="section-body">
+                <p style="margin-bottom: 16px; color: #666666; font-size: 13px;">If you prefer to use your own Custom App instead:</p>
+                
+                <div class="input-group">
+                  <label class="input-label">Admin API Access Token</label>
+                  <input 
+                    type="password" 
+                    id="access-token-input" 
+                    placeholder="shpat_..." 
+                    class="input"
+                    style="font-family: 'Monaco', 'Menlo', 'Courier New', monospace;"
+                  />
+                </div>
+                
+                <button onclick="connectCustomApp()" class="button button-secondary" style="width: 100%;">Connect with Custom App</button>
+                
+                <p style="margin-top: 16px; font-size: 11px; color: #999999;">
+                  Get token from: Shopify Admin → Settings → Apps → Develop apps → Create app → Install → Copy token
+                </p>
               </div>
             </div>
           `;
@@ -947,7 +973,70 @@
       }
     }
     
-    // Install app from input field
+    // Connect custom app (no OAuth)
+    async function connectCustomApp() {
+      const accessTokenInput = document.getElementById('access-token-input');
+      const accessToken = accessTokenInput?.value.trim();
+      
+      if (!accessToken) {
+        alert('Please enter your Admin API access token');
+        accessTokenInput?.focus();
+        return;
+      }
+      
+      if (!accessToken.startsWith('shpat_')) {
+        alert('Invalid access token format. Should start with "shpat_"');
+        accessTokenInput?.focus();
+        return;
+      }
+      
+      if (!shop) {
+        alert('Shop domain not detected. Please refresh the page.');
+        return;
+      }
+      
+      const button = document.querySelector('button[onclick="connectCustomApp()"]');
+      const originalText = button?.textContent || 'Connect Store';
+      
+      if (button) {
+        button.disabled = true;
+        button.textContent = 'CONNECTING...';
+      }
+      
+      try {
+        console.log(`[Delybell] Connecting custom app for shop: ${shop}`);
+        const response = await fetch('/custom-app/connect', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            shop: shop,
+            accessToken: accessToken,
+          }),
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+          console.log('[Delybell] Custom app connected successfully');
+          alert('Store connected successfully! Reloading...');
+          window.location.reload();
+        } else {
+          throw new Error(data.error || 'Connection failed');
+        }
+      } catch (error) {
+        console.error('[Delybell] Custom app connection error:', error);
+        alert(`Connection failed: ${error.message}`);
+      } finally {
+        if (button) {
+          button.disabled = false;
+          button.textContent = originalText;
+        }
+      }
+    }
+    
+    // Install app from input field (OAuth - deprecated, use custom app instead)
     function installFromInput() {
       const shopInput = document.getElementById('shop-input');
       const shop = shopInput.value.trim();
@@ -962,7 +1051,8 @@
         return;
       }
       
-      window.location.href = `/auth/install?shop=${shop}`;
+      // Redirect to custom app setup instead
+      window.location.href = `/?shop=${shop}`;
     }
     
     // Load status on page load

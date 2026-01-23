@@ -1,6 +1,6 @@
 // Import Node.js adapter for Shopify API runtime
 require('@shopify/shopify-api/adapters/node');
-const { shopifyApi, LATEST_API_VERSION } = require('@shopify/shopify-api');
+const { shopifyApi } = require('@shopify/shopify-api');
 const config = require('../config');
 const sessionStorage = require('./sessionStorage');
 
@@ -22,7 +22,7 @@ class ShopifyClient {
       apiSecretKey: config.shopify.apiSecret,
       scopes: config.shopify.scopes.split(','),
       hostName: hostName,
-      apiVersion: LATEST_API_VERSION,
+      apiVersion: '2024-01', // Use stable API version for App Store compliance
       isEmbeddedApp: true, // Set to true for embedded apps (as per guide)
       // Use custom session storage
       sessionStorage: {
@@ -49,13 +49,21 @@ class ShopifyClient {
       // Normalize shop parameter
       shop = shop.trim().toLowerCase().replace(/^https?:\/\//, '').split('/')[0];
       
-      // For offline sessions, use getOfflineId (not getJwtSessionId)
-      // This matches the session ID format used when storing sessions: "offline_shop.myshopify.com"
+      // First try custom app session (custom_shop.myshopify.com)
+      const customSessionId = `custom_${shop}`;
+      let session = await sessionStorage.loadSession(customSessionId);
+      
+      if (session && session.state === 'custom_app') {
+        console.log(`[ShopifyClient] Found custom app session for ${shop}`);
+        return session;
+      }
+      
+      // Fallback to OAuth session (offline_shop.myshopify.com)
       const sessionId = this.shopify.session.getOfflineId(shop);
-      console.log(`[ShopifyClient] Looking up session with ID: ${sessionId} for shop: ${shop}`);
-      const session = await sessionStorage.loadSession(sessionId);
+      console.log(`[ShopifyClient] Looking up OAuth session with ID: ${sessionId} for shop: ${shop}`);
+      session = await sessionStorage.loadSession(sessionId);
       if (session) {
-        console.log(`[ShopifyClient] Session found for ${shop}, has accessToken: ${!!session.accessToken}`);
+        console.log(`[ShopifyClient] Found OAuth session for ${shop}, has accessToken: ${!!session.accessToken}`);
       } else {
         console.log(`[ShopifyClient] No session found for ${shop}`);
       }

@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const shopifyClient = require('../services/shopifyClient');
 const sessionStorage = require('../services/sessionStorage');
+const config = require('../config');
 
 /**
  * OAuth Install Route
@@ -159,8 +160,22 @@ router.get('/callback', async (req, res) => {
     // Store the session
     const session = callbackResponse.session;
     if (session && session.id) {
-      await sessionStorage.storeSession(session.id, session);
-      console.log('[Auth] Installed for shop:', session.shop);
+      console.log('[Auth] OAuth callback successful, storing session...');
+      console.log('[Auth] Session ID:', session.id);
+      console.log('[Auth] Shop:', session.shop);
+      console.log('[Auth] Has access token:', !!session.accessToken);
+      console.log('[Auth] Scopes:', session.scope || 'not specified');
+      
+      // Add installed_at timestamp for proper flow tracking
+      const sessionWithMetadata = {
+        ...session,
+        installedAt: new Date().toISOString(),
+        scopes: session.scope || config.shopify.scopes,
+      };
+      
+      await sessionStorage.storeSession(session.id, sessionWithMetadata);
+      console.log('[Auth] Session stored successfully for shop:', session.shop);
+      console.log('[Auth] Installed at:', sessionWithMetadata.installedAt);
       
       // Auto-register webhooks after successful installation
       try {
@@ -250,9 +265,30 @@ router.get('/check', async (req, res) => {
     shop = shop.replace(/^https?:\/\//, '').split('/')[0];
     console.log(`[Auth] Normalized shop: ${shop}`);
 
-    // Try to get session using shopifyClient method (which handles session ID generation)
+    // Check for custom app connection first (no OAuth needed)
     try {
-      console.log(`[Auth] Attempting to get session for: ${shop}`);
+      const customSessionId = `custom_${shop}`;
+      const customSession = await sessionStorage.loadSession(customSessionId);
+      
+      if (customSession && customSession.accessToken && customSession.state === 'custom_app') {
+        const totalDuration = Date.now() - startTime;
+        console.log(`[Auth] Custom app connected for ${shop} (total: ${totalDuration}ms)`);
+        return res.json({
+          success: true,
+          authenticated: true,
+          shop: shop,
+          type: 'custom_app',
+          sessionId: customSessionId,
+        });
+      }
+    } catch (customError) {
+      // Ignore custom app check errors, fall through to OAuth check
+      console.log(`[Auth] Custom app check failed, trying OAuth: ${customError.message}`);
+    }
+
+    // Try to get OAuth session using shopifyClient method (which handles session ID generation)
+    try {
+      console.log(`[Auth] Attempting to get OAuth session for: ${shop}`);
       const sessionStartTime = Date.now();
       const session = await shopifyClient.getSession(shop);
       const sessionDuration = Date.now() - sessionStartTime;
@@ -260,13 +296,14 @@ router.get('/check', async (req, res) => {
 
       if (session && session.accessToken) {
         const totalDuration = Date.now() - startTime;
-        console.log(`[Auth] Session found for ${shop}, authenticated: true (total: ${totalDuration}ms)`);
+        console.log(`[Auth] OAuth session found for ${shop}, authenticated: true (total: ${totalDuration}ms)`);
         res.json({
           success: true,
           authenticated: true,
           shop: session.shop || shop,
           expiresAt: session.expires,
           sessionId: session.id,
+          type: 'oauth',
         });
       } else {
         const totalDuration = Date.now() - startTime;

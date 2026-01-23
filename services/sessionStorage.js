@@ -18,8 +18,27 @@ class SessionStorage {
    * @param {Object} session - Session object
    */
   async storeSession(id, session) {
-    this.sessions.set(id, session);
-    console.log(`Stored session for: ${id}`);
+    // Ensure session has required fields for proper flow
+    const sessionToStore = {
+      ...session,
+      id: id,
+      shop: session.shop || id.replace(/^(offline_|custom_)/, '').replace(/\.myshopify\.com$/, '') + '.myshopify.com',
+      accessToken: session.accessToken,
+      scopes: session.scope || session.scopes || 'read_orders,write_orders',
+      installedAt: session.installedAt || new Date().toISOString(),
+      expires: session.expires || null,
+    };
+    
+    this.sessions.set(id, sessionToStore);
+    console.log(`[SessionStorage] Stored session for: ${id}`);
+    console.log(`[SessionStorage] Session details:`, {
+      shop: sessionToStore.shop,
+      hasAccessToken: !!sessionToStore.accessToken,
+      scopes: sessionToStore.scopes,
+      installedAt: sessionToStore.installedAt,
+      expires: sessionToStore.expires,
+    });
+    console.log(`[SessionStorage] Total sessions now: ${this.sessions.size}`);
   }
 
   /**

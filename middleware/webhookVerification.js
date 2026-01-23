@@ -14,9 +14,16 @@ function verifyWebhook(req, res, next) {
     const topic = req.headers['x-shopify-topic'];
 
     if (!hmac) {
-      console.warn('Webhook verification skipped: No HMAC header found');
-      // In development, allow webhooks without HMAC
-      // In production, you should require HMAC verification
+      console.error('[Webhook] Verification failed: No HMAC header found');
+      // Require HMAC verification in production (Shopify App Store requirement)
+      if (process.env.NODE_ENV === 'production') {
+        return res.status(401).json({
+          success: false,
+          error: 'Webhook verification required',
+        });
+      }
+      // In development, allow webhooks without HMAC for testing
+      console.warn('[Webhook] HMAC verification skipped (development mode)');
       return next();
     }
 
@@ -55,10 +62,10 @@ function verifyWebhook(req, res, next) {
       });
     }
 
-    console.log(`✅ Webhook verified: ${topic} from ${shop}`);
+    console.log(`[Webhook] Verified: ${topic} from ${shop}`);
     next();
   } catch (error) {
-    console.error('Webhook verification error:', error);
+    console.error('[Webhook] Verification error:', error.message);
     return res.status(500).json({
       success: false,
       error: 'Webhook verification failed',

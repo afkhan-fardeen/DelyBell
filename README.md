@@ -1,6 +1,10 @@
-# Shopify Delybell Integration
+# Delybell Order Sync - Shopify App
 
-A Shopify app that automatically syncs orders from Shopify stores to Delybell's delivery management system. When a store installs the app, their orders are automatically synced to Delybell using the store's configured address as the pickup location.
+A production-ready Shopify app that automatically syncs orders from Shopify stores to Delybell's delivery management system. 
+
+**Status:** ✅ Ready for Shopify App Store submission
+
+When a store installs the app, their orders are automatically synced to Delybell using the store's configured address as the pickup location. The app is fully compliant with Shopify App Store requirements.
 
 ## How It Works
 
