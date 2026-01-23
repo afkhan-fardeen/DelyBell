@@ -56,7 +56,7 @@ class OrderProcessor {
         
         if (!buildingExists) {
           // Building validation is optional - just warn, don't fail
-          console.warn(`⚠️ Building ID ${buildingId} not found for Road ${roadId} in Block ${blockId}, but continuing...`);
+          console.warn(`Building ID ${buildingId} not found for Road ${roadId} in Block ${blockId}, but continuing...`);
         }
       }
       
@@ -65,7 +65,7 @@ class OrderProcessor {
       console.error('Error validating address IDs:', error.message);
       // If validation API fails, log warning but don't block order creation
       // (Delybell API will validate anyway)
-      console.warn('⚠️ Could not validate address IDs against master data, proceeding with order creation...');
+      console.warn('Could not validate address IDs against master data, proceeding with order creation...');
       return { valid: true, errors: [], warning: 'Validation API unavailable' };
     }
   }
@@ -85,7 +85,7 @@ class OrderProcessor {
       const shop = mappingConfig.shop || session?.shop || shopifyOrder.shop;
       
       if (!shop) {
-        console.warn('⚠️ Shop domain not found - pickup location may not be fetched correctly');
+        console.warn('Shop domain not found - pickup location may not be fetched correctly');
       }
 
       // Step 1: Transform Shopify order to Delybell format (async - includes ID lookup and pickup location fetch)
@@ -103,7 +103,7 @@ class OrderProcessor {
 
       // Step 1.5: Validate destination address IDs exist in Delybell master data
       // Note: IDs are already looked up from numbers in orderTransformer, but we validate as safety check
-      console.log(`🔍 Validating destination address IDs: Block ID ${delybellOrderData.destination_block_id}, Road ID ${delybellOrderData.destination_road_id}...`);
+      console.log(`Validating destination address IDs: Block ID ${delybellOrderData.destination_block_id}, Road ID ${delybellOrderData.destination_road_id}...`);
       const validationResult = await this.validateAddressIds(
         delybellOrderData.destination_block_id,
         delybellOrderData.destination_road_id,
@@ -115,7 +115,7 @@ class OrderProcessor {
         const suggestions = validationResult.errors.map(e => e.suggestion).filter(Boolean).join(' ');
         
         throw new Error(
-          `CRITICAL: Destination address validation failed. ${errorMessages}. ` +
+          `Destination address validation failed. ${errorMessages}. ` +
           `${suggestions} ` +
           `The Delybell IDs (Block ID: ${delybellOrderData.destination_block_id}, Road ID: ${delybellOrderData.destination_road_id}) ` +
           `do not exist in Delybell's master data. ` +
@@ -123,7 +123,7 @@ class OrderProcessor {
         );
       }
       
-      console.log(`✅ Destination address IDs validated successfully`);
+      console.log(`Destination address IDs validated successfully`);
 
       // Step 2: Calculate shipping charge (optional, for verification)
       let shippingCharge = null;

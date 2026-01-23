@@ -149,7 +149,7 @@ class DelybellClient {
    */
   async createOrder(orderData) {
     try {
-      console.log('📦 Creating order in Delybell with payload:', JSON.stringify(orderData, null, 2));
+      console.log('Creating order in Delybell with payload:', JSON.stringify(orderData, null, 2));
       const response = await axios.post(
         `${this.baseURL}/v1/customer/external/order/create`,
         orderData,
@@ -157,12 +157,12 @@ class DelybellClient {
           headers: this.getHeaders(),
         }
       );
-      console.log('✅ Order created successfully:', JSON.stringify(response.data, null, 2));
+      console.log('Order created successfully:', JSON.stringify(response.data, null, 2));
       return response.data;
     } catch (error) {
-      console.error('❌ Error creating order:', error.response?.status, error.response?.statusText);
-      console.error('❌ Error response data:', JSON.stringify(error.response?.data, null, 2));
-      console.error('❌ Error message:', error.message);
+      console.error('Error creating order:', error.response?.status, error.response?.statusText);
+      console.error('Error response data:', JSON.stringify(error.response?.data, null, 2));
+      console.error('Error message:', error.message);
       throw error;
     }
   }

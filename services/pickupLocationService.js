@@ -27,11 +27,11 @@ class PickupLocationService {
       // Check cache first
       if (this.pickupCache.has(shop)) {
         const cached = this.pickupCache.get(shop);
-        console.log(`📍 Using cached pickup location for shop: ${shop}`);
+        console.log(`Using cached pickup location for shop: ${shop}`);
         return cached;
       }
 
-      console.log(`🔍 Fetching pickup location from Shopify store address for shop: ${shop}`);
+      console.log(`Fetching pickup location from Shopify store address for shop: ${shop}`);
 
       // Get Shopify session if not provided
       if (!session) {
@@ -59,7 +59,7 @@ class PickupLocationService {
         country: shopInfo.country || '',
       };
 
-      console.log(`📍 Shopify store address:`, storeAddress);
+      console.log(`Shopify store address:`, storeAddress);
 
       // Validate that store has an address configured
       if (!storeAddress.address1 && !storeAddress.city) {
@@ -82,16 +82,16 @@ class PickupLocationService {
         );
       }
 
-      console.log(`✅ Parsed address numbers: Block ${addressNumbers.block_number}, Road ${addressNumbers.road_number}, Building ${addressNumbers.building_number || 'N/A'}`);
+      console.log(`Parsed address numbers: Block ${addressNumbers.block_number}, Road ${addressNumbers.road_number}, Building ${addressNumbers.building_number || 'N/A'}`);
 
       // Extract area name from city (for block lookup)
       const areaName = storeAddress.city ? storeAddress.city.trim() : null;
 
       // Convert address numbers to Delybell IDs
-      console.log(`🔍 Converting address numbers to Delybell IDs...`);
+      console.log(`Converting address numbers to Delybell IDs...`);
       const addressIds = await addressIdMapper.convertNumbersToIds(addressNumbers, areaName);
 
-      console.log(`✅ Mapped to Delybell IDs: Block ID ${addressIds.block_id}, Road ID ${addressIds.road_id}, Building ID ${addressIds.building_id || 'N/A'}`);
+      console.log(`Mapped to Delybell IDs: Block ID ${addressIds.block_id}, Road ID ${addressIds.road_id}, Building ID ${addressIds.building_id || 'N/A'}`);
 
       // Build formatted address string
       const addressParts = [];
@@ -123,13 +123,13 @@ class PickupLocationService {
       // Cache the pickup location
       this.pickupCache.set(shop, pickupConfig);
 
-      console.log(`✅ Fetched pickup location from Shopify store address for shop ${shop}:`);
+      console.log(`Fetched pickup location from Shopify store address for shop ${shop}:`);
       console.log(`   Address: ${pickupConfig.address}`);
       console.log(`   Block ID: ${pickupConfig.block_id}, Road ID: ${pickupConfig.road_id}, Building ID: ${pickupConfig.building_id || 'N/A'}`);
 
       return pickupConfig;
     } catch (error) {
-      console.error(`❌ Error fetching pickup location for shop ${shop}:`, error.message);
+      console.error(`Error fetching pickup location for shop ${shop}:`, error.message);
       throw error;
     }
   }
@@ -143,10 +143,10 @@ class PickupLocationService {
   clearCache(shop) {
     if (shop) {
       this.pickupCache.delete(shop);
-      console.log(`🗑️ Cleared pickup location cache for shop: ${shop}`);
+      console.log(`Cleared pickup location cache for shop: ${shop}`);
     } else {
       this.pickupCache.clear();
-      console.log(`🗑️ Cleared all pickup location cache`);
+      console.log(`Cleared all pickup location cache`);
     }
   }
 

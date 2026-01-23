@@ -162,6 +162,31 @@ class ShopifyClient {
   }
 
   /**
+   * Get shop information from Shopify API
+   * Fetches store details including address from Shopify Settings → Store details
+   * @param {Object} session - Shopify session
+   * @returns {Promise<Object>} Shop information object
+   */
+  async getShop(session) {
+    try {
+      if (!session || !session.accessToken) {
+        throw new Error('No valid session found. Please authenticate first.');
+      }
+
+      const client = new this.shopify.clients.Rest({ session });
+      
+      const response = await client.get({
+        path: 'shop',
+      });
+
+      return response.body.shop;
+    } catch (error) {
+      console.error('Error fetching shop information:', error);
+      throw error;
+    }
+  }
+
+  /**
    * Register webhooks with Shopify
    * @param {Object} session - Shopify session
    * @param {Array} webhooks - Array of webhook configurations
@@ -189,14 +214,14 @@ class ShopifyClient {
             },
           });
           registered.push(response.body.webhook);
-          console.log(`✅ Registered webhook: ${webhook.topic}`);
+          console.log(`Registered webhook: ${webhook.topic}`);
         } catch (error) {
           // Check if webhook already exists (422 with "already been taken")
           const errorBody = error.response?.body || {};
           const errorMessage = JSON.stringify(errorBody);
           
           if (errorMessage.includes('already been taken') || errorMessage.includes('already exists')) {
-            console.log(`ℹ️ Webhook ${webhook.topic} already registered (this is fine - webhook is active)`);
+            console.log(`Webhook ${webhook.topic} already registered (this is fine - webhook is active)`);
             // Try to get existing webhook to include in response
             try {
               const listResponse = await client.get({
@@ -208,13 +233,13 @@ class ShopifyClient {
               );
               if (existingWebhook) {
                 registered.push(existingWebhook);
-                console.log(`✅ Found existing webhook: ${webhook.topic} at ${webhook.address}`);
+                console.log(`Found existing webhook: ${webhook.topic} at ${webhook.address}`);
               }
             } catch (listError) {
               // Ignore list error, webhook exists anyway
             }
           } else {
-            console.error(`❌ Failed to register webhook ${webhook.topic}:`, error.message);
+            console.error(`Failed to register webhook ${webhook.topic}:`, error.message);
           }
         }
       }

@@ -6,7 +6,6 @@ const webhookRoutes = require('./routes/webhooks');
 const apiRoutes = require('./routes/api');
 const authRoutes = require('./routes/auth');
 const adminRoutes = require('./routes/admin');
-const testRoutes = require('./routes/test');
 const verifyWebhook = require('./middleware/webhookVerification');
 
 const app = express();
@@ -43,8 +42,6 @@ app.use('/webhooks', verifyWebhook, webhookRoutes);
 // API routes
 app.use('/api', apiRoutes);
 
-// Test routes (for testing without Shopify access)
-app.use('/test', testRoutes);
 
 // Root endpoint - Handled by admin routes
 // The admin route will handle both / and /app

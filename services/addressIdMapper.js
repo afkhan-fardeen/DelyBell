@@ -2,7 +2,7 @@
  * Address ID Mapper Service
  * Maps human-readable address numbers to Delybell internal IDs
  * 
- * ⚠️ CRITICAL: In Bahrain addresses:
+ * In Bahrain addresses, numbers and IDs are different:
  * - Block Number (929) ≠ Block ID (370)
  * - Road Number (3953) ≠ Road ID (XXXX)
  * - Building Number (2733) ≠ Building ID (YYYY)
@@ -23,14 +23,14 @@ class AddressIdMapper {
    */
   async findBlockId(blockNumber, areaName = null) {
     try {
-      console.log(`🔍 Looking up Block ID for Block Number: ${blockNumber}${areaName ? `, Area: ${areaName}` : ''}`);
+      console.log(`Looking up Block ID for Block Number: ${blockNumber}${areaName ? `, Area: ${areaName}` : ''}`);
       
       // Get all blocks from Delybell
       const blocksResponse = await delybellClient.getBlocks();
       const blocks = blocksResponse?.data || [];
       
       if (!Array.isArray(blocks) || blocks.length === 0) {
-        console.warn('⚠️ No blocks found in Delybell master data');
+        console.warn('No blocks found in Delybell master data');
         return null;
       }
       
@@ -38,7 +38,7 @@ class AddressIdMapper {
       const normalizedAreaName = areaName ? areaName.toLowerCase().trim() : null;
       
       // Try to find block by code field AND area name (if provided)
-      // ✅ CORRECT LOGIC: Match by code AND name contains area name
+      // Match by code AND name contains area name
       const blockByCodeAndArea = blocks.find(block => {
         // Check if block has a code field that matches
         const codeMatches = block.code && String(block.code) === String(blockNumber);
@@ -58,7 +58,7 @@ class AddressIdMapper {
       });
       
       if (blockByCodeAndArea) {
-        console.log(`✅ Found Block ID ${blockByCodeAndArea.id} for Block Number ${blockNumber}${areaName ? `, Area: ${areaName}` : ''} (matched by code${areaName ? ' and area name' : ''})`);
+        console.log(`Found Block ID ${blockByCodeAndArea.id} for Block Number ${blockNumber}${areaName ? `, Area: ${areaName}` : ''} (matched by code${areaName ? ' and area name' : ''})`);
         return blockByCodeAndArea.id;
       }
       
@@ -69,7 +69,7 @@ class AddressIdMapper {
         });
         
         if (blockByCode) {
-          console.log(`✅ Found Block ID ${blockByCode.id} for Block Number ${blockNumber} (matched by code only)`);
+          console.log(`Found Block ID ${blockByCode.id} for Block Number ${blockNumber} (matched by code only)`);
           return blockByCode.id;
         }
       }
@@ -90,16 +90,16 @@ class AddressIdMapper {
       });
       
       if (blockByName) {
-        console.log(`✅ Found Block ID ${blockByName.id} for Block Number ${blockNumber} (matched by name: "${blockByName.name}")`);
+        console.log(`Found Block ID ${blockByName.id} for Block Number ${blockNumber} (matched by name: "${blockByName.name}")`);
         return blockByName.id;
       }
       
       // Not found
-      console.error(`❌ Block Number ${blockNumber} not found in Delybell master data`);
+      console.error(`Block Number ${blockNumber} not found in Delybell master data`);
       console.log(`   Available blocks (first 10): ${blocks.slice(0, 10).map(b => `${b.name || 'N/A'} (ID: ${b.id}${b.code ? `, Code: ${b.code}` : ''})`).join(', ')}`);
       return null;
     } catch (error) {
-      console.error(`❌ Error looking up Block ID for Block Number ${blockNumber}:`, error.message);
+      console.error(`Error looking up Block ID for Block Number ${blockNumber}:`, error.message);
       throw error;
     }
   }
@@ -114,14 +114,14 @@ class AddressIdMapper {
    */
   async findRoadId(blockId, roadNumber) {
     try {
-      console.log(`🔍 Looking up Road ID for Road Number: ${roadNumber} in Block ID: ${blockId}`);
+      console.log(`Looking up Road ID for Road Number: ${roadNumber} in Block ID: ${blockId}`);
       
       // Get all roads for this block
       const roadsResponse = await delybellClient.getRoads(blockId);
       const roads = roadsResponse?.data || [];
       
       if (!Array.isArray(roads) || roads.length === 0) {
-        console.warn(`⚠️ No roads found for Block ID ${blockId}`);
+        console.warn(`No roads found for Block ID ${blockId}`);
         return null;
       }
       
@@ -134,7 +134,7 @@ class AddressIdMapper {
       });
       
       if (roadByCode) {
-        console.log(`✅ Found Road ID ${roadByCode.id} for Road Number ${roadNumber} (matched by code)`);
+        console.log(`Found Road ID ${roadByCode.id} for Road Number ${roadNumber} (matched by code)`);
         return roadByCode.id;
       }
       
@@ -153,16 +153,16 @@ class AddressIdMapper {
       });
       
       if (roadByName) {
-        console.log(`✅ Found Road ID ${roadByName.id} for Road Number ${roadNumber} (matched by name: "${roadByName.name}")`);
+        console.log(`Found Road ID ${roadByName.id} for Road Number ${roadNumber} (matched by name: "${roadByName.name}")`);
         return roadByName.id;
       }
       
       // Not found
-      console.error(`❌ Road Number ${roadNumber} not found in Block ID ${blockId}`);
+      console.error(`Road Number ${roadNumber} not found in Block ID ${blockId}`);
       console.log(`   Available roads (first 10): ${roads.slice(0, 10).map(r => `${r.name || 'N/A'} (ID: ${r.id}${r.code ? `, Code: ${r.code}` : ''})`).join(', ')}`);
       return null;
     } catch (error) {
-      console.error(`❌ Error looking up Road ID for Road Number ${roadNumber}:`, error.message);
+      console.error(`Error looking up Road ID for Road Number ${roadNumber}:`, error.message);
       throw error;
     }
   }
@@ -182,14 +182,14 @@ class AddressIdMapper {
     }
     
     try {
-      console.log(`🔍 Looking up Building ID for Building Number: ${buildingNumber} in Block ID: ${blockId}, Road ID: ${roadId}`);
+      console.log(`Looking up Building ID for Building Number: ${buildingNumber} in Block ID: ${blockId}, Road ID: ${roadId}`);
       
       // Get all buildings for this road/block
       const buildingsResponse = await delybellClient.getBuildings(roadId, blockId);
       const buildings = buildingsResponse?.data || [];
       
       if (!Array.isArray(buildings) || buildings.length === 0) {
-        console.warn(`⚠️ No buildings found for Block ID ${blockId}, Road ID ${roadId}`);
+        console.warn(`No buildings found for Block ID ${blockId}, Road ID ${roadId}`);
         return null; // Building is optional, so return null instead of error
       }
       
@@ -202,7 +202,7 @@ class AddressIdMapper {
       });
       
       if (buildingByCode) {
-        console.log(`✅ Found Building ID ${buildingByCode.id} for Building Number ${buildingNumber} (matched by code)`);
+        console.log(`Found Building ID ${buildingByCode.id} for Building Number ${buildingNumber} (matched by code)`);
         return buildingByCode.id;
       }
       
@@ -221,15 +221,15 @@ class AddressIdMapper {
       });
       
       if (buildingByName) {
-        console.log(`✅ Found Building ID ${buildingByName.id} for Building Number ${buildingNumber} (matched by name: "${buildingByName.name}")`);
+        console.log(`Found Building ID ${buildingByName.id} for Building Number ${buildingNumber} (matched by name: "${buildingByName.name}")`);
         return buildingByName.id;
       }
       
       // Not found - but building is optional, so just warn
-      console.warn(`⚠️ Building Number ${buildingNumber} not found in Block ID ${blockId}, Road ID ${roadId} (building is optional)`);
+      console.warn(`Building Number ${buildingNumber} not found in Block ID ${blockId}, Road ID ${roadId} (building is optional)`);
       return null;
     } catch (error) {
-      console.warn(`⚠️ Error looking up Building ID for Building Number ${buildingNumber}:`, error.message);
+      console.warn(`Error looking up Building ID for Building Number ${buildingNumber}:`, error.message);
       // Building is optional, so don't throw error
       return null;
     }

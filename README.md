@@ -1,381 +1,210 @@
-# Shopify Delybell Integration App
+# Shopify Delybell Integration
 
-A **production-ready, installable Shopify App** that automatically syncs orders from Shopify stores to Delybell's delivery management system. This is a proper Shopify App (not just webhooks) - it can be installed from the Shopify App Store, has an embedded admin UI, and works like any professional Shopify app.
+A Shopify app that automatically syncs orders from Shopify stores to Delybell's delivery management system. When a store installs the app, their orders are automatically synced to Delybell using the store's configured address as the pickup location.
 
-## 📚 Documentation
+## How It Works
 
-### Essential Guides
+1. **Store Installation**: Store owner installs the app via the installation form
+2. **Automatic Setup**: App fetches the store's address from Shopify settings
+3. **Order Sync**: When orders are created, they're automatically synced to Delybell
+4. **Address Mapping**: 
+   - Pickup address: Store's address from Shopify Settings → Store details
+   - Destination address: Customer's shipping address from the order
+   - Both addresses are parsed and converted to Delybell IDs
 
-- **[🏪 Render + App Store Setup](./RENDER_APP_STORE_SETUP.md)** - ⭐ **MAKE IT INSTALLABLE** - Complete guide to deploy on Render & publish to Shopify App Store
-- **[⚙️ Render Environment Variables](./RENDER_ENV_SETUP.md)** - ⭐ **CONFIGURE ENV** - How to set environment variables in Render dashboard
-- **[✅ Installable App Checklist](./INSTALLABLE_APP_CHECKLIST.md)** - Quick checklist for deployment
-- **[🔗 Deployment URLs](./DEPLOYMENT_URLS.md)** - ⭐ **LIVE APP** - All URLs for your deployed app
-- **[🧪 Testing Guide](./TESTING_GUIDE.md)** - How to test your app
+## Quick Start
 
-## 🌐 Live App
+### Production (Render)
 
-**Your app is deployed and live at:** [https://delybell.onrender.com](https://delybell.onrender.com)
-
-See **[Deployment URLs](./DEPLOYMENT_URLS.md)** for all important URLs and configuration details.
-
-## Features
-
-- ✅ Automatic order synchronization from Shopify to Delybell
-- ✅ Webhook support for real-time order processing
-- ✅ Order transformation (Shopify format → Delybell format)
-- ✅ Shipping charge calculation
-- ✅ Order tracking integration
-- ✅ Master data APIs (service types, blocks, roads, buildings)
-
-## API Documentation
-
-This project uses the Delybell External APIs. For complete API documentation, please refer to:
-
-- **Postman Documentation:** [https://documenter.getpostman.com/view/37966240/2sB34eKND9](https://documenter.getpostman.com/view/37966240/2sB34eKND9)
-
-## Prerequisites
-
-- Node.js (v14 or higher)
-- npm or yarn
-- **Delybell API credentials** (access key and secret key) - **REQUIRED**
-- Shopify Partner account - **OPTIONAL** (for full integration)
-- A Shopify store - **OPTIONAL** (you can test with mock data)
-
-## Installation
-
-1. **Clone or navigate to the project directory:**
-   ```bash
-   cd DelyBell
+1. **Deploy to Render**: App is deployed at `https://delybell.onrender.com`
+2. **Set Environment Variables** in Render Dashboard:
    ```
+   SHOPIFY_API_KEY=your_shopify_api_key
+   SHOPIFY_API_SECRET=your_shopify_api_secret
+   SHOPIFY_SCOPES=read_orders,write_orders
+   SHOPIFY_HOST=delybell.onrender.com
+   DELYBELL_API_URL=https://new.api.delybell.com
+   DELYBELL_ACCESS_KEY=your_delybell_access_key
+   DELYBELL_SECRET_KEY=your_delybell_secret_key
+   NODE_ENV=production
+   PORT=3000
+   DEFAULT_SERVICE_TYPE_ID=1
+   ```
+3. **Configure Shopify Partner Dashboard**:
+   - App URL: `https://delybell.onrender.com`
+   - Redirect URL: `https://delybell.onrender.com/auth/callback`
+   - Distribution: Public (for direct installation)
+   - Embedded: Yes
+   - Use legacy install flow: No
+4. **Install**: Visit `https://delybell.onrender.com` and enter shop domain
 
-2. **Install dependencies:**
+### Local Development
+
+1. **Install dependencies**:
    ```bash
    npm install
    ```
 
-3. **Set up environment variables:**
-   
-   **For Render (Production):**
-   - Set environment variables in Render Dashboard (see [Render Environment Variables](./RENDER_ENV_SETUP.md))
-   - Set `SHOPIFY_HOST=delybell.onrender.com` in Render dashboard
-   
-   **For Local Development:**
+2. **Set up environment variables**:
    ```bash
    cp env.example .env
    ```
+   Edit `.env` with your credentials
+
+3. **Set up tunneling** (for webhooks):
+   ```bash
+   # Option 1: Cloudflare Tunnel
+   brew install cloudflare/cloudflare/cloudflared
+   npm run tunnel
    
-   Edit `.env` and fill in your credentials:
-   ```env
-   # Shopify Configuration
-   SHOPIFY_API_KEY=your_shopify_api_key
-   SHOPIFY_API_SECRET=your_shopify_api_secret
-   SHOPIFY_SCOPES=read_orders,write_orders
-   SHOPIFY_HOST=localhost:3000
-
-   # Delybell API Configuration
-   DELYBELL_API_URL=https://new.api.delybell.com
-   DELYBELL_ACCESS_KEY=your_delybell_access_key
-   DELYBELL_SECRET_KEY=your_delybell_secret_key
-
-   # Server Configuration
-   PORT=3000
+   # Option 2: LocalTunnel
+   npm install -g localtunnel
+   npm run tunnel:lt
    ```
 
-## 🚀 Quick Start
+4. **Update `.env`** with tunnel URL (without `https://`)
 
-### For Production (Render):
-1. **Deploy to Render:** Follow [Render + App Store Setup](./RENDER_APP_STORE_SETUP.md)
-2. **Set Environment Variables:** Configure in Render dashboard (see [Render Environment Variables](./RENDER_ENV_SETUP.md))
-3. **Install App:** Visit `https://delybell.onrender.com/app` and install in your Shopify store
+5. **Start server**:
+   ```bash
+   npm run dev
+   ```
 
-### For Local Development:
-1. Install dependencies: `npm install`
-2. Copy `env.example` to `.env` and configure your credentials
-3. **Set up tunneling** (for webhooks):
-   - **Cloudflare Tunnel:** `brew install cloudflare/cloudflare/cloudflared` then run `npm run tunnel`
-   - **LocalTunnel:** `npm install -g localtunnel` then run `npm run tunnel:lt`
-4. Start tunnel in one terminal (copy the HTTPS URL)
-5. Update `.env` with your tunnel URL (without `https://`)
-6. Update Shopify app settings with tunnel URL
-7. Start server: `npm start` (in another terminal)
-8. Install app: Visit `https://YOUR-TUNNEL-URL/auth/install?shop=your-shop.myshopify.com`
-
-### Delybell API Setup
-
-1. Obtain your Delybell API credentials (access key and secret key)
-2. Configure the base URL (usually `https://api.delybell.com`)
-3. Test the connection using the service types endpoint
-
-### Address Mapping
-
-The app automatically parses Shopify shipping addresses and maps them to Delybell's structured address format:
-- **Pickup Address**: Fetched from Delybell system for each Shopify store (e.g., Babybow.co)
-- **Destination Address**: Parsed from Shopify order's shipping address
-- Address components (Block, Road, Building) are extracted and converted to Delybell IDs using master data APIs
-- Zip codes are used as fallback for Block numbers (common in Bahrain)
-
-### Run the Application
-
-**Development mode:**
-```bash
-npm run dev
-```
-
-**Production mode:**
-```bash
-npm start
-```
-
-The server will start on `http://localhost:3000` (or your configured PORT).
-
-## Usage
-
-### Testing Without Shopify Access
-
-If you don't have Shopify access yet, you can test the Delybell integration using mock data:
-
-```bash
-# Test Delybell API connection
-npm run test:delybell
-
-# Start server
-npm run dev
-
-# Process a mock order
-curl -X POST http://localhost:3000/test/process-mock-order \
-  -H "Content-Type: application/json" \
-  -d '{
-    "service_type_id": 1,
-    "destination_mapping": {"block_id": 1, "road_id": 1, "building_id": 1},
-    "pickup_mapping": {"block_id": 1, "road_id": 1, "building_id": 1}
-  }'
-```
-
-See test files in `/test` directory for testing examples.
-
-### API Endpoints
-
-#### Health Check
-```bash
-GET /health
-```
-
-#### Sync All Orders
-```bash
-POST /api/sync-orders
-Content-Type: application/json
-
-{
-  "shop": "your-shop.myshopify.com",
-  "limit": 50,
-  "status": "any",
-  "service_type_id": 1,
-  "destination_mapping": {
-    "block_id": 1,
-    "road_id": 1,
-    "building_id": 1
-  },
-  "pickup_mapping": {
-    "block_id": 1,
-    "road_id": 1,
-    "building_id": 1
-  }
-}
-```
-
-#### Process Single Order
-```bash
-POST /api/process-order/:orderId
-Content-Type: application/json
-
-{
-  "shop": "your-shop.myshopify.com",
-  "service_type_id": 1,
-  "destination_mapping": {...},
-  "pickup_mapping": {...}
-}
-```
-
-#### Get Service Types
-```bash
-GET /api/service-types?search=Express
-```
-
-#### Get Blocks
-```bash
-GET /api/blocks?search=BlockA
-```
-
-#### Get Roads
-```bash
-GET /api/roads?block_id=1&search=RoadX
-```
-
-#### Get Buildings
-```bash
-GET /api/buildings?road_id=1&search=BuildingY
-```
-
-#### Track Order
-```bash
-GET /api/track/:orderId
-```
-
-### Test Endpoints (Mock Data - No Shopify Required)
-
-#### Get Mock Order Sample
-```bash
-GET /test/mock-order-sample
-```
-
-#### Process Mock Order
-```bash
-POST /test/process-mock-order
-Content-Type: application/json
-
-{
-  "service_type_id": 1,
-  "destination_mapping": {...},
-  "pickup_mapping": {...}
-}
-```
-
-#### Process Multiple Mock Orders
-```bash
-POST /test/process-mock-orders
-Content-Type: application/json
-
-{
-  "count": 3,
-  "service_type_id": 1,
-  "destination_mapping": {...},
-  "pickup_mapping": {...}
-}
-```
-
-### Webhooks
-
-#### Order Creation Webhook
-Configure this endpoint in your Shopify app settings:
-```
-POST /webhooks/orders/create
-```
-
-Shopify will automatically send order data to this endpoint when a new order is created.
-
-### Order Processing Flow
-
-1. **Order Received**: Shopify order is received via webhook or API call
-2. **Transformation**: Order data is transformed from Shopify format to Delybell format
-3. **Shipping Calculation**: Optional shipping charge calculation
-4. **Order Creation**: Order is created in Delybell system
-5. **Tracking Update**: Shopify order tags are updated with Delybell tracking information
+6. **Install app**: Visit `https://YOUR-TUNNEL-URL/auth/install?shop=your-shop.myshopify.com`
 
 ## Project Structure
 
 ```
 DelyBell/
-├── config.js                 # Configuration file
 ├── server.js                  # Main server file
-├── package.json              # Dependencies
-├── env.example              # Environment variables template
+├── config.js                  # Configuration
+├── package.json               # Dependencies
+├── env.example               # Environment variables template
+├── shopify.app.toml          # Shopify app configuration
 ├── services/
-│   ├── delybellClient.js    # Delybell API client
-│   ├── shopifyClient.js     # Shopify API client
-│   ├── orderTransformer.js  # Order transformation logic
-│   ├── orderProcessor.js    # Order processing workflow
-│   ├── addressMapper.js     # Address parsing from Shopify
-│   └── addressIdMapper.js   # Address ID lookup from Delybell
+│   ├── delybellClient.js     # Delybell API client
+│   ├── shopifyClient.js      # Shopify API client
+│   ├── orderTransformer.js   # Order transformation logic
+│   ├── orderProcessor.js     # Order processing workflow
+│   ├── pickupLocationService.js # Fetches pickup from store address
+│   ├── addressMapper.js      # Address parsing from Shopify
+│   └── addressIdMapper.js    # Address ID lookup from Delybell
 ├── routes/
-│   ├── api.js               # API endpoints
-│   ├── webhooks.js          # Webhook handlers
-│   ├── auth.js              # Shopify OAuth
-│   └── test.js              # Test endpoints
+│   ├── api.js                # API endpoints
+│   ├── webhooks.js           # Webhook handlers
+│   ├── auth.js               # Shopify OAuth
+│   └── admin.js              # Admin UI routes
 ├── middleware/
 │   └── webhookVerification.js # Webhook HMAC verification
-└── test/                     # Test scripts
+└── public/
+    ├── index.html            # Main app UI
+    ├── privacy-policy.html   # Privacy policy
+    └── terms-of-service.html # Terms of service
 ```
 
-## Configuration
+## Environment Variables
 
-### Environment Variables
+See `env.example` for all required variables. Key variables:
 
-See `env.example` for all required environment variables. Key variables:
-
+- `SHOPIFY_API_KEY` - Shopify app API key
+- `SHOPIFY_API_SECRET` - Shopify app API secret
+- `SHOPIFY_SCOPES` - Required scopes (read_orders,write_orders)
+- `SHOPIFY_HOST` - Your app hostname (without https://)
 - `DELYBELL_API_URL` - Delybell API base URL
 - `DELYBELL_ACCESS_KEY` - Delybell API access key
 - `DELYBELL_SECRET_KEY` - Delybell API secret key
-- `SHOPIFY_API_KEY` - Shopify app API key
-- `SHOPIFY_API_SECRET` - Shopify app API secret
-- `DEFAULT_SERVICE_TYPE_ID` - Default service type (default: 1)
+- `DEFAULT_SERVICE_TYPE_ID` - Default service type ID
 
-### Address Mapping
+## API Endpoints
 
-- **Pickup Address**: Fetched dynamically from Delybell API per store (see `services/pickupLocationService.js`)
-- **Destination Address**: Automatically parsed from Shopify shipping address
-- Address parsing extracts Block, Road, Building numbers and converts them to Delybell IDs
-- Uses zip code as fallback for Block number if not found in address text
+### Health Check
+```
+GET /health
+```
+
+### OAuth & Installation
+```
+GET /auth/install?shop=store.myshopify.com
+GET /auth/callback
+GET /auth/check?shop=store.myshopify.com
+```
+
+### Webhooks
+```
+POST /webhooks/orders/create
+POST /webhooks/orders/update
+POST /webhooks/app/uninstalled
+```
+
+### API
+```
+POST /api/sync-orders
+POST /api/process-order/:orderId
+GET /api/service-types
+GET /api/track/:orderId
+```
+
+## Address Mapping
+
+The app automatically handles address mapping:
+
+1. **Pickup Address**: Fetched from Shopify store address (Settings → Store details)
+   - Parsed to extract Block, Road, Building numbers
+   - Converted to Delybell IDs using master data APIs
+   - Cached per store to avoid repeated API calls
+
+2. **Destination Address**: Parsed from customer's shipping address
+   - Extracts Block, Road, Building numbers
+   - Uses zip code as fallback for Block number (common in Bahrain)
+   - Converts to Delybell IDs
+
+3. **Validation**: Both addresses are validated against Delybell master data before order creation
+
+## Store Requirements
+
+For the app to work correctly, stores need:
+
+1. **Store Address Configured**: Shopify Settings → Store details must have a complete address
+2. **Address Format**: Address should include Block and Road numbers (for Bahrain addresses)
+3. **Example Format**: "Building X, Road Y, Block Z, City"
 
 ## Troubleshooting
 
-### Common Issues
+### OAuth Not Working
+- Verify `SHOPIFY_API_KEY` and `SHOPIFY_API_SECRET` are correct
+- Check `SHOPIFY_HOST` matches your deployment URL (without https://)
+- Ensure Shopify Partner Dashboard URLs match your app URL
 
-1. **Authentication Errors**
-   - Verify your Shopify API credentials
-   - Check Delybell API keys are correct
-   - Ensure scopes include `read_orders` and `write_orders`
+### Webhooks Not Receiving Orders
+- Verify webhook URLs are accessible (use tunneling for local dev)
+- Check webhooks are registered in Shopify Partner Dashboard
+- Verify webhook HMAC signature validation
+- Check logs for webhook processing errors
 
-2. **Address Mapping Errors**
-   - Verify block/road/building IDs exist in Delybell system
-   - Use master APIs to find correct IDs
-   - Check address format matches Delybell requirements
+### Address Mapping Errors
+- Verify store address is configured in Shopify Settings → Store details
+- Check address format includes Block and Road numbers
+- Verify Block/Road/Building IDs exist in Delybell master data
+- Use master APIs to find correct IDs
 
-3. **Webhook Not Receiving Orders**
-   - Verify webhook URL is accessible (use tunneling service for local development)
-   - Check webhook is registered in Shopify app settings
-   - Verify webhook HMAC signature validation (if implemented)
-   - For Render: Check Render logs for webhook processing errors
-
-## Development
-
-### Local Development with Webhooks
-
-For local development, use a tunneling service:
-
-```bash
-# Option 1: Cloudflare Tunnel (Recommended)
-brew install cloudflare/cloudflare/cloudflared
-npm run tunnel
-
-# Option 2: LocalTunnel
-npm install -g localtunnel
-npm run tunnel:lt
-
-# Start your server
-npm run dev
-
-# Use the tunnel URL for webhook configuration in Shopify
-```
+### App Shows "Installation Required" After Install
+- Clear browser cache
+- Check shop domain is being detected correctly
+- Verify session is being stored properly
+- Check logs for authentication errors
 
 ## Security Notes
 
 - Never commit `.env` file to version control
-- Implement webhook HMAC verification for production
+- Webhook HMAC verification is implemented for production
 - Use HTTPS in production
-- Store Shopify sessions securely (database recommended)
+- Store Shopify sessions securely (database recommended for production)
 - Rotate API keys regularly
 
-## Next Steps
+## Delybell API Documentation
 
-1. **Implement Address Mapping**: Build a robust address mapping system using Delybell's master APIs
-2. **Add Database**: Store order sync status, mappings, and session data
-3. **Error Handling**: Add retry logic and error notifications
-4. **Admin Dashboard**: Create a UI for managing syncs and viewing status
-5. **Testing**: Add unit and integration tests
+For complete Delybell API documentation:
+- Postman: https://documenter.getpostman.com/view/37966240/2sB34eKND9
 
-## Resources
+## License
 
-- [Delybell External API Postman Documentation](https://documenter.getpostman.com/view/37966240/2sB34eKND9)
-- [Shopify API Documentation](https://shopify.dev/docs/api)
-- [Shopify App Development Guide](https://shopify.dev/docs/apps)
-
+ISC

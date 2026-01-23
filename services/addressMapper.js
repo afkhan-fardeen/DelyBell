@@ -3,13 +3,13 @@
  * Maps Shopify addresses to Delybell structured address format
  * Extracts block_number, road_number, building_number from address strings
  * 
- * ⚠️ CRITICAL: This service extracts HUMAN-READABLE NUMBERS, not Delybell IDs.
+ * This service extracts human-readable numbers, not Delybell IDs.
  * Numbers must be looked up in Delybell master data to get corresponding IDs.
  * 
  * Example:
  *   Address: "Block 929, Road 3953, Building 2733"
  *   Returns: { block_number: 929, road_number: 3953, building_number: 2733 }
- *   NOT:     { block_id: 929, road_id: 3953, building_id: 2733 } ❌
+ *   NOT:     { block_id: 929, road_id: 3953, building_id: 2733 }
  */
 
 class AddressMapper {
@@ -24,7 +24,7 @@ class AddressMapper {
    * - "Building: 2733, Road: 3953" (with zip code as Block - common in Bahrain)
    * - Address1: "Building 134", Address2: "Road 354", City: "Block 306"
    * 
-   * ⚠️ IMPORTANT: In some countries (like Bahrain), postal code IS the block number.
+   * Note: In some countries (like Bahrain), postal code IS the block number.
    * If Block is not found in address text, zip code will be automatically used as Block.
    * 
    * @param {Object} address - Shopify address object
@@ -143,13 +143,13 @@ class AddressMapper {
         // Use zip as block if it's a reasonable number (typically 1-10000 range)
         if (zipNum > 0 && zipNum < 10000) {
           blockId = zipNum;
-          console.log(`ℹ️ Using zip code ${zipNum} as Block number (common in Bahrain and similar countries)`);
+          console.log(`Using zip code ${zipNum} as Block number (common in Bahrain and similar countries)`);
         }
       }
     }
 
     // If we found block and road, return the mapping
-    // ⚠️ CRITICAL: Return NUMBERS, not IDs. IDs must be looked up separately.
+    // Return numbers, not IDs. IDs must be looked up separately.
     if (blockId && roadId) {
       return {
         block_number: blockId,      // Human-readable block number (e.g., 929)
@@ -170,19 +170,19 @@ class AddressMapper {
     
     // Final check: If we have Road but no Block, and zip code wasn't used, log warning
     if (roadId && !blockId) {
-      console.warn('⚠️ Could not parse address:', {
+      console.warn('Could not parse address:', {
         address1,
         address2,
         city,
         zip,
         fullAddress: fullAddress.substring(0, 100),
         parsedComponents,
-        note: 'Block is REQUIRED. If zip code is the block number, ensure zip code is provided.',
+        note: 'Block is required. If zip code is the block number, ensure zip code is provided.',
       });
-      console.warn(`⚠️ Found Road ${roadId} but Block is missing. Block is REQUIRED for Delybell auto-assignment.`);
+      console.warn(`Found Road ${roadId} but Block is missing. Block is required for Delybell auto-assignment.`);
     } else if (!roadId) {
       // If we don't even have Road, log full details
-      console.warn('⚠️ Could not parse address:', {
+      console.warn('Could not parse address:', {
         address1,
         address2,
         city,

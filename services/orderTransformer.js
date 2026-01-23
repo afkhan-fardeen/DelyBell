@@ -1,9 +1,7 @@
 /**
  * Order Transformer Service
  * Transforms Shopify order data to Delybell API format
- * 
- * ⚠️ CRITICAL: This service converts human-readable address numbers to Delybell IDs
- * by looking them up in Delybell master data.
+ * Converts human-readable address numbers to Delybell IDs by looking them up in master data
  */
 
 const addressMapper = require('./addressMapper');
@@ -30,7 +28,7 @@ class OrderTransformer {
       throw new Error('Order must have a shipping address or billing address');
     }
 
-    // ⚠️ CRITICAL: Pickup address is fetched from Shopify store address
+    // Pickup address is fetched from Shopify store address
     // Every Shopify store has a store address configured in Shopify settings
     // We use that address as the pickup location
     
@@ -48,24 +46,23 @@ class OrderTransformer {
     const session = mappingConfig.session || null;
 
     // Fetch pickup location from Shopify store address
-    console.log(`📍 Fetching pickup location from Shopify store address for shop: ${shopDomain}`);
+    console.log(`Fetching pickup location from Shopify store address for shop: ${shopDomain}`);
     const pickupConfig = await pickupLocationService.getPickupLocation(shopDomain, session);
     
-    console.log(`✅ Using pickup location from Shopify store address for shop ${shopDomain}:`);
+    console.log(`Using pickup location from Shopify store address for shop ${shopDomain}:`);
     console.log(`   Address: ${pickupConfig.address}`);
     console.log(`   Block ID: ${pickupConfig.block_id}, Road ID: ${pickupConfig.road_id}, Building ID: ${pickupConfig.building_id || 'N/A'}`);
 
-    // ⚠️ CRITICAL VALIDATION: Destination address mapping MUST come from Shopify address
-    // Default destination values are NOT allowed for real orders - only for testing
-    // If mappingConfig.destination is provided, it means it's from test endpoint (allow it)
-    // Otherwise, we MUST parse the Shopify shipping address and lookup IDs
+    // Destination address mapping comes from Shopify address
+    // Default destination values are only allowed for test endpoints
+    // For real orders, we parse the Shopify shipping address and lookup IDs
     
     let destinationIds; // Will contain block_id, road_id, building_id
     let flatNumber = 'N/A'; // Flat number from parsed address
     
     if (mappingConfig.destination && mappingConfig.destination.block_id && mappingConfig.destination.road_id) {
       // This is from test endpoint - use provided IDs directly (already looked up)
-      console.log('⚠️ Using provided destination IDs (test mode)');
+      console.log('Using provided destination IDs (test mode)');
       destinationIds = {
         block_id: mappingConfig.destination.block_id,
         road_id: mappingConfig.destination.road_id,
@@ -73,8 +70,8 @@ class OrderTransformer {
       };
       flatNumber = mappingConfig.destination.flat_number || 'N/A';
     } else {
-      // Real order - MUST parse from Shopify address and lookup IDs
-      console.log('📍 Parsing destination address from Shopify shipping address...');
+      // Real order - parse from Shopify address and lookup IDs
+      console.log('Parsing destination address from Shopify shipping address...');
       const addressNumbers = addressMapper.parseShopifyAddress(shippingAddress);
       
       if (!addressMapper.isValidMapping(addressNumbers)) {
@@ -95,12 +92,10 @@ class OrderTransformer {
           : '';
         
         throw new Error(
-          'CRITICAL: Cannot map destination address to Delybell structured format. ' +
-          `${missingText}` +
+          `Cannot map destination address to Delybell structured format. ${missingText}` +
           'The shipping address must contain Block and Road information in a parseable format. ' +
           `Received address: "${addressPreview}". ` +
           'Expected format: "Building X, Road Y, Block Z" or "Building: X, Road: Y, Block: Z" or similar. ' +
-          'Order rejected - address mapping is mandatory for Delybell auto-assignment. ' +
           'Please ensure customer addresses include Block and Road numbers.'
         );
       }
@@ -111,16 +106,16 @@ class OrderTransformer {
       // This is used to disambiguate blocks with the same code number
       const areaName = shippingAddress.city ? shippingAddress.city.trim() : null;
       
-      console.log(`✅ Parsed address numbers: Block ${addressNumbers.block_number}, Road ${addressNumbers.road_number}, Building ${addressNumbers.building_number || 'N/A'}${areaName ? `, Area: ${areaName}` : ''}`);
+      console.log(`Parsed address numbers: Block ${addressNumbers.block_number}, Road ${addressNumbers.road_number}, Building ${addressNumbers.building_number || 'N/A'}${areaName ? `, Area: ${areaName}` : ''}`);
       
-      // ⚠️ CRITICAL STEP: Convert numbers to Delybell IDs
+      // Convert numbers to Delybell IDs
       // Block Number (929) → Block ID (370) - matched by code AND area name
       // Road Number (3953) → Road ID (XXXX)
       // Building Number (2733) → Building ID (YYYY)
-      console.log('🔍 Looking up Delybell IDs from address numbers...');
+      console.log('Looking up Delybell IDs from address numbers...');
       destinationIds = await addressIdMapper.convertNumbersToIds(addressNumbers, areaName);
       
-      console.log(`✅ Mapped to Delybell IDs: Block ID ${destinationIds.block_id}, Road ID ${destinationIds.road_id}, Building ID ${destinationIds.building_id || 'N/A'}`);
+      console.log(`Mapped to Delybell IDs: Block ID ${destinationIds.block_id}, Road ID ${destinationIds.road_id}, Building ID ${destinationIds.building_id || 'N/A'}`);
     }
 
     // Calculate total weight from line items
@@ -253,10 +248,10 @@ class OrderTransformer {
     if (preferredDate) {
       const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
       if (dateRegex.test(preferredDate)) {
-        console.log(`📅 Using provided pickup date: ${preferredDate}`);
+        console.log(`Using provided pickup date: ${preferredDate}`);
         return preferredDate;
       }
-      console.warn(`⚠️ Invalid pickup date format: ${preferredDate}. Using cutoff-based logic instead.`);
+      console.warn(`Invalid pickup date format: ${preferredDate}. Using cutoff-based logic instead.`);
     }
     
     // Step 1: Generate pickup date based on cutoff rule
@@ -271,7 +266,7 @@ class OrderTransformer {
     }
     
     const formattedDate = pickupDate.toISOString().split("T")[0]; // YYYY-MM-DD
-    console.log(`📅 Pickup date calculated: ${formattedDate} (hour: ${hour}, ${hour >= 12 ? 'next-day' : 'same-day'})`);
+    console.log(`Pickup date calculated: ${formattedDate} (hour: ${hour}, ${hour >= 12 ? 'next-day' : 'same-day'})`);
     
     return formattedDate;
   }
@@ -321,13 +316,13 @@ class OrderTransformer {
   /**
    * Map Shopify address to Delybell structured address format
    * 
-   * ⚠️ CRITICAL: Delybell requires structured address format with separate fields:
-   * - Block No (REQUIRED)
-   * - Road No (REQUIRED)
-   * - Building No (Optional but recommended)
-   * - Flat/Office Number (Optional, can be value or "N/A")
+   * Delybell requires structured address format with separate fields:
+   * - Block No (required)
+   * - Road No (required)
+   * - Building No (optional but recommended)
+   * - Flat/Office Number (optional, can be value or "N/A")
    * 
-   * Single-line addresses are NOT accepted and will cause auto-assignment failures.
+   * Single-line addresses are not accepted and will cause auto-assignment failures.
    * 
    * @param {Object} address - Shopify address object
    * @param {Object} mappingConfig - Pre-configured mapping (block_id, road_id, building_id, flat_number)
@@ -400,17 +395,16 @@ class OrderTransformer {
   }
 
   /**
-   * Format destination address for display purposes (OPTIONAL field)
+   * Format destination address for display purposes (optional field)
    * 
-   * ⚠️ IMPORTANT: This field is for DISPLAY/REFERENCE ONLY
-   * Delybell's routing engine uses the separate structured fields:
+   * This field is for display/reference only. Delybell's routing engine uses the separate structured fields:
    * - destination_block_id
    * - destination_road_id
    * - destination_building_id
    * - destination_flat_or_office_number
    * 
-   * This formatted string is NOT used for auto-assignment.
-   * Single-line addresses should NEVER be sent as the primary address.
+   * This formatted string is not used for auto-assignment.
+   * Single-line addresses should not be sent as the primary address.
    * 
    * @param {Object} address - Shopify shipping address object
    * @param {Object} mapping - Delybell address mapping (block_id, road_id, building_id)
@@ -418,12 +412,12 @@ class OrderTransformer {
    */
   formatDestinationAddress(address, mapping) {
     if (!address) {
-      throw new Error('CRITICAL: Shipping address is required for order processing');
+      throw new Error('Shipping address is required for order processing');
     }
     
     // Build structured address format: "Building X, Road Y, Block Z"
-    // ⚠️ CRITICAL: This format is REQUIRED for Delybell's auto-assignment system
-    // Single-line addresses will NOT work - orders will fail to be assigned to drivers
+    // This format is required for Delybell's auto-assignment system
+    // Single-line addresses will not work - orders will fail to be assigned to drivers
     const parts = [];
     
     // Priority 1: Use mapping IDs if provided (most reliable)

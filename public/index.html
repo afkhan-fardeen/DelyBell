@@ -448,20 +448,38 @@
     
     // Fallback: Get shop from various sources
     if (!shop) {
+      console.log('🔍 No shop from App Bridge, trying fallbacks...');
+      
       // Try window.SHOPIFY_SHOP (injected by backend)
       shop = window.SHOPIFY_SHOP;
+      console.log('🔍 Shop from window.SHOPIFY_SHOP:', shop);
       
       // Try URL query parameter
       if (!shop) {
         const urlParams = new URLSearchParams(window.location.search);
         shop = urlParams.get('shop') || urlParams.get('shopOrigin');
+        console.log('🔍 Shop from URL params:', shop);
+      }
+      
+      // Try to extract from current URL
+      if (!shop && window.location.href) {
+        const urlMatch = window.location.href.match(/[?&]shop=([^&]+)/);
+        if (urlMatch) {
+          shop = decodeURIComponent(urlMatch[1]);
+          console.log('🔍 Shop from URL match:', shop);
+        }
       }
     }
+    
+    console.log('🔍 Final shop value:', shop || 'NOT DETECTED');
     
     // Load app status
     async function loadAppStatus() {
       try {
+        console.log('🔍 loadAppStatus called, shop:', shop);
+        
         if (!shop) {
+          console.log('⚠️ No shop detected, showing installation form');
           // Show installation prompt if no shop parameter
           const appContent = document.getElementById('app-content');
           appContent.innerHTML = `
@@ -518,8 +536,34 @@
         }
         
         // Check authentication status
-        const authResponse = await fetch(`/auth/check?shop=${shop}`);
+        console.log(`🔍 Checking auth status for shop: ${shop}`);
+        
+        // Add timeout to prevent hanging
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+        
+        let authResponse;
+        try {
+          authResponse = await fetch(`/auth/check?shop=${encodeURIComponent(shop)}`, {
+            signal: controller.signal
+          });
+          clearTimeout(timeoutId);
+        } catch (fetchError) {
+          clearTimeout(timeoutId);
+          if (fetchError.name === 'AbortError') {
+            throw new Error('Request timed out. Please check your connection and try again.');
+          }
+          throw fetchError;
+        }
+        
+        if (!authResponse.ok) {
+          const errorText = await authResponse.text();
+          console.error('❌ Auth check failed:', authResponse.status, errorText);
+          throw new Error(`Auth check failed: ${authResponse.status} ${authResponse.statusText}. ${errorText}`);
+        }
+        
         const authData = await authResponse.json();
+        console.log('✅ Auth check response:', authData);
         
         const appContent = document.getElementById('app-content');
         
@@ -643,23 +687,73 @@
           `;
         }
       } catch (error) {
-        console.error('Error loading app status:', error);
-        document.getElementById('error-container').innerHTML = `
-          <div class="error-message">
-            <strong>Error</strong>
-            ${error.message}
-          </div>
-        `;
-        document.getElementById('app-content').innerHTML = `
-          <div class="section">
-            <div class="section-header">
-              <div class="section-title">Error</div>
+        console.error('❌ Error loading app status:', error);
+        console.error('Error details:', {
+          message: error.message,
+          stack: error.stack,
+          shop: shop,
+        });
+        
+        const errorContainer = document.getElementById('error-container');
+        const appContent = document.getElementById('app-content');
+        
+        if (errorContainer) {
+          errorContainer.innerHTML = `
+            <div class="error-message">
+              <strong>Error Loading App Status</strong>
+              ${error.message}
+              <br><br>
+              <small style="color: #666666;">Shop: ${shop || 'not detected'}</small>
+              <br>
+              <small style="color: #666666;">Check browser console (F12) for more details.</small>
             </div>
-            <div class="section-body">
-              <p style="color: #666666; font-size: 13px;">Unable to load app status. Please refresh the page or contact support.</p>
+          `;
+        }
+        
+        if (appContent) {
+          appContent.innerHTML = `
+            <div class="section">
+              <div class="section-header">
+                <div class="section-title">Error</div>
+              </div>
+              <div class="section-body">
+                <p style="color: #666666; font-size: 13px; margin-bottom: 16px;">
+                  Unable to load app status. Error: ${error.message}
+                </p>
+                <p style="color: #666666; font-size: 12px; margin-bottom: 16px;">
+                  Shop detected: <strong>${shop || 'None - please enter your shop domain'}</strong>
+                </p>
+                ${!shop ? `
+                  <div class="input-group">
+                    <label class="input-label">Enter Your Shopify Store Domain</label>
+                    <input 
+                      type="text" 
+                      id="shop-input-manual" 
+                      placeholder="782cba-5a.myshopify.com" 
+                      class="input"
+                    />
+                    <button onclick="setShopManually()" class="button" style="width: 100%; margin-top: 12px;">Load App</button>
+                  </div>
+                ` : `
+                  <button onclick="loadAppStatus()" class="button">Retry</button>
+                `}
+              </div>
             </div>
-          </div>
-        `;
+          `;
+        }
+      }
+    }
+    
+    // Manual shop input function
+    function setShopManually() {
+      const shopInput = document.getElementById('shop-input-manual');
+      if (shopInput && shopInput.value.trim()) {
+        shop = shopInput.value.trim().toLowerCase();
+        if (!shop.includes('.myshopify.com')) {
+          shop = shop + '.myshopify.com';
+        }
+        console.log('✅ Shop set manually:', shop);
+        loadAppStatus();
       }
     }
     
