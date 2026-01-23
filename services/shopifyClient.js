@@ -47,29 +47,43 @@ class ShopifyClient {
   async getSession(shop) {
     try {
       // Normalize shop parameter
-      shop = shop.trim().toLowerCase().replace(/^https?:\/\//, '').split('/')[0];
+      let normalizedShop = shop.trim().toLowerCase().replace(/^https?:\/\//, '').split('/')[0];
+      
+      // Ensure it ends with .myshopify.com
+      if (!normalizedShop.endsWith('.myshopify.com')) {
+        normalizedShop = normalizedShop + '.myshopify.com';
+      }
+      
+      console.log(`[ShopifyClient] getSession called for shop: ${shop} -> normalized: ${normalizedShop}`);
       
       // First try custom app session (custom_shop.myshopify.com)
-      const customSessionId = `custom_${shop}`;
+      const customSessionId = `custom_${normalizedShop}`;
       let session = await sessionStorage.loadSession(customSessionId);
       
       if (session && session.state === 'custom_app') {
-        console.log(`[ShopifyClient] Found custom app session for ${shop}`);
+        console.log(`[ShopifyClient] Found custom app session for ${normalizedShop}`);
         return session;
       }
       
       // Fallback to OAuth session (offline_shop.myshopify.com)
-      const sessionId = this.shopify.session.getOfflineId(shop);
-      console.log(`[ShopifyClient] Looking up OAuth session with ID: ${sessionId} for shop: ${shop}`);
+      const sessionId = this.shopify.session.getOfflineId(normalizedShop);
+      console.log(`[ShopifyClient] Looking up OAuth session with ID: ${sessionId} for shop: ${normalizedShop}`);
+      console.log(`[ShopifyClient] Session ID format: ${sessionId}`);
+      
       session = await sessionStorage.loadSession(sessionId);
       if (session) {
-        console.log(`[ShopifyClient] Found OAuth session for ${shop}, has accessToken: ${!!session.accessToken}`);
+        console.log(`[ShopifyClient] ✅ Found OAuth session for ${normalizedShop}, has accessToken: ${!!session.accessToken}`);
+        console.log(`[ShopifyClient] Session shop: ${session.shop}`);
       } else {
-        console.log(`[ShopifyClient] No session found for ${shop}`);
+        console.log(`[ShopifyClient] ❌ No OAuth session found for ${normalizedShop}`);
+        // Debug: List all available sessions
+        const allSessionIds = sessionStorage.getAllSessionIds();
+        console.log(`[ShopifyClient] Available session IDs: ${allSessionIds.join(', ') || 'none'}`);
       }
       return session;
     } catch (error) {
       console.error('[ShopifyClient] Error getting session:', error);
+      console.error('[ShopifyClient] Error stack:', error.stack);
       return null;
     }
   }

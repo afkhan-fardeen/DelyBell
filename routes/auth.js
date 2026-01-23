@@ -162,20 +162,42 @@ router.get('/callback', async (req, res) => {
     if (session && session.id) {
       console.log('[Auth] OAuth callback successful, storing session...');
       console.log('[Auth] Session ID:', session.id);
-      console.log('[Auth] Shop:', session.shop);
+      console.log('[Auth] Shop from session:', session.shop);
+      console.log('[Auth] Shop from query:', shopParam);
       console.log('[Auth] Has access token:', !!session.accessToken);
       console.log('[Auth] Scopes:', session.scope || 'not specified');
+      
+      // Normalize shop domain to ensure consistency
+      let normalizedShop = (session.shop || shopParam || '').trim().toLowerCase();
+      normalizedShop = normalizedShop.replace(/^https?:\/\//, '').split('/')[0];
+      if (!normalizedShop.endsWith('.myshopify.com')) {
+        normalizedShop = normalizedShop + '.myshopify.com';
+      }
+      
+      console.log('[Auth] Normalized shop:', normalizedShop);
       
       // Add installed_at timestamp for proper flow tracking
       const sessionWithMetadata = {
         ...session,
+        shop: normalizedShop, // Ensure shop is normalized
         installedAt: new Date().toISOString(),
         scopes: session.scope || config.shopify.scopes,
       };
       
       await sessionStorage.storeSession(session.id, sessionWithMetadata);
-      console.log('[Auth] Session stored successfully for shop:', session.shop);
+      console.log('[Auth] Session stored successfully for shop:', normalizedShop);
+      console.log('[Auth] Session ID used:', session.id);
       console.log('[Auth] Installed at:', sessionWithMetadata.installedAt);
+      
+      // Verify session was stored correctly
+      const verifySession = await sessionStorage.loadSession(session.id);
+      if (verifySession) {
+        console.log('[Auth] ✅ Session verification: Found stored session');
+        console.log('[Auth] ✅ Session verification: Shop:', verifySession.shop);
+        console.log('[Auth] ✅ Session verification: Has token:', !!verifySession.accessToken);
+      } else {
+        console.error('[Auth] ❌ Session verification: Session NOT found after storing!');
+      }
       
       // Auto-register webhooks after successful installation
       try {
@@ -213,10 +235,23 @@ router.get('/callback', async (req, res) => {
     }
 
     // Redirect to main app (embedded in Shopify admin)
-    // If embedded app, redirect to /, otherwise to success page
+    // Use normalized shop domain
     const shopDomain = session.shop || shopParam;
-    if (shopDomain) {
-      res.redirect(`/?shop=${shopDomain}`);
+    let redirectShop = shopDomain;
+    
+    // Normalize shop domain for redirect
+    if (redirectShop) {
+      redirectShop = redirectShop.trim().toLowerCase();
+      redirectShop = redirectShop.replace(/^https?:\/\//, '').split('/')[0];
+      if (!redirectShop.endsWith('.myshopify.com')) {
+        redirectShop = redirectShop + '.myshopify.com';
+      }
+    }
+    
+    console.log('[Auth] Redirecting to app with shop:', redirectShop);
+    
+    if (redirectShop) {
+      res.redirect(`/?shop=${encodeURIComponent(redirectShop)}`);
     } else {
       res.redirect('/auth/success');
     }
@@ -289,14 +324,25 @@ router.get('/check', async (req, res) => {
     // Try to get OAuth session using shopifyClient method (which handles session ID generation)
     try {
       console.log(`[Auth] Attempting to get OAuth session for: ${shop}`);
+      
+      // Debug: Check what session ID would be used
+      const expectedSessionId = shopifyClient.shopify.session.getOfflineId(shop);
+      console.log(`[Auth] Expected session ID for ${shop}: ${expectedSessionId}`);
+      
       const sessionStartTime = Date.now();
       const session = await shopifyClient.getSession(shop);
       const sessionDuration = Date.now() - sessionStartTime;
       console.log(`[Auth] getSession completed in ${sessionDuration}ms`);
+      console.log(`[Auth] Session result:`, session ? {
+        id: session.id,
+        shop: session.shop,
+        hasAccessToken: !!session.accessToken,
+        hasScopes: !!session.scopes,
+      } : 'null');
 
       if (session && session.accessToken) {
         const totalDuration = Date.now() - startTime;
-        console.log(`[Auth] OAuth session found for ${shop}, authenticated: true (total: ${totalDuration}ms)`);
+        console.log(`[Auth] ✅ OAuth session found for ${shop}, authenticated: true (total: ${totalDuration}ms)`);
         res.json({
           success: true,
           authenticated: true,
@@ -307,12 +353,25 @@ router.get('/check', async (req, res) => {
         });
       } else {
         const totalDuration = Date.now() - startTime;
-        console.log(`[Auth] No session found for ${shop}, authenticated: false (total: ${totalDuration}ms)`);
+        console.log(`[Auth] ❌ No session found for ${shop}, authenticated: false (total: ${totalDuration}ms)`);
+        console.log(`[Auth] Session was:`, session);
+        
+        // Debug: List all sessions
+        const allSessionIds = sessionStorage.getAllSessionIds();
+        console.log(`[Auth] All available sessions: ${allSessionIds.join(', ') || 'none'}`);
+        console.log(`[Auth] Expected session ID was: ${expectedSessionId}`);
+        
         res.json({
           success: true,
           authenticated: false,
           shop: shop,
-          installUrl: `/auth/install?shop=${shop}`,
+          installUrl: `/auth/install?shop=${encodeURIComponent(shop)}`,
+          debug: process.env.NODE_ENV !== 'production' ? {
+            sessionFound: !!session,
+            hasAccessToken: session ? !!session.accessToken : false,
+            expectedSessionId: expectedSessionId,
+            availableSessions: allSessionIds,
+          } : undefined,
         });
       }
     } catch (sessionError) {
