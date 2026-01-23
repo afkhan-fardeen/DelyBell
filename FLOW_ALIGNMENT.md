@@ -108,21 +108,23 @@ Your App:
 
 ## 📋 API Version Note
 
-**Important**: You mentioned `2026-01`, but Shopify's latest stable API version is `2024-01`. 
+**Available API Versions:** 2025-04, 2025-07, 2025-10, 2026-10
 
-The app is currently configured with `2024-01` which is:
-- ✅ Latest stable version
+The app is configured with `2025-10` which is:
+- ✅ Latest stable version from available options
 - ✅ App Store compliant
 - ✅ Fully supported by Shopify
 - ✅ Recommended for production
 
-**If you need to use `2026-01`** (when it becomes available), update:
-- `shopify.app.toml` → `api_version = "2026-01"`
-- `services/shopifyClient.js` → `apiVersion: '2026-01'`
+**Note:** `2026-10` is available but may be a preview/beta version. `2025-10` is recommended for production stability.
 
 **Current Configuration:**
-- `shopify.app.toml`: `api_version = "2024-01"`
-- `services/shopifyClient.js`: `apiVersion: '2024-01'`
+- `shopify.app.toml`: `api_version = "2025-10"`
+- `services/shopifyClient.js`: `apiVersion: '2025-10'`
+
+**To change API version**, update both files:
+- `shopify.app.toml` → `api_version = "2025-07"` (or other available version)
+- `services/shopifyClient.js` → `apiVersion: '2025-07'`
 
 ## ✅ Verification Checklist
 

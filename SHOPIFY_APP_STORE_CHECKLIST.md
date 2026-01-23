@@ -23,7 +23,7 @@
 
 ### 4. App Configuration ✓
 - [x] `shopify.app.toml` properly configured
-- [x] API version set to `2024-01` (latest stable)
+- [x] API version set to `2025-10` (latest stable available)
 - [x] Scopes: `read_orders,write_orders` (minimal required)
 - [x] Embedded app enabled
 - [x] App URL configured correctly
@@ -121,7 +121,7 @@
 7. **Missing HTTPS** - ✓ Required in production
 8. **Poor User Experience** - ✓ Clean, simple UI
 9. **Insufficient Scopes** - ✓ Minimal required scopes
-10. **API Version Issues** - ✓ Using stable 2024-01
+10. **API Version Issues** - ✓ Using stable 2025-10
 
 ## 📝 App Store Listing Details
 

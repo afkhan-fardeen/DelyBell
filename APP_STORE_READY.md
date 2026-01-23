@@ -27,7 +27,7 @@ Your app is now ready for Shopify App Store submission! All requirements have be
 
 ### 4. Configuration
 - ✅ `shopify.app.toml` properly configured
-- ✅ API version: `2024-01` (stable)
+- ✅ API version: `2025-10` (latest stable available)
 - ✅ Scopes: `read_orders,write_orders` (minimal required)
 - ✅ Embedded app enabled
 - ✅ App Bridge integrated

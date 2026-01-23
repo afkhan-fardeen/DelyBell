@@ -21,7 +21,7 @@ scopes = "read_orders,write_orders"
 # Webhooks configuration
 # These will be registered automatically when app is installed
 [[webhooks]]
-api_version = "2024-01"  # Latest stable API version
+api_version = "2025-10"  # Latest stable API version available
 subscriptions = ["orders/create", "orders/updated", "app/uninstalled"]
 
 # App settings

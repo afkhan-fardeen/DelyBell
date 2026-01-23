@@ -32,7 +32,7 @@ Your app is **100% ready** for Shopify App Store review! All requirements have b
 - ✅ Proper error handling
 - ✅ Input validation
 - ✅ No hardcoded credentials
-- ✅ API version: `2024-01` (stable)
+- ✅ API version: `2025-10` (latest stable available)
 
 ### Configuration
 - ✅ `shopify.app.toml` properly configured

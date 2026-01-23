@@ -22,7 +22,7 @@ class ShopifyClient {
       apiSecretKey: config.shopify.apiSecret,
       scopes: config.shopify.scopes.split(','),
       hostName: hostName,
-      apiVersion: '2024-01', // Use stable API version for App Store compliance
+      apiVersion: '2025-10', // Latest stable API version available
       isEmbeddedApp: true, // Set to true for embedded apps (as per guide)
       // Use custom session storage
       sessionStorage: {
