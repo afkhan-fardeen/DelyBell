@@ -141,8 +141,8 @@ DEFAULT_PICKUP_SLOT_TYPE=1
 ## 📚 Full Guides
 
 - **[Render + App Store Setup](./RENDER_APP_STORE_SETUP.md)** - Complete step-by-step guide
-- **[Render Deployment](./RENDER_DEPLOYMENT.md)** - Detailed Render setup
-- **[App Store Ready](./APP_STORE_READY.md)** - App Store requirements
+- **[Render Environment Variables](./RENDER_ENV_SETUP.md)** - How to configure environment variables
+- **[Deployment URLs](./DEPLOYMENT_URLS.md)** - All your app URLs
 
 ---
 

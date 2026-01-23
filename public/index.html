@@ -22,58 +22,78 @@
     }
     
     body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-      background: #f6f6f7;
-      color: #202223;
-      line-height: 1.6;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      background: #ffffff;
+      color: #1a1a1a;
+      line-height: 1.5;
     }
     
     .container {
-      max-width: 1200px;
+      max-width: 1400px;
       margin: 0 auto;
-      padding: 24px;
+      padding: 0;
     }
     
     .header {
-      background: white;
-      border-radius: 8px;
-      padding: 24px;
-      margin-bottom: 24px;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+      border-bottom: 1px solid #e5e5e5;
+      padding: 24px 32px;
+      background: #fafafa;
     }
     
     .header h1 {
-      font-size: 28px;
+      font-size: 20px;
       font-weight: 600;
-      color: #202223;
-      margin-bottom: 8px;
+      color: #1a1a1a;
+      margin-bottom: 4px;
+      letter-spacing: -0.02em;
     }
     
     .header p {
-      color: #6d7175;
-      font-size: 14px;
+      color: #666666;
+      font-size: 13px;
+      font-weight: 400;
     }
     
-    .status-card {
-      background: white;
-      border-radius: 8px;
-      padding: 24px;
+    .content {
+      padding: 32px;
+    }
+    
+    .section {
+      border: 1px solid #e5e5e5;
       margin-bottom: 24px;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+      background: #ffffff;
     }
     
-    .status-card h2 {
-      font-size: 20px;
+    .section-header {
+      border-bottom: 1px solid #e5e5e5;
+      padding: 16px 24px;
+      background: #fafafa;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    
+    .section-title {
+      font-size: 13px;
       font-weight: 600;
-      margin-bottom: 16px;
-      color: #202223;
+      color: #1a1a1a;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    
+    .section-body {
+      padding: 24px;
+    }
+    
+    .status-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 24px;
     }
     
     .status-item {
-      display: flex;
-      align-items: center;
-      padding: 12px 0;
-      border-bottom: 1px solid #e1e3e5;
+      padding: 16px 0;
+      border-bottom: 1px solid #e5e5e5;
     }
     
     .status-item:last-child {
@@ -81,238 +101,292 @@
     }
     
     .status-label {
-      font-weight: 500;
-      color: #6d7175;
-      min-width: 200px;
+      font-size: 11px;
+      font-weight: 600;
+      color: #666666;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 8px;
     }
     
     .status-value {
-      color: #202223;
-      flex: 1;
+      font-size: 15px;
+      font-weight: 400;
+      color: #1a1a1a;
     }
     
-    .status-badge {
+    .badge {
       display: inline-block;
-      padding: 4px 12px;
-      border-radius: 12px;
-      font-size: 12px;
-      font-weight: 500;
-    }
-    
-    .status-badge.success {
-      background: #d4edda;
-      color: #155724;
-    }
-    
-    .status-badge.error {
-      background: #f8d7da;
-      color: #721c24;
-    }
-    
-    .status-badge.warning {
-      background: #fff3cd;
-      color: #856404;
-    }
-    
-    .info-section {
-      background: white;
-      border-radius: 8px;
-      padding: 24px;
-      margin-bottom: 24px;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-    }
-    
-    .info-section h2 {
-      font-size: 20px;
+      padding: 4px 10px;
+      font-size: 11px;
       font-weight: 600;
-      margin-bottom: 16px;
-      color: #202223;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      border: 1px solid;
     }
     
-    .info-section ul {
-      list-style: none;
-      padding: 0;
+    .badge-success {
+      background: #ffffff;
+      color: #1a1a1a;
+      border-color: #1a1a1a;
     }
     
-    .info-section li {
-      padding: 8px 0;
-      color: #6d7175;
-      font-size: 14px;
-    }
-    
-    .info-section li:before {
-      content: "✓ ";
-      color: #008060;
-      font-weight: bold;
-      margin-right: 8px;
+    .badge-warning {
+      background: #ffffff;
+      color: #666666;
+      border-color: #d1d1d1;
     }
     
     .button {
       display: inline-block;
-      padding: 12px 24px;
-      background: #008060;
-      color: white;
-      text-decoration: none;
-      border-radius: 6px;
+      padding: 10px 20px;
+      background: #1a1a1a;
+      color: #ffffff;
+      border: 1px solid #1a1a1a;
+      font-size: 12px;
       font-weight: 500;
-      font-size: 14px;
-      border: none;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
       cursor: pointer;
-      transition: background 0.2s;
+      text-decoration: none;
+      transition: background-color 0.15s ease, color 0.15s ease;
     }
     
     .button:hover {
-      background: #006e52;
+      background: #333333;
+      border-color: #333333;
+    }
+    
+    .button:active {
+      background: #000000;
+      border-color: #000000;
+    }
+    
+    .button:disabled {
+      background: #cccccc;
+      border-color: #cccccc;
+      cursor: not-allowed;
     }
     
     .button-secondary {
-      background: #6d7175;
+      background: #ffffff;
+      color: #1a1a1a;
+      border-color: #d1d1d1;
     }
     
     .button-secondary:hover {
-      background: #5c5f63;
+      background: #fafafa;
+      border-color: #1a1a1a;
     }
     
     .loading {
       text-align: center;
-      padding: 40px;
-      color: #6d7175;
+      padding: 60px 20px;
+      color: #666666;
+      font-size: 13px;
     }
     
     .error-message {
-      background: #f8d7da;
-      color: #721c24;
-      padding: 16px;
-      border-radius: 6px;
+      background: #ffffff;
+      border: 1px solid #d1d1d1;
+      border-left: 3px solid #1a1a1a;
+      padding: 16px 20px;
       margin-bottom: 24px;
+      color: #1a1a1a;
+      font-size: 13px;
     }
     
-    .orders-section {
-      background: white;
-      border-radius: 8px;
-      padding: 24px;
-      margin-bottom: 24px;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    .error-message strong {
+      display: block;
+      margin-bottom: 4px;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
     }
     
-    .orders-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 20px;
+    .table-container {
+      overflow-x: auto;
     }
     
-    .orders-header h2 {
-      font-size: 20px;
-      font-weight: 600;
-      color: #202223;
-      margin: 0;
-    }
-    
-    .refresh-button {
-      padding: 8px 16px;
-      background: #008060;
-      color: white;
-      border: none;
-      border-radius: 6px;
-      cursor: pointer;
-      font-size: 14px;
-      font-weight: 500;
-      transition: background 0.2s;
-    }
-    
-    .refresh-button:hover {
-      background: #006e52;
-    }
-    
-    .refresh-button:disabled {
-      background: #6d7175;
-      cursor: not-allowed;
-    }
-    
-    .orders-table {
+    .table {
       width: 100%;
       border-collapse: collapse;
-      margin-top: 16px;
     }
     
-    .orders-table th {
+    .table thead {
+      background: #fafafa;
+      border-bottom: 2px solid #e5e5e5;
+    }
+    
+    .table th {
       text-align: left;
-      padding: 12px;
-      border-bottom: 2px solid #e1e3e5;
+      padding: 12px 16px;
+      font-size: 11px;
       font-weight: 600;
-      color: #202223;
-      font-size: 14px;
+      color: #666666;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
     }
     
-    .orders-table td {
-      padding: 12px;
-      border-bottom: 1px solid #e1e3e5;
-      font-size: 14px;
-      color: #202223;
+    .table td {
+      padding: 16px;
+      border-bottom: 1px solid #e5e5e5;
+      font-size: 13px;
+      color: #1a1a1a;
     }
     
-    .orders-table tr:hover {
-      background: #f6f6f7;
+    .table tbody tr:hover {
+      background: #fafafa;
+    }
+    
+    .table tbody tr:last-child td {
+      border-bottom: none;
     }
     
     .order-number {
       font-weight: 600;
-      color: #008060;
+      color: #1a1a1a;
+    }
+    
+    .order-name {
+      font-size: 11px;
+      color: #666666;
+      margin-top: 4px;
+      font-family: 'Monaco', 'Menlo', 'Courier New', monospace;
     }
     
     .order-status {
       display: inline-block;
       padding: 4px 8px;
-      border-radius: 4px;
-      font-size: 12px;
-      font-weight: 500;
-    }
-    
-    .order-status.synced {
-      background: #d4edda;
-      color: #155724;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      border: 1px solid #1a1a1a;
+      background: #ffffff;
+      color: #1a1a1a;
     }
     
     .delybell-id {
-      font-family: monospace;
-      font-size: 13px;
-      color: #6d7175;
+      font-family: 'Monaco', 'Menlo', 'Courier New', monospace;
+      font-size: 12px;
+      color: #666666;
     }
     
-    .tracking-link {
-      color: #008060;
-      text-decoration: none;
-    }
-    
-    .tracking-link:hover {
+    .link {
+      color: #1a1a1a;
       text-decoration: underline;
+      font-size: 13px;
     }
     
-    .no-orders {
+    .link:hover {
+      color: #333333;
+    }
+    
+    .no-data {
       text-align: center;
-      padding: 40px;
-      color: #6d7175;
+      padding: 60px 20px;
+      color: #666666;
+      font-size: 13px;
     }
     
-    .orders-count {
-      color: #6d7175;
-      font-size: 14px;
-      font-weight: normal;
+    .count {
+      color: #666666;
+      font-size: 11px;
+      font-weight: 400;
+      text-transform: none;
+      letter-spacing: 0;
+      margin-left: 8px;
+    }
+    
+    .info-list {
+      list-style: none;
+      padding: 0;
+    }
+    
+    .info-list li {
+      padding: 8px 0;
+      font-size: 13px;
+      color: #666666;
+      border-bottom: 1px solid #e5e5e5;
+    }
+    
+    .info-list li:last-child {
+      border-bottom: none;
+    }
+    
+    .info-list li:before {
+      content: "—";
+      margin-right: 12px;
+      color: #999999;
+    }
+    
+    .input-group {
+      margin-bottom: 20px;
+    }
+    
+    .input-label {
+      display: block;
+      margin-bottom: 8px;
+      font-size: 11px;
+      font-weight: 600;
+      color: #1a1a1a;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    
+    .input {
+      width: 100%;
+      padding: 10px 14px;
+      border: 1px solid #d1d1d1;
+      background: #ffffff;
+      font-size: 13px;
+      color: #1a1a1a;
+      font-family: inherit;
+    }
+    
+    .input:focus {
+      outline: none;
+      border-color: #1a1a1a;
+    }
+    
+    @media (max-width: 768px) {
+      .content {
+        padding: 20px;
+      }
+      
+      .header {
+        padding: 20px;
+      }
+      
+      .section-body {
+        padding: 16px;
+      }
+      
+      .table {
+        font-size: 12px;
+      }
+      
+      .table th,
+      .table td {
+        padding: 10px 8px;
+      }
     }
   </style>
 </head>
 <body>
   <div class="container">
     <div class="header">
-      <h1>🚚 Delybell Order Sync</h1>
+      <h1>Delybell Order Sync</h1>
       <p>Automatically sync your Shopify orders to Delybell delivery management system</p>
     </div>
     
-    <div id="error-container"></div>
-    
-    <div id="app-content">
-      <div class="loading">Loading app status...</div>
+    <div class="content">
+      <div id="error-container"></div>
+      
+      <div id="app-content">
+        <div class="loading">Loading app status...</div>
+      </div>
     </div>
   </div>
   
@@ -337,7 +411,6 @@
           shop = urlParams.get('shop') || urlParams.get('shopOrigin');
           
           // If no shop in URL, App Bridge will get it from Shopify context
-          // We'll initialize App Bridge without shopOrigin if not available
           const appConfig = {
             apiKey: apiKey,
           };
@@ -357,17 +430,6 @@
               }
             } catch (e) {
               console.warn('Could not get shop from App Bridge state:', e);
-            }
-          }
-          
-          // Also try to get shop from window.location.hostname (for embedded apps)
-          if (!shop && window.location.hostname) {
-            // Shopify embedded apps are loaded from admin.shopify.com
-            // The shop might be in the referrer or we need to extract it differently
-            const hostname = window.location.hostname;
-            if (hostname.includes('admin.shopify.com')) {
-              // Try to get shop from document.referrer or other sources
-              // For now, we'll rely on the backend to extract it from headers
             }
           }
           
@@ -394,19 +456,6 @@
         const urlParams = new URLSearchParams(window.location.search);
         shop = urlParams.get('shop') || urlParams.get('shopOrigin');
       }
-      
-      // Try App Bridge utils if available
-      if (!shop && window['app-bridge-utils']) {
-        try {
-          const utils = window['app-bridge-utils'];
-          if (utils.getSessionToken) {
-            // App Bridge utils might have shop info
-            // We'll rely on backend to provide it via window.SHOPIFY_SHOP
-          }
-        } catch (e) {
-          console.warn('Could not get shop from App Bridge utils:', e);
-        }
-      }
     }
     
     // Load app status
@@ -416,34 +465,51 @@
           // Show installation prompt if no shop parameter
           const appContent = document.getElementById('app-content');
           appContent.innerHTML = `
-            <div class="status-card">
-              <h2>Install Delybell Order Sync</h2>
-              <p style="margin-bottom: 24px; color: #6d7175;">To use this app, you need to install it in your Shopify store.</p>
-              
-              <div style="background: #f6f6f7; padding: 20px; border-radius: 8px; margin-bottom: 24px;">
-                <label for="shop-input" style="display: block; margin-bottom: 8px; font-weight: 500;">Enter your Shopify store domain:</label>
-                <input 
-                  type="text" 
-                  id="shop-input" 
-                  placeholder="your-store.myshopify.com" 
-                  style="width: 100%; padding: 12px; border: 2px solid #e1e3e5; border-radius: 6px; font-size: 14px; margin-bottom: 12px;"
-                />
-                <button 
-                  onclick="installFromInput()" 
-                  class="button"
-                  style="width: 100%;"
-                >
-                  Install App
-                </button>
+            <div class="section">
+              <div class="section-header">
+                <div class="section-title">Install Delybell Order Sync</div>
               </div>
-              
-              <div class="info-section">
-                <h2>How It Works</h2>
-                <ul>
-                  <li>Enter your Shopify store domain above</li>
-                  <li>You'll be redirected to Shopify to authorize the app</li>
-                  <li>Once installed, orders will sync automatically</li>
-                  <li>View synced orders in the app dashboard</li>
+              <div class="section-body">
+                <p style="margin-bottom: 24px; color: #666666; font-size: 13px;">To use this app, you need to install it in your Shopify store.</p>
+                
+                <div class="input-group">
+                  <label class="input-label">Shopify Store Domain</label>
+                  <input 
+                    type="text" 
+                    id="shop-input" 
+                    placeholder="your-store.myshopify.com" 
+                    class="input"
+                  />
+                </div>
+                
+                <button onclick="installFromInput()" class="button" style="width: 100%;">Install App</button>
+              </div>
+            </div>
+            
+            <div class="section">
+              <div class="section-header">
+                <div class="section-title">Installation Guide</div>
+              </div>
+              <div class="section-body">
+                <ul class="info-list">
+                  <li>Enter your Shopify store domain above (e.g., your-store.myshopify.com)</li>
+                  <li>You can use your custom domain (e.g., babybow.co) - we'll find your Shopify domain automatically</li>
+                  <li>Click "Install App" to begin the authorization process</li>
+                  <li>You'll be redirected to Shopify to grant permissions</li>
+                  <li>Once installed, orders will sync automatically to Delybell</li>
+                </ul>
+              </div>
+            </div>
+            
+            <div class="section">
+              <div class="section-header">
+                <div class="section-title">Finding Your Shopify Domain</div>
+              </div>
+              <div class="section-body">
+                <ul class="info-list">
+                  <li>Go to your Shopify admin panel</li>
+                  <li>Check the URL: <code style="background: #f5f5f5; padding: 2px 6px; border: 1px solid #e5e5e5; font-family: 'Monaco', 'Menlo', 'Courier New', monospace; font-size: 12px;">admin.shopify.com/store/YOUR-STORE-NAME</code></li>
+                  <li>Your Shopify domain is: <code style="background: #f5f5f5; padding: 2px 6px; border: 1px solid #e5e5e5; font-family: 'Monaco', 'Menlo', 'Courier New', monospace; font-size: 12px;">YOUR-STORE-NAME.myshopify.com</code></li>
                 </ul>
               </div>
             </div>
@@ -460,53 +526,70 @@
         if (authData.authenticated) {
           // App is installed and authenticated
           appContent.innerHTML = `
-            <div class="status-card">
-              <h2>App Status</h2>
-              <div class="status-item">
-                <span class="status-label">Installation Status</span>
-                <span class="status-value">
-                  <span class="status-badge success">✓ Installed</span>
-                </span>
+            <div class="section">
+              <div class="section-header">
+                <div class="section-title">App Status</div>
               </div>
-              <div class="status-item">
-                <span class="status-label">Shop</span>
-                <span class="status-value">${authData.shop}</span>
-              </div>
-              <div class="status-item">
-                <span class="status-label">Session Status</span>
-                <span class="status-value">
-                  <span class="status-badge success">✓ Active</span>
-                </span>
-              </div>
-            </div>
-            
-            <div class="orders-section">
-              <div class="orders-header">
-                <h2>Synced Orders <span class="orders-count" id="orders-count"></span></h2>
-                <button class="refresh-button" id="refresh-orders" onclick="loadSyncedOrders()">Refresh</button>
-              </div>
-              <div id="orders-container">
-                <div class="loading">Loading synced orders...</div>
+              <div class="section-body">
+                <div class="status-grid">
+                  <div class="status-item">
+                    <div class="status-label">Installation Status</div>
+                    <div class="status-value">
+                      <span class="badge badge-success">Installed</span>
+                    </div>
+                  </div>
+                  <div class="status-item">
+                    <div class="status-label">Shop</div>
+                    <div class="status-value">${authData.shop}</div>
+                  </div>
+                  <div class="status-item">
+                    <div class="status-label">Session Status</div>
+                    <div class="status-value">
+                      <span class="badge badge-success">Active</span>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
             
-            <div class="info-section">
-              <h2>How It Works</h2>
-              <ul>
-                <li>Orders are automatically synced to Delybell when created in Shopify</li>
-                <li>Webhooks are registered and active</li>
-                <li>No manual action required - everything is automated</li>
-                <li>Synced orders are shown in the table above</li>
-              </ul>
+            <div class="section">
+              <div class="section-header">
+                <div class="section-title">Synced Orders <span class="count" id="orders-count"></span></div>
+                <button class="button button-secondary" id="refresh-orders" onclick="loadSyncedOrders()">Refresh</button>
+              </div>
+              <div class="section-body">
+                <div id="orders-container">
+                  <div class="loading">Loading synced orders...</div>
+                </div>
+              </div>
             </div>
             
-            <div class="info-section">
-              <h2>Legal & Support</h2>
-              <ul>
-                <li><a href="/privacy-policy" target="_blank">Privacy Policy</a></li>
-                <li><a href="/terms-of-service" target="_blank">Terms of Service</a></li>
-                <li>Support: <a href="mailto:support@delybell.com">support@delybell.com</a></li>
-              </ul>
+            <div class="section">
+              <div class="section-header">
+                <div class="section-title">How It Works</div>
+              </div>
+              <div class="section-body">
+                <ul class="info-list">
+                  <li>Orders are automatically synced to Delybell when created in Shopify</li>
+                  <li>Webhooks are registered and active - no manual action required</li>
+                  <li>Synced orders appear in the table above with Delybell order IDs</li>
+                  <li>Tracking information is automatically updated when available</li>
+                  <li>All order processing is handled automatically in the background</li>
+                </ul>
+              </div>
+            </div>
+            
+            <div class="section">
+              <div class="section-header">
+                <div class="section-title">Legal & Support</div>
+              </div>
+              <div class="section-body">
+                <ul class="info-list">
+                  <li><a href="/privacy-policy.html" target="_blank" class="link">Privacy Policy</a></li>
+                  <li><a href="/terms-of-service.html" target="_blank" class="link">Terms of Service</a></li>
+                  <li>Support: <a href="mailto:support@delybell.com" class="link">support@delybell.com</a></li>
+                </ul>
+              </div>
             </div>
           `;
           
@@ -515,24 +598,47 @@
         } else {
           // App needs to be installed
           appContent.innerHTML = `
-            <div class="status-card">
-              <h2>Installation Required</h2>
-              <div class="status-item">
-                <span class="status-label">Installation Status</span>
-                <span class="status-value">
-                  <span class="status-badge warning">Not Installed</span>
-                </span>
+            <div class="section">
+              <div class="section-header">
+                <div class="section-title">Installation Required</div>
               </div>
-              <div class="status-item">
-                <span class="status-label">Shop</span>
-                <span class="status-value">${shop}</span>
+              <div class="section-body">
+                <div class="status-item">
+                  <div class="status-label">Installation Status</div>
+                  <div class="status-value">
+                    <span class="badge badge-warning">Not Installed</span>
+                  </div>
+                </div>
+                <div class="status-item">
+                  <div class="status-label">Shop</div>
+                  <div class="status-value">${shop}</div>
+                </div>
               </div>
             </div>
             
-            <div class="info-section">
-              <h2>Install the App</h2>
-              <p style="margin-bottom: 16px;">Click the button below to install and authorize the app:</p>
-              <a href="/auth/install?shop=${shop}" class="button">Install App</a>
+            <div class="section">
+              <div class="section-header">
+                <div class="section-title">Install the App</div>
+              </div>
+              <div class="section-body">
+                <p style="margin-bottom: 20px; color: #666666; font-size: 13px;">Click the button below to install and authorize the app:</p>
+                <a href="/auth/install?shop=${shop}" class="button">Install App</a>
+              </div>
+            </div>
+            
+            <div class="section">
+              <div class="section-header">
+                <div class="section-title">Installation Guide</div>
+              </div>
+              <div class="section-body">
+                <ul class="info-list">
+                  <li>Click "Install App" to begin the installation process</li>
+                  <li>You'll be redirected to Shopify to authorize the app</li>
+                  <li>Grant the required permissions (read and write orders)</li>
+                  <li>Once installed, orders will sync automatically</li>
+                  <li>Return to this dashboard to view synced orders</li>
+                </ul>
+              </div>
             </div>
           `;
         }
@@ -540,13 +646,18 @@
         console.error('Error loading app status:', error);
         document.getElementById('error-container').innerHTML = `
           <div class="error-message">
-            <strong>Error:</strong> ${error.message}
+            <strong>Error</strong>
+            ${error.message}
           </div>
         `;
         document.getElementById('app-content').innerHTML = `
-          <div class="status-card">
-            <h2>Error</h2>
-            <p>Unable to load app status. Please refresh the page or contact support.</p>
+          <div class="section">
+            <div class="section-header">
+              <div class="section-title">Error</div>
+            </div>
+            <div class="section-body">
+              <p style="color: #666666; font-size: 13px;">Unable to load app status. Please refresh the page or contact support.</p>
+            </div>
           </div>
         `;
       }
@@ -584,9 +695,9 @@
         if (orders.length === 0) {
           if (ordersContainer) {
             ordersContainer.innerHTML = `
-              <div class="no-orders">
+              <div class="no-data">
                 <p>No synced orders yet.</p>
-                <p style="margin-top: 8px; font-size: 13px;">Orders will appear here once they are synced to Delybell.</p>
+                <p style="margin-top: 8px; font-size: 12px; color: #999999;">Orders will appear here once they are synced to Delybell.</p>
               </div>
             `;
           }
@@ -596,7 +707,13 @@
         // Format date
         function formatDate(dateString) {
           const date = new Date(dateString);
-          return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+          return date.toLocaleDateString('en-US', { 
+            year: 'numeric', 
+            month: 'short', 
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+          });
         }
         
         // Format currency
@@ -609,44 +726,46 @@
         
         if (ordersContainer) {
           ordersContainer.innerHTML = `
-            <table class="orders-table">
-              <thead>
-                <tr>
-                  <th>Order #</th>
-                  <th>Customer</th>
-                  <th>Total</th>
-                  <th>Delybell Order ID</th>
-                  <th>Tracking</th>
-                  <th>Synced Date</th>
-                  <th>Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${orders.map(order => `
+            <div class="table-container">
+              <table class="table">
+                <thead>
                   <tr>
-                    <td>
-                      <span class="order-number">#${order.shopifyOrderNumber}</span>
-                      <div style="font-size: 12px; color: #6d7175; margin-top: 4px;">${order.shopifyOrderName}</div>
-                    </td>
-                    <td>
-                      <div>${order.customerName || 'Guest'}</div>
-                      ${order.customerEmail ? `<div style="font-size: 12px; color: #6d7175; margin-top: 4px;">${order.customerEmail}</div>` : ''}
-                    </td>
-                    <td>${formatCurrency(order.totalPrice, order.currency)}</td>
-                    <td>
-                      ${order.delybellOrderId ? `<span class="delybell-id">${order.delybellOrderId}</span>` : '<span style="color: #6d7175;">-</span>'}
-                    </td>
-                    <td>
-                      ${order.trackingUrl ? `<a href="${order.trackingUrl}" target="_blank" class="tracking-link">Track</a>` : '<span style="color: #6d7175;">-</span>'}
-                    </td>
-                    <td style="font-size: 13px; color: #6d7175;">${formatDate(order.createdAt)}</td>
-                    <td>
-                      <span class="order-status synced">✓ Synced</span>
-                    </td>
+                    <th>Order #</th>
+                    <th>Customer</th>
+                    <th>Total</th>
+                    <th>Delybell Order ID</th>
+                    <th>Tracking</th>
+                    <th>Synced Date</th>
+                    <th>Status</th>
                   </tr>
-                `).join('')}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  ${orders.map(order => `
+                    <tr>
+                      <td>
+                        <div class="order-number">#${order.shopifyOrderNumber}</div>
+                        <div class="order-name">${order.shopifyOrderName}</div>
+                      </td>
+                      <td>
+                        <div>${order.customerName || 'Guest'}</div>
+                        ${order.customerEmail ? `<div style="font-size: 11px; color: #666666; margin-top: 4px;">${order.customerEmail}</div>` : ''}
+                      </td>
+                      <td>${formatCurrency(order.totalPrice, order.currency)}</td>
+                      <td>
+                        ${order.delybellOrderId ? `<span class="delybell-id">${order.delybellOrderId}</span>` : '<span style="color: #999999;">-</span>'}
+                      </td>
+                      <td>
+                        ${order.trackingUrl ? `<a href="${order.trackingUrl}" target="_blank" class="link">Track</a>` : '<span style="color: #999999;">-</span>'}
+                      </td>
+                      <td style="font-size: 12px; color: #666666;">${formatDate(order.createdAt)}</td>
+                      <td>
+                        <span class="order-status">Synced</span>
+                      </td>
+                    </tr>
+                  `).join('')}
+                </tbody>
+              </table>
+            </div>
           `;
         }
       } catch (error) {
@@ -659,7 +778,8 @@
         if (ordersContainer) {
           ordersContainer.innerHTML = `
             <div class="error-message">
-              <strong>Error loading orders:</strong> ${error.message}
+              <strong>Error loading orders</strong>
+              ${error.message}
             </div>
           `;
         }

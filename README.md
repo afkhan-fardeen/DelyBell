@@ -2,23 +2,15 @@
 
 A **production-ready, installable Shopify App** that automatically syncs orders from Shopify stores to Delybell's delivery management system. This is a proper Shopify App (not just webhooks) - it can be installed from the Shopify App Store, has an embedded admin UI, and works like any professional Shopify app.
 
-**👉 See [WHAT_IS_THIS.md](./WHAT_IS_THIS.md) for a detailed explanation of what this project is.**
-
 ## 📚 Documentation
 
 ### Essential Guides
 
-- **[🚀 Getting Started Guide](./GETTING_STARTED.md)** - ⭐ **START HERE** - Step-by-step path for new developers
-- **[🏪 Render + App Store Setup](./RENDER_APP_STORE_SETUP.md)** - ⭐ **MAKE IT INSTALLABLE** - Deploy on Render & publish to Shopify App Store
-- **[📤 App Store Submission](./APP_STORE_SUBMISSION.md)** - ⭐ **SUBMIT TO APP STORE** - Complete submission guide
+- **[🏪 Render + App Store Setup](./RENDER_APP_STORE_SETUP.md)** - ⭐ **MAKE IT INSTALLABLE** - Complete guide to deploy on Render & publish to Shopify App Store
+- **[⚙️ Render Environment Variables](./RENDER_ENV_SETUP.md)** - ⭐ **CONFIGURE ENV** - How to set environment variables in Render dashboard
 - **[✅ Installable App Checklist](./INSTALLABLE_APP_CHECKLIST.md)** - Quick checklist for deployment
 - **[🔗 Deployment URLs](./DEPLOYMENT_URLS.md)** - ⭐ **LIVE APP** - All URLs for your deployed app
-
-### Deployment Guides
-
-- **[🚀 Render Deployment Guide](./RENDER_DEPLOYMENT.md)** - Complete Render deployment guide
-- **[⚡ Render Quick Start](./RENDER_QUICK_START.md)** - Quick deploy in 5 minutes
-- **[Free Tunneling Options](./FREE_TUNNELING_OPTIONS.md)** - Free alternatives to ngrok for local development
+- **[🧪 Testing Guide](./TESTING_GUIDE.md)** - How to test your app
 
 ## 🌐 Live App
 
@@ -62,8 +54,14 @@ This project uses the Delybell External APIs. For complete API documentation, pl
    ```
 
 3. **Set up environment variables:**
+   
+   **For Render (Production):**
+   - Set environment variables in Render Dashboard (see [Render Environment Variables](./RENDER_ENV_SETUP.md))
+   - Set `SHOPIFY_HOST=delybell.onrender.com` in Render dashboard
+   
+   **For Local Development:**
    ```bash
-   cp .env.example .env
+   cp env.example .env
    ```
    
    Edit `.env` and fill in your credentials:
@@ -72,10 +70,10 @@ This project uses the Delybell External APIs. For complete API documentation, pl
    SHOPIFY_API_KEY=your_shopify_api_key
    SHOPIFY_API_SECRET=your_shopify_api_secret
    SHOPIFY_SCOPES=read_orders,write_orders
-   SHOPIFY_HOST=your_app_hostname
+   SHOPIFY_HOST=localhost:3000
 
    # Delybell API Configuration
-   DELYBELL_API_URL=https://api.delybell.com
+   DELYBELL_API_URL=https://new.api.delybell.com
    DELYBELL_ACCESS_KEY=your_delybell_access_key
    DELYBELL_SECRET_KEY=your_delybell_secret_key
 
@@ -85,13 +83,17 @@ This project uses the Delybell External APIs. For complete API documentation, pl
 
 ## 🚀 Quick Start
 
-### Setup Steps:
+### For Production (Render):
+1. **Deploy to Render:** Follow [Render + App Store Setup](./RENDER_APP_STORE_SETUP.md)
+2. **Set Environment Variables:** Configure in Render dashboard (see [Render Environment Variables](./RENDER_ENV_SETUP.md))
+3. **Install App:** Visit `https://delybell.onrender.com/app` and install in your Shopify store
+
+### For Local Development:
 1. Install dependencies: `npm install`
 2. Copy `env.example` to `.env` and configure your credentials
-3. **Set up tunneling** (choose one):
-   - **Cloudflare Tunnel (Recommended):** `brew install cloudflare/cloudflare/cloudflared` then run `npm run tunnel`
+3. **Set up tunneling** (for webhooks):
+   - **Cloudflare Tunnel:** `brew install cloudflare/cloudflare/cloudflared` then run `npm run tunnel`
    - **LocalTunnel:** `npm install -g localtunnel` then run `npm run tunnel:lt`
-   - See [Free Tunneling Options](./FREE_TUNNELING_OPTIONS.md) for more options
 4. Start tunnel in one terminal (copy the HTTPS URL)
 5. Update `.env` with your tunnel URL (without `https://`)
 6. Update Shopify app settings with tunnel URL
@@ -329,27 +331,30 @@ See `env.example` for all required environment variables. Key variables:
    - Check address format matches Delybell requirements
 
 3. **Webhook Not Receiving Orders**
-   - Verify webhook URL is accessible (use ngrok for local development)
+   - Verify webhook URL is accessible (use tunneling service for local development)
    - Check webhook is registered in Shopify app settings
    - Verify webhook HMAC signature validation (if implemented)
+   - For Render: Check Render logs for webhook processing errors
 
 ## Development
 
 ### Local Development with Webhooks
 
-For local development, use a tunneling service like ngrok:
+For local development, use a tunneling service:
 
 ```bash
-# Install ngrok
-npm install -g ngrok
+# Option 1: Cloudflare Tunnel (Recommended)
+brew install cloudflare/cloudflare/cloudflared
+npm run tunnel
+
+# Option 2: LocalTunnel
+npm install -g localtunnel
+npm run tunnel:lt
 
 # Start your server
 npm run dev
 
-# In another terminal, start ngrok
-ngrok http 3000
-
-# Use the ngrok URL for webhook configuration
+# Use the tunnel URL for webhook configuration in Shopify
 ```
 
 ## Security Notes

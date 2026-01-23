@@ -52,7 +52,88 @@ router.get('/install', async (req, res) => {
       stack: error.stack,
       shop: req.query.shop,
     });
-    res.status(500).send(`OAuth install failed: ${error.message}`);
+    
+    // Provide helpful error message for invalid shop domain
+    let errorMessage = `OAuth install failed: ${error.message}`;
+    
+    if (error.message.includes('invalid shop') || error.message.includes('Invalid shop')) {
+      errorMessage = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <title>Invalid Shop Domain</title>
+          <style>
+            body {
+              font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+              max-width: 600px;
+              margin: 50px auto;
+              padding: 20px;
+              background: #f6f6f7;
+            }
+            .container {
+              background: white;
+              padding: 30px;
+              border-radius: 8px;
+              box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            }
+            h1 { color: #d72c0d; margin-bottom: 16px; }
+            p { color: #6d7175; line-height: 1.6; margin-bottom: 12px; }
+            code {
+              background: #f6f6f7;
+              padding: 2px 6px;
+              border-radius: 3px;
+              font-family: monospace;
+            }
+            .steps {
+              background: #f6f6f7;
+              padding: 20px;
+              border-radius: 6px;
+              margin: 20px 0;
+            }
+            .steps ol {
+              margin-left: 20px;
+              color: #202223;
+            }
+            .steps li {
+              margin-bottom: 8px;
+            }
+            a {
+              display: inline-block;
+              margin-top: 20px;
+              padding: 12px 24px;
+              background: #008060;
+              color: white;
+              text-decoration: none;
+              border-radius: 6px;
+            }
+            a:hover { background: #006e52; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <h1>⚠️ Invalid Shop Domain</h1>
+            <p>The shop domain <code>${req.query.shop || 'provided'}</code> is not valid or doesn't exist.</p>
+            
+            <div class="steps">
+              <strong>To find your correct Shopify domain:</strong>
+              <ol>
+                <li>Go to your Shopify admin panel</li>
+                <li>Look at the URL in your browser - it will show: <code>admin.shopify.com/store/YOUR-STORE-NAME</code></li>
+                <li>Your Shopify domain is: <code>YOUR-STORE-NAME.myshopify.com</code></li>
+                <li>Make sure it ends with <code>.myshopify.com</code></li>
+              </ol>
+            </div>
+            
+            <p><strong>Example:</strong> If your admin URL is <code>admin.shopify.com/store/babybow</code>, then your Shopify domain is <code>babybow.myshopify.com</code></p>
+            
+            <a href="/">← Go back and try again</a>
+          </div>
+        </body>
+        </html>
+      `;
+    }
+    
+    res.status(500).send(errorMessage);
   }
 });
 
@@ -116,11 +197,11 @@ router.get('/callback', async (req, res) => {
       throw new Error('Failed to create session');
     }
 
-    // Redirect to admin app (embedded in Shopify admin)
-    // If embedded app, redirect to /app, otherwise to success page
+    // Redirect to main app (embedded in Shopify admin)
+    // If embedded app, redirect to /, otherwise to success page
     const shopDomain = session.shop || shopParam;
     if (shopDomain) {
-      res.redirect(`/app?shop=${shopDomain}`);
+      res.redirect(`/?shop=${shopDomain}`);
     } else {
       res.redirect('/auth/success');
     }

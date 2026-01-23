@@ -4,12 +4,20 @@ const shopifyClient = require('../services/shopifyClient');
 const config = require('../config');
 
 /**
- * Admin App Route
- * Serves the embedded admin interface
- * GET /app?shop=your-shop.myshopify.com
+ * Main App Route - Installation page or Dashboard
+ * Serves the installation form or embedded admin interface
+ * GET /?shop=your-shop.myshopify.com
  */
-router.get('/app', async (req, res) => {
+router.get('/', async (req, res) => {
   try {
+    // Debug: Log all headers and query params
+    console.log(`🔍 ${req.path} route - Debug info:`);
+    console.log('  Query params:', req.query);
+    console.log('  Referer:', req.headers.referer);
+    console.log('  x-shopify-shop-domain:', req.headers['x-shopify-shop-domain']);
+    console.log('  x-shopify-shop:', req.headers['x-shopify-shop']);
+    console.log('  shop header:', req.headers['shop']);
+    
     // Try to get shop from query parameter first
     let { shop } = req.query;
     
@@ -20,14 +28,52 @@ router.get('/app', async (req, res) => {
              req.headers['x-shopify-shop'] ||
              req.headers['shop'];
       
+      console.log(`  Shop from headers: ${shop || 'not found'}`);
+      
       // Also check referer header for shop domain pattern
+      // Handles: admin.shopify.com/store/782cba-5a or admin.shopify.com/store/782cba-5a/
       if (!shop && req.headers.referer) {
-        const refererMatch = req.headers.referer.match(/admin\.shopify\.com\/store\/([^\/]+)/);
+        const refererMatch = req.headers.referer.match(/admin\.shopify\.com\/store\/([^\/\?]+)/);
         if (refererMatch) {
-          shop = refererMatch[1] + '.myshopify.com';
+          const storeName = refererMatch[1];
+          shop = storeName + '.myshopify.com';
+          console.log(`📍 Extracted shop from referer: ${shop} (from store name: ${storeName})`);
+        }
+      }
+      
+      // Also check if shop is in the URL path (for embedded apps)
+      // Handles: /?shop=782cba-5a.myshopify.com or just the store name
+      if (!shop && req.url) {
+        const urlMatch = req.url.match(/[?&]shop=([^&]+)/);
+        if (urlMatch) {
+          shop = decodeURIComponent(urlMatch[1]);
+          console.log(`📍 Extracted shop from URL: ${shop}`);
         }
       }
     }
+    
+    console.log(`  Final shop value before normalization: ${shop || 'not found'}`);
+    
+    // Normalize shop domain if we have it
+    if (shop) {
+      shop = shop.trim().toLowerCase();
+      // Remove protocol if present
+      shop = shop.replace(/^https?:\/\//, '');
+      // Remove trailing slash and path
+      shop = shop.split('/')[0];
+      // Remove query parameters if present
+      shop = shop.split('?')[0];
+      // If it's just the shop name without .myshopify.com, add it
+      // This handles cases like "782cba-5a" -> "782cba-5a.myshopify.com"
+      if (shop && !shop.includes('.')) {
+        shop = shop + '.myshopify.com';
+        console.log(`  Normalized shop (added .myshopify.com): ${shop}`);
+      } else if (shop && shop.includes('.myshopify.com')) {
+        console.log(`  Shop already has .myshopify.com: ${shop}`);
+      }
+    }
+    
+    console.log(`  Final normalized shop: ${shop || 'not found'}`);
     
     // If no shop parameter, show installation prompt
     if (!shop) {
@@ -44,126 +90,247 @@ router.get('/app', async (req, res) => {
       box-sizing: border-box;
     }
     body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      background: #ffffff;
       min-height: 100vh;
       display: flex;
       align-items: center;
       justify-content: center;
-      padding: 20px;
+      padding: 40px 20px;
+      color: #1a1a1a;
     }
     .container {
-      background: white;
-      border-radius: 12px;
-      padding: 40px;
-      max-width: 500px;
+      background: #ffffff;
+      border: 1px solid #e5e5e5;
+      padding: 0;
+      max-width: 600px;
       width: 100%;
-      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-      text-align: center;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.08);
     }
-    h1 {
-      font-size: 32px;
-      color: #202223;
-      margin-bottom: 12px;
+    .header {
+      border-bottom: 1px solid #e5e5e5;
+      padding: 32px 40px;
+      background: #fafafa;
     }
-    .subtitle {
-      color: #6d7175;
-      font-size: 16px;
+    .header h1 {
+      font-size: 24px;
+      font-weight: 600;
+      color: #1a1a1a;
+      margin-bottom: 8px;
+      letter-spacing: -0.02em;
+    }
+    .header .subtitle {
+      color: #666666;
+      font-size: 14px;
+      font-weight: 400;
+      line-height: 1.5;
+    }
+    .content {
+      padding: 40px;
+    }
+    .form-section {
       margin-bottom: 32px;
-      line-height: 1.6;
     }
-    .install-form {
-      margin-top: 32px;
-    }
-    .input-group {
-      margin-bottom: 20px;
-      text-align: left;
+    .form-group {
+      margin-bottom: 24px;
     }
     label {
       display: block;
       margin-bottom: 8px;
-      color: #202223;
+      color: #1a1a1a;
       font-weight: 500;
-      font-size: 14px;
+      font-size: 13px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
     }
     input {
       width: 100%;
       padding: 12px 16px;
-      border: 2px solid #e1e3e5;
-      border-radius: 6px;
-      font-size: 16px;
-      transition: border-color 0.2s;
+      border: 1px solid #d1d1d1;
+      background: #ffffff;
+      font-size: 15px;
+      color: #1a1a1a;
+      font-family: inherit;
+      transition: border-color 0.15s ease;
     }
     input:focus {
       outline: none;
-      border-color: #008060;
+      border-color: #1a1a1a;
+    }
+    input::placeholder {
+      color: #999999;
+    }
+    .input-hint {
+      display: block;
+      margin-top: 6px;
+      color: #666666;
+      font-size: 12px;
+      font-weight: 400;
+      line-height: 1.4;
     }
     .button {
       width: 100%;
       padding: 14px 24px;
-      background: #008060;
-      color: white;
-      border: none;
-      border-radius: 6px;
-      font-size: 16px;
-      font-weight: 600;
+      background: #1a1a1a;
+      color: #ffffff;
+      border: 1px solid #1a1a1a;
+      font-size: 14px;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
       cursor: pointer;
-      transition: background 0.2s;
+      transition: background-color 0.15s ease, color 0.15s ease;
     }
     .button:hover {
-      background: #006e52;
+      background: #333333;
+      border-color: #333333;
     }
-    .info {
-      margin-top: 24px;
-      padding: 16px;
-      background: #f6f6f7;
-      border-radius: 6px;
-      font-size: 14px;
-      color: #6d7175;
+    .button:active {
+      background: #000000;
+      border-color: #000000;
+    }
+    .button:disabled {
+      background: #cccccc;
+      border-color: #cccccc;
+      cursor: not-allowed;
+    }
+    .info-section {
+      border-top: 1px solid #e5e5e5;
+      padding-top: 24px;
+      margin-top: 32px;
+    }
+    .info-title {
+      font-size: 12px;
+      font-weight: 600;
+      color: #1a1a1a;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 12px;
+    }
+    .info-list {
+      list-style: none;
+      padding: 0;
+    }
+    .info-list li {
+      color: #666666;
+      font-size: 13px;
       line-height: 1.6;
+      margin-bottom: 8px;
+      padding-left: 16px;
+      position: relative;
     }
-    .info strong {
-      color: #202223;
+    .info-list li:before {
+      content: "—";
+      position: absolute;
+      left: 0;
+      color: #999999;
+    }
+    .info-code {
+      display: inline-block;
+      padding: 2px 6px;
+      background: #f5f5f5;
+      border: 1px solid #e5e5e5;
+      font-family: 'Monaco', 'Menlo', 'Courier New', monospace;
+      font-size: 12px;
+      color: #1a1a1a;
+    }
+    @media (max-width: 640px) {
+      .container {
+        border-left: none;
+        border-right: none;
+      }
+      .header {
+        padding: 24px 20px;
+      }
+      .content {
+        padding: 32px 20px;
+      }
     }
   </style>
 </head>
 <body>
   <div class="container">
-    <h1>🚚 Delybell Order Sync</h1>
-    <p class="subtitle">Automatically sync your Shopify orders to Delybell delivery management system</p>
-    
-    <div class="install-form">
-      <form onsubmit="installApp(event)">
-        <div class="input-group">
-          <label for="shop">Enter your Shopify store domain</label>
-          <input 
-            type="text" 
-            id="shop" 
-            name="shop" 
-            placeholder="babybow.co or babybow.myshopify.com" 
-            required
-          />
-          <small style="display: block; margin-top: 4px; color: #6d7175; font-size: 12px;">
-            You can enter either your custom domain (e.g., babybow.co) or your Shopify domain (e.g., babybow.myshopify.com)
-          </small>
-        </div>
-        <button type="submit" class="button">Install App</button>
-      </form>
+    <div class="header">
+      <h1>Delybell Order Sync</h1>
+      <p class="subtitle">Connect your Shopify store to sync orders automatically</p>
     </div>
     
-    <div class="info">
-      <strong>How to install:</strong><br>
-      Enter your Shopify store domain. You can use:<br>
-      • Your custom domain: <strong>babybow.co</strong> (we'll convert it automatically)<br>
-      • Or your Shopify domain: <strong>babybow.myshopify.com</strong><br><br>
-      Then click "Install App" to authorize the app in your Shopify store.
+    <div class="content">
+      <form onsubmit="installApp(event)" id="installForm">
+        <div class="form-section">
+          <div class="form-group">
+            <label for="shop">Shopify Store Domain</label>
+            <input 
+              type="text" 
+              id="shop" 
+              name="shop" 
+              placeholder="your-store.myshopify.com"
+              required
+              autocomplete="off"
+              autofocus
+            />
+            <span class="input-hint">Enter your custom domain (e.g., babybow.co) or Shopify domain (e.g., 782cba-5a.myshopify.com)</span>
+          </div>
+        </div>
+        
+        <button type="submit" class="button" id="submitButton">Install App</button>
+        
+        <div class="info-section">
+          <div class="info-title">Finding Your Shopify Domain</div>
+          <ul class="info-list">
+            <li>Go to your Shopify admin panel</li>
+            <li>Check the URL: <span class="info-code">admin.shopify.com/store/YOUR-STORE-NAME</span></li>
+            <li>Your Shopify domain is: <span class="info-code">YOUR-STORE-NAME.myshopify.com</span></li>
+          </ul>
+        </div>
+      </form>
     </div>
   </div>
   
-      <script>
-    function installApp(event) {
+  <script>
+    async function resolveShopDomain(customDomain) {
+      // Try to resolve custom domain to myshopify.com domain
+      // We'll try common patterns and validate them
+      
+      const domainParts = customDomain.split('.');
+      if (domainParts.length < 2) {
+        return null;
+      }
+      
+      // Extract store name (first part before TLD)
+      const storeName = domainParts[0];
+      
+      // Try the most common pattern: babybow.co -> babybow.myshopify.com
+      const possibleShop = storeName + '.myshopify.com';
+      
+      // Try to validate by checking if shop exists (via our API)
+      try {
+        const response = await fetch(\`/admin/api/resolve-shop?domain=\${encodeURIComponent(customDomain)}&suggested=\${encodeURIComponent(possibleShop)}\`);
+        const data = await response.json();
+        
+        if (data.success && data.shop) {
+          return data.shop;
+        }
+      } catch (error) {
+        console.error('Error resolving shop domain:', error);
+      }
+      
+      // Return suggested domain if API doesn't work
+      return possibleShop;
+    }
+    
+    async function installApp(event) {
       event.preventDefault();
-      let shop = document.getElementById('shop').value.trim();
+      const form = document.getElementById('installForm');
+      const input = document.getElementById('shop');
+      const button = document.getElementById('submitButton');
+      
+      let shop = input.value.trim();
+      
+      if (!shop) {
+        input.focus();
+        return;
+      }
       
       // Normalize shop domain
       shop = shop.toLowerCase();
@@ -174,32 +341,67 @@ router.get('/app', async (req, res) => {
       // Remove trailing slash and path
       shop = shop.split('/')[0];
       
-      // If it's a custom domain (not .myshopify.com), try to convert it
-      // Note: This is a guess - user should know their actual myshopify.com domain
+      // If it's a custom domain (not .myshopify.com), try to resolve it
       if (!shop.includes('.myshopify.com')) {
-        // Try common patterns: babybow.co -> babybow.myshopify.com
-        // Remove .co, .com, .net, etc. and add .myshopify.com
-        const domainParts = shop.split('.');
-        if (domainParts.length >= 2) {
-          const storeName = domainParts[0]; // e.g., "babybow"
-          shop = storeName + '.myshopify.com';
+        // Show loading state
+        const originalText = button.textContent;
+        button.textContent = 'RESOLVING DOMAIN...';
+        button.disabled = true;
+        input.disabled = true;
+        
+        try {
+          // Try to resolve custom domain
+          const resolvedShop = await resolveShopDomain(shop);
           
-          // Confirm with user
-          const confirmed = confirm(\`We'll use "\${shop}" for installation.\\n\\nIf this is incorrect, please enter your actual Shopify store domain (e.g., your-store.myshopify.com) instead.\\n\\nClick OK to continue or Cancel to enter the correct domain.\`);
-          if (!confirmed) {
+          if (resolvedShop) {
+            // Show confirmation dialog with helpful info
+            const message = \`We detected a custom domain: \${shop}\\n\\nWe'll use: \${resolvedShop}\\n\\nIf this is incorrect, click Cancel and enter your Shopify domain manually.\`;
+            
+            const confirmed = confirm(message);
+            if (!confirmed) {
+              button.textContent = originalText;
+              button.disabled = false;
+              input.disabled = false;
+              input.focus();
+              return;
+            }
+            
+            shop = resolvedShop;
+          } else {
+            // Could not resolve, show instructions
+            button.textContent = originalText;
+            button.disabled = false;
+            input.disabled = false;
+            alert(\`Unable to resolve "\${shop}". Please enter your Shopify domain (e.g., your-store.myshopify.com) directly.\`);
+            input.focus();
             return;
           }
-        } else {
-          alert('Please enter your Shopify store domain:\\n\\n• Custom domain: babybow.co → babybow.myshopify.com\\n• Or enter directly: your-store.myshopify.com');
+        } catch (error) {
+          console.error('Error resolving domain:', error);
+          button.textContent = originalText;
+          button.disabled = false;
+          input.disabled = false;
+          alert('Error resolving domain. Please enter your Shopify domain directly.');
+          input.focus();
           return;
+        } finally {
+          button.textContent = originalText;
+          button.disabled = false;
+          input.disabled = false;
         }
       }
       
-      // Ensure it ends with .myshopify.com
+      // Validate final shop domain
       if (!shop.endsWith('.myshopify.com')) {
         alert('Shop domain must end with .myshopify.com');
+        input.focus();
         return;
       }
+      
+      // Show loading state before redirect
+      button.textContent = 'INSTALLING...';
+      button.disabled = true;
+      input.disabled = true;
       
       // Redirect to install URL with normalized shop
       window.location.href = \`/auth/install?shop=\${encodeURIComponent(shop)}\`;
@@ -210,9 +412,14 @@ router.get('/app', async (req, res) => {
       return res.send(installHtml);
     }
     
-    // Validate shop domain format
-    if (!shop.includes('.myshopify.com')) {
-      return res.status(400).send('Invalid shop domain format');
+    // Validate shop domain format (after normalization)
+    if (!shop || !shop.includes('.myshopify.com')) {
+      return res.status(400).send(`Invalid shop domain format. Received: "${shop}". Expected format: your-shop.myshopify.com`);
+    }
+    
+    // Ensure it ends with .myshopify.com (no extra characters)
+    if (!shop.endsWith('.myshopify.com')) {
+      return res.status(400).send(`Invalid shop domain format. Must end with .myshopify.com. Received: "${shop}"`);
     }
     
     // Check if shop is authenticated
@@ -340,6 +547,57 @@ router.get('/admin/api/status', async (req, res) => {
     });
   } catch (error) {
     console.error('Admin status error:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message,
+    });
+  }
+});
+
+/**
+ * Admin API - Resolve custom domain to myshopify.com domain
+ * GET /admin/api/resolve-shop?domain=babybow.co&suggested=babybow.myshopify.com
+ */
+router.get('/admin/api/resolve-shop', async (req, res) => {
+  try {
+    const { domain, suggested } = req.query;
+    
+    if (!domain) {
+      return res.status(400).json({
+        success: false,
+        error: 'Domain parameter is required',
+      });
+    }
+    
+    // Normalize domain
+    let normalizedDomain = domain.trim().toLowerCase();
+    normalizedDomain = normalizedDomain.replace(/^https?:\/\//, '').split('/')[0];
+    
+    // Extract store name from custom domain
+    const domainParts = normalizedDomain.split('.');
+    if (domainParts.length < 2) {
+      return res.json({
+        success: false,
+        error: 'Invalid domain format',
+        suggested: suggested || null,
+      });
+    }
+    
+    const storeName = domainParts[0];
+    const suggestedShop = suggested || `${storeName}.myshopify.com`;
+    
+    // Try to validate by attempting to fetch shop info
+    // Note: This requires authentication, so we can't fully validate
+    // But we can return the suggested domain and let OAuth handle validation
+    
+    res.json({
+      success: true,
+      domain: normalizedDomain,
+      shop: suggestedShop,
+      message: 'Domain resolved. OAuth will validate if this is correct.',
+    });
+  } catch (error) {
+    console.error('Error resolving shop domain:', error);
     res.status(500).json({
       success: false,
       error: error.message,
