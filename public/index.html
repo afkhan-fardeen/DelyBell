@@ -589,11 +589,21 @@
         const authData = await authResponse.json();
         console.log('[Delybell] Auth check response:', authData);
         
+        if (loadingDetails) {
+          loadingDetails.textContent = authData.authenticated 
+            ? `App is installed and ready` 
+            : `App needs to be installed`;
+        }
+        
         const appContent = document.getElementById('app-content');
         
         if (authData.authenticated) {
           // App is installed and authenticated
           console.log('[Delybell] App is authenticated, showing dashboard');
+          
+          // Clear loading state
+          if (loadingDetails) loadingDetails.textContent = '';
+          
           appContent.innerHTML = `
             <div class="section">
               <div class="section-header">
@@ -668,6 +678,10 @@
         } else {
           // App needs to be installed
           console.log('[Delybell] App not authenticated, showing installation prompt');
+          
+          // Clear loading state
+          if (loadingDetails) loadingDetails.textContent = '';
+          
           appContent.innerHTML = `
             <div class="section">
               <div class="section-header">
@@ -721,6 +735,10 @@
           shop: shop,
           url: window.location.href,
         });
+        
+        if (loadingDetails) {
+          loadingDetails.textContent = `Error: ${error.message}`;
+        }
         
         const errorContainer = document.getElementById('error-container');
         const appContent = document.getElementById('app-content');

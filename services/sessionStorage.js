@@ -30,9 +30,11 @@ class SessionStorage {
   async loadSession(id) {
     const session = this.sessions.get(id);
     if (session) {
-      console.log(`Loaded session for: ${id}`);
+      console.log(`[SessionStorage] Loaded session for: ${id}`);
       return session;
     }
+    console.log(`[SessionStorage] No session found for: ${id}`);
+    console.log(`[SessionStorage] Available sessions: ${Array.from(this.sessions.keys()).join(', ') || 'none'}`);
     return null;
   }
 

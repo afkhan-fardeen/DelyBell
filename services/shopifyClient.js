@@ -52,9 +52,16 @@ class ShopifyClient {
       // For offline sessions, use getOfflineId (not getJwtSessionId)
       // This matches the session ID format used when storing sessions: "offline_shop.myshopify.com"
       const sessionId = this.shopify.session.getOfflineId(shop);
-      return await sessionStorage.loadSession(sessionId);
+      console.log(`[ShopifyClient] Looking up session with ID: ${sessionId} for shop: ${shop}`);
+      const session = await sessionStorage.loadSession(sessionId);
+      if (session) {
+        console.log(`[ShopifyClient] Session found for ${shop}, has accessToken: ${!!session.accessToken}`);
+      } else {
+        console.log(`[ShopifyClient] No session found for ${shop}`);
+      }
+      return session;
     } catch (error) {
-      console.error('Error getting session:', error);
+      console.error('[ShopifyClient] Error getting session:', error);
       return null;
     }
   }

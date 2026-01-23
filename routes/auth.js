@@ -35,7 +35,7 @@ router.get('/install', async (req, res) => {
       return res.status(400).send('Invalid shop domain. Must end with .myshopify.com');
     }
 
-    console.log(`🔐 Starting OAuth for shop: ${shop}`);
+    console.log(`[Auth] Starting OAuth for shop: ${shop}`);
 
     // Use Shopify library's OAuth flow
     await shopifyClient.shopify.auth.begin({
@@ -160,7 +160,7 @@ router.get('/callback', async (req, res) => {
     const session = callbackResponse.session;
     if (session && session.id) {
       await sessionStorage.storeSession(session.id, session);
-      console.log('✅ Installed for shop:', session.shop);
+      console.log('[Auth] Installed for shop:', session.shop);
       
       // Auto-register webhooks after successful installation
       try {
@@ -188,10 +188,10 @@ router.get('/callback', async (req, res) => {
         ];
         
         const registered = await shopifyClient.registerWebhooks(session, webhooks);
-        console.log(`✅ Auto-registered ${registered.length} webhooks for shop: ${session.shop}`);
+        console.log(`[Auth] Auto-registered ${registered.length} webhooks for shop: ${session.shop}`);
       } catch (webhookError) {
         // Log error but don't fail installation - webhooks can be registered manually later
-        console.error('⚠️ Failed to auto-register webhooks (non-critical):', webhookError.message);
+        console.error('[Auth] Failed to auto-register webhooks (non-critical):', webhookError.message);
       }
     } else {
       throw new Error('Failed to create session');
@@ -224,10 +224,14 @@ router.get('/success', (req, res) => {
  * GET /auth/check?shop=your-shop.myshopify.com
  */
 router.get('/check', async (req, res) => {
+  const startTime = Date.now();
+  let { shop } = req.query;
+
   try {
-    let { shop } = req.query;
+    console.log(`[Auth] /auth/check called for shop: ${shop || 'not provided'}`);
 
     if (!shop) {
+      console.warn('[Auth] Missing shop parameter');
       return res.status(400).json({
         success: false,
         error: 'Shop parameter is required',
@@ -237,22 +241,26 @@ router.get('/check', async (req, res) => {
     // Normalize shop parameter
     shop = shop.trim().toLowerCase();
     if (!shop.includes('.myshopify.com')) {
+      console.warn(`[Auth] Invalid shop format: ${shop}`);
       return res.status(400).json({
         success: false,
         error: 'Invalid shop domain format',
       });
     }
     shop = shop.replace(/^https?:\/\//, '').split('/')[0];
+    console.log(`[Auth] Normalized shop: ${shop}`);
 
     // Try to get session using shopifyClient method (which handles session ID generation)
     try {
+      console.log(`[Auth] Attempting to get session for: ${shop}`);
+      const sessionStartTime = Date.now();
       const session = await shopifyClient.getSession(shop);
-      
-      // Debug: Check all stored sessions
-      const allSessions = sessionStorage.getAllSessionIds();
-      console.log('All stored session IDs:', allSessions);
+      const sessionDuration = Date.now() - sessionStartTime;
+      console.log(`[Auth] getSession completed in ${sessionDuration}ms`);
 
       if (session && session.accessToken) {
+        const totalDuration = Date.now() - startTime;
+        console.log(`[Auth] Session found for ${shop}, authenticated: true (total: ${totalDuration}ms)`);
         res.json({
           success: true,
           authenticated: true,
@@ -261,29 +269,33 @@ router.get('/check', async (req, res) => {
           sessionId: session.id,
         });
       } else {
+        const totalDuration = Date.now() - startTime;
+        console.log(`[Auth] No session found for ${shop}, authenticated: false (total: ${totalDuration}ms)`);
         res.json({
           success: true,
           authenticated: false,
           shop: shop,
           installUrl: `/auth/install?shop=${shop}`,
-          allSessions, // Debug info
         });
       }
     } catch (sessionError) {
-      console.error('Session error:', sessionError);
-      // If getSession fails, check if we have any sessions at all
-      const allSessions = sessionStorage.getAllSessionIds();
+      const totalDuration = Date.now() - startTime;
+      console.error(`[Auth] Session error for ${shop} (${totalDuration}ms):`, sessionError.message);
+      console.error('[Auth] Session error stack:', sessionError.stack);
+      
+      // Return not authenticated instead of error
       res.json({
         success: true,
         authenticated: false,
         shop: shop,
         installUrl: `/auth/install?shop=${shop}`,
         error: sessionError.message,
-        allSessions, // Debug info
       });
     }
   } catch (error) {
-    console.error('Auth check error:', error);
+    const totalDuration = Date.now() - startTime;
+    console.error(`[Auth] Auth check error (${totalDuration}ms):`, error.message);
+    console.error('[Auth] Error stack:', error.stack);
     res.status(500).json({
       success: false,
       error: error.message,
