@@ -11,12 +11,12 @@ const config = require('../config');
 router.get('/', async (req, res) => {
   try {
     // Debug: Log all headers and query params
-    console.log(`🔍 ${req.path} route - Debug info:`);
-    console.log('  Query params:', req.query);
-    console.log('  Referer:', req.headers.referer);
-    console.log('  x-shopify-shop-domain:', req.headers['x-shopify-shop-domain']);
-    console.log('  x-shopify-shop:', req.headers['x-shopify-shop']);
-    console.log('  shop header:', req.headers['shop']);
+    console.log(`[Admin] ${req.path} route - Debug info:`);
+    console.log('[Admin] Query params:', req.query);
+    console.log('[Admin] Referer:', req.headers.referer);
+    console.log('[Admin] x-shopify-shop-domain:', req.headers['x-shopify-shop-domain']);
+    console.log('[Admin] x-shopify-shop:', req.headers['x-shopify-shop']);
+    console.log('[Admin] shop header:', req.headers['shop']);
     
     // Try to get shop from query parameter first
     let { shop } = req.query;
@@ -37,7 +37,7 @@ router.get('/', async (req, res) => {
         if (refererMatch) {
           const storeName = refererMatch[1];
           shop = storeName + '.myshopify.com';
-          console.log(`📍 Extracted shop from referer: ${shop} (from store name: ${storeName})`);
+          console.log(`[Admin] Extracted shop from referer: ${shop} (from store name: ${storeName})`);
         }
       }
       
@@ -47,12 +47,12 @@ router.get('/', async (req, res) => {
         const urlMatch = req.url.match(/[?&]shop=([^&]+)/);
         if (urlMatch) {
           shop = decodeURIComponent(urlMatch[1]);
-          console.log(`📍 Extracted shop from URL: ${shop}`);
+          console.log(`[Admin] Extracted shop from URL: ${shop}`);
         }
       }
     }
     
-    console.log(`  Final shop value before normalization: ${shop || 'not found'}`);
+    console.log(`[Admin] Final shop value before normalization: ${shop || 'not found'}`);
     
     // Normalize shop domain if we have it
     if (shop) {
@@ -67,13 +67,13 @@ router.get('/', async (req, res) => {
       // This handles cases like "782cba-5a" -> "782cba-5a.myshopify.com"
       if (shop && !shop.includes('.')) {
         shop = shop + '.myshopify.com';
-        console.log(`  Normalized shop (added .myshopify.com): ${shop}`);
+        console.log(`[Admin] Normalized shop (added .myshopify.com): ${shop}`);
       } else if (shop && shop.includes('.myshopify.com')) {
-        console.log(`  Shop already has .myshopify.com: ${shop}`);
+        console.log(`[Admin] Shop already has .myshopify.com: ${shop}`);
       }
     }
     
-    console.log(`  Final normalized shop: ${shop || 'not found'}`);
+    console.log(`[Admin] Final normalized shop: ${shop || 'not found'}`);
     
     // If no shop parameter, show installation prompt
     if (!shop) {
@@ -477,8 +477,11 @@ router.get('/', async (req, res) => {
       // Add shop to window object so frontend can access it
       html = html.replace(
         /<script>/,
-        `<script>window.SHOPIFY_SHOP = '${shop}';`
+        `<script>window.SHOPIFY_SHOP = '${shop}'; console.log('[Admin] Injected shop into HTML:', '${shop}');`
       );
+      console.log(`[Admin] Injected shop ${shop} into HTML`);
+    } else {
+      console.warn('[Admin] No shop detected, HTML will not have shop injected');
     }
     
     res.send(html);

@@ -385,7 +385,10 @@
       <div id="error-container"></div>
       
       <div id="app-content">
-        <div class="loading">Loading app status...</div>
+        <div class="loading">
+          <div style="margin-bottom: 8px;">Loading app status...</div>
+          <div style="font-size: 11px; color: #999999; margin-top: 8px;" id="loading-details">Initializing...</div>
+        </div>
       </div>
     </div>
   </div>
@@ -448,17 +451,17 @@
     
     // Fallback: Get shop from various sources
     if (!shop) {
-      console.log('🔍 No shop from App Bridge, trying fallbacks...');
+      console.log('[Delybell] No shop from App Bridge, trying fallbacks...');
       
       // Try window.SHOPIFY_SHOP (injected by backend)
       shop = window.SHOPIFY_SHOP;
-      console.log('🔍 Shop from window.SHOPIFY_SHOP:', shop);
+      console.log('[Delybell] Shop from window.SHOPIFY_SHOP:', shop || 'not found');
       
       // Try URL query parameter
       if (!shop) {
         const urlParams = new URLSearchParams(window.location.search);
         shop = urlParams.get('shop') || urlParams.get('shopOrigin');
-        console.log('🔍 Shop from URL params:', shop);
+        console.log('[Delybell] Shop from URL params:', shop || 'not found');
       }
       
       // Try to extract from current URL
@@ -466,20 +469,28 @@
         const urlMatch = window.location.href.match(/[?&]shop=([^&]+)/);
         if (urlMatch) {
           shop = decodeURIComponent(urlMatch[1]);
-          console.log('🔍 Shop from URL match:', shop);
+          console.log('[Delybell] Shop from URL match:', shop);
         }
       }
     }
     
-    console.log('🔍 Final shop value:', shop || 'NOT DETECTED');
+    console.log('[Delybell] Final shop value:', shop || 'NOT DETECTED');
     
     // Load app status
     async function loadAppStatus() {
+      const loadingDetails = document.getElementById('loading-details');
+      
       try {
-        console.log('🔍 loadAppStatus called, shop:', shop);
+        console.log('[Delybell] loadAppStatus called, shop:', shop || 'not detected');
+        
+        if (loadingDetails) {
+          loadingDetails.textContent = shop ? `Checking status for ${shop}...` : 'Detecting shop domain...';
+        }
         
         if (!shop) {
-          console.log('⚠️ No shop detected, showing installation form');
+          console.log('[Delybell] No shop detected, showing installation form');
+          if (loadingDetails) loadingDetails.textContent = 'No shop detected';
+          
           // Show installation prompt if no shop parameter
           const appContent = document.getElementById('app-content');
           appContent.innerHTML = `
@@ -536,39 +547,53 @@
         }
         
         // Check authentication status
-        console.log(`🔍 Checking auth status for shop: ${shop}`);
+        console.log(`[Delybell] Checking auth status for shop: ${shop}`);
+        console.log(`[Delybell] Making request to: /auth/check?shop=${encodeURIComponent(shop)}`);
+        
+        if (loadingDetails) {
+          loadingDetails.textContent = `Checking authentication for ${shop}...`;
+        }
         
         // Add timeout to prevent hanging
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+        const timeoutId = setTimeout(() => {
+          console.warn('[Delybell] Request timeout after 10 seconds');
+          controller.abort();
+        }, 10000); // 10 second timeout
         
         let authResponse;
         try {
+          const startTime = Date.now();
           authResponse = await fetch(`/auth/check?shop=${encodeURIComponent(shop)}`, {
             signal: controller.signal
           });
+          const duration = Date.now() - startTime;
+          console.log(`[Delybell] Auth check response received in ${duration}ms, status: ${authResponse.status}`);
           clearTimeout(timeoutId);
         } catch (fetchError) {
           clearTimeout(timeoutId);
           if (fetchError.name === 'AbortError') {
+            console.error('[Delybell] Request timed out');
             throw new Error('Request timed out. Please check your connection and try again.');
           }
+          console.error('[Delybell] Fetch error:', fetchError);
           throw fetchError;
         }
         
         if (!authResponse.ok) {
           const errorText = await authResponse.text();
-          console.error('❌ Auth check failed:', authResponse.status, errorText);
+          console.error('[Delybell] Auth check failed:', authResponse.status, errorText);
           throw new Error(`Auth check failed: ${authResponse.status} ${authResponse.statusText}. ${errorText}`);
         }
         
         const authData = await authResponse.json();
-        console.log('✅ Auth check response:', authData);
+        console.log('[Delybell] Auth check response:', authData);
         
         const appContent = document.getElementById('app-content');
         
         if (authData.authenticated) {
           // App is installed and authenticated
+          console.log('[Delybell] App is authenticated, showing dashboard');
           appContent.innerHTML = `
             <div class="section">
               <div class="section-header">
@@ -638,9 +663,11 @@
           `;
           
           // Load synced orders
+          console.log('[Delybell] Loading synced orders...');
           loadSyncedOrders();
         } else {
           // App needs to be installed
+          console.log('[Delybell] App not authenticated, showing installation prompt');
           appContent.innerHTML = `
             <div class="section">
               <div class="section-header">
@@ -687,11 +714,12 @@
           `;
         }
       } catch (error) {
-        console.error('❌ Error loading app status:', error);
-        console.error('Error details:', {
+        console.error('[Delybell] Error loading app status:', error);
+        console.error('[Delybell] Error details:', {
           message: error.message,
           stack: error.stack,
           shop: shop,
+          url: window.location.href,
         });
         
         const errorContainer = document.getElementById('error-container');
@@ -752,7 +780,7 @@
         if (!shop.includes('.myshopify.com')) {
           shop = shop + '.myshopify.com';
         }
-        console.log('✅ Shop set manually:', shop);
+        console.log('[Delybell] Shop set manually:', shop);
         loadAppStatus();
       }
     }
@@ -761,9 +789,11 @@
     async function loadSyncedOrders() {
       try {
         if (!shop) {
+          console.warn('[Delybell] Cannot load orders: shop not detected');
           return;
         }
         
+        console.log(`[Delybell] Loading synced orders for shop: ${shop}`);
         const refreshButton = document.getElementById('refresh-orders');
         const ordersContainer = document.getElementById('orders-container');
         const ordersCount = document.getElementById('orders-count');
@@ -771,8 +801,13 @@
         if (refreshButton) refreshButton.disabled = true;
         if (ordersContainer) ordersContainer.innerHTML = '<div class="loading">Loading synced orders...</div>';
         
-        const response = await fetch(`/admin/api/synced-orders?shop=${shop}&limit=50`);
+        const startTime = Date.now();
+        const response = await fetch(`/admin/api/synced-orders?shop=${encodeURIComponent(shop)}&limit=50`);
+        const duration = Date.now() - startTime;
+        console.log(`[Delybell] Orders API response received in ${duration}ms, status: ${response.status}`);
+        
         const data = await response.json();
+        console.log(`[Delybell] Orders data:`, { count: data.count, success: data.success });
         
         if (refreshButton) refreshButton.disabled = false;
         
@@ -785,6 +820,8 @@
         if (ordersCount) {
           ordersCount.textContent = `(${orders.length})`;
         }
+        
+        console.log(`[Delybell] Found ${orders.length} synced orders`);
         
         if (orders.length === 0) {
           if (ordersContainer) {
@@ -863,7 +900,7 @@
           `;
         }
       } catch (error) {
-        console.error('Error loading synced orders:', error);
+        console.error('[Delybell] Error loading synced orders:', error);
         const ordersContainer = document.getElementById('orders-container');
         const refreshButton = document.getElementById('refresh-orders');
         
@@ -899,7 +936,19 @@
     }
     
     // Load status on page load
-    loadAppStatus();
+    console.log('[Delybell] Page loaded, initializing app...');
+    console.log('[Delybell] API Key:', apiKey ? 'Found' : 'Not found');
+    console.log('[Delybell] Initial shop:', shop || 'Not detected');
+    
+    // Wait a bit for App Bridge to initialize if needed
+    if (window.app && !shop) {
+      setTimeout(() => {
+        console.log('[Delybell] Retrying shop detection after App Bridge initialization...');
+        loadAppStatus();
+      }, 500);
+    } else {
+      loadAppStatus();
+    }
   </script>
 </body>
 </html>
