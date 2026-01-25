@@ -1,10 +1,10 @@
 # Delybell Order Sync - Shopify App
 
-A production-ready Shopify app that automatically syncs orders from Shopify stores to Delybell's delivery management system. 
+A production-ready Shopify app that automatically syncs orders from Shopify stores to Delybell's delivery management system.
 
-**Status:** ✅ Ready for Shopify App Store submission
+**Status:** ✅ Production Ready - Public App + Custom Distribution
 
-When a store installs the app, their orders are automatically synced to Delybell using the store's configured address as the pickup location. The app is fully compliant with Shopify App Store requirements.
+When a store installs the app, their orders are automatically synced to Delybell using the store's configured address as the pickup location.
 
 ## How It Works
 
@@ -18,29 +18,44 @@ When a store installs the app, their orders are automatically synced to Delybell
 
 ## Quick Start
 
-### Production (Render)
+### For Store Owners (Installation)
 
-1. **Deploy to Render**: App is deployed at `https://delybell.onrender.com`
-2. **Set Environment Variables** in Render Dashboard:
-   ```
-   SHOPIFY_API_KEY=your_shopify_api_key
-   SHOPIFY_API_SECRET=your_shopify_api_secret
-   SHOPIFY_SCOPES=read_orders,write_orders
-   SHOPIFY_HOST=delybell.onrender.com
-   DELYBELL_API_URL=https://new.api.delybell.com
-   DELYBELL_ACCESS_KEY=your_delybell_access_key
-   DELYBELL_SECRET_KEY=your_delybell_secret_key
-   NODE_ENV=production
-   PORT=3000
-   DEFAULT_SERVICE_TYPE_ID=1
-   ```
-3. **Configure Shopify Partner Dashboard**:
+1. Go to: `https://delybell.onrender.com`
+2. Enter your shop domain: `your-store.myshopify.com`
+3. Click **"Install App"**
+4. Click **"Install"** on Shopify authorization page
+5. Done! Orders sync automatically.
+
+### For App Owner (One-Time Setup)
+
+#### 1. Deploy to Render
+- App URL: `https://delybell.onrender.com`
+
+#### 2. Set Environment Variables in Render Dashboard:
+```
+SHOPIFY_API_KEY=your_shopify_api_key
+SHOPIFY_API_SECRET=your_shopify_api_secret
+SHOPIFY_SCOPES=read_orders,write_orders
+SHOPIFY_HOST=delybell.onrender.com
+DELYBELL_API_URL=https://new.api.delybell.com
+DELYBELL_ACCESS_KEY=your_delybell_access_key
+DELYBELL_SECRET_KEY=your_delybell_secret_key
+NODE_ENV=production
+PORT=3000
+DEFAULT_SERVICE_TYPE_ID=1
+```
+
+#### 3. Create Shopify Partners Account (Free)
+1. Go to: https://partners.shopify.com
+2. Sign up (FREE for developers)
+3. Create a Public App
+4. Set Distribution: **Public** (allows direct installation)
+5. Configure:
    - App URL: `https://delybell.onrender.com`
    - Redirect URL: `https://delybell.onrender.com/auth/callback`
-   - Distribution: Public (for direct installation)
+   - Scopes: `read_orders`, `write_orders`
    - Embedded: Yes
-   - Use legacy install flow: No
-4. **Install**: Visit `https://delybell.onrender.com` and enter shop domain
+6. Copy API Key and Secret to Render environment variables
 
 ### Local Development
 
@@ -69,9 +84,9 @@ When a store installs the app, their orders are automatically synced to Delybell
 4. **Update `.env`** with tunnel URL (without `https://`)
 
 5. **Start server**:
-   ```bash
-   npm run dev
-   ```
+```bash
+npm run dev
+```
 
 6. **Install app**: Visit `https://YOUR-TUNNEL-URL/auth/install?shop=your-shop.myshopify.com`
 
@@ -188,7 +203,7 @@ For the app to work correctly, stores need:
 - Verify store address is configured in Shopify Settings → Store details
 - Check address format includes Block and Road numbers
 - Verify Block/Road/Building IDs exist in Delybell master data
-- Use master APIs to find correct IDs
+   - Use master APIs to find correct IDs
 
 ### App Shows "Installation Required" After Install
 - Clear browser cache

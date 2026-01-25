@@ -1,0 +1,244 @@
+IMPLEMENTATION PLAN
+PHASE 0 — Lock the Decisions (DO THIS FIRST)
+
+Final decisions (do not change later):
+
+App type: Private / Unlisted
+
+Install method: Private OAuth links
+
+Hosting: Render
+
+Database: Supabase (Postgres)
+
+Auth method: OAuth only
+
+No App Store listing
+
+No custom admin token input
+
+Once these are locked, everything else becomes simpler.
+
+PHASE 1 — Supabase Setup (30–45 minutes)
+1.1 Create Supabase Project
+
+Create project
+
+Save:
+
+SUPABASE_URL
+
+SUPABASE_SERVICE_ROLE_KEY
+
+1.2 Create Required Tables
+shops (REQUIRED)
+create table shops (
+  shop text primary key,
+  access_token text not null,
+  scopes text,
+  installed_at timestamp default now()
+);
+
+order_logs (RECOMMENDED)
+create table order_logs (
+  id uuid default gen_random_uuid() primary key,
+  shop text not null,
+  shopify_order_id bigint not null,
+  delybell_order_id text,
+  status text,
+  created_at timestamp default now()
+);
+
+PHASE 2 — Infrastructure Hardening (CRITICAL)
+2.1 Add Supabase Client (Server-Only)
+
+Create:
+
+/services/db.js
+
+import { createClient } from '@supabase/supabase-js';
+
+export const supabase = createClient(
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_ROLE_KEY
+);
+
+2.2 Create Shop Repository (Single Source of Truth)
+/services/shopRepo.js
+
+import { supabase } from './db';
+
+export async function upsertShop({ shop, accessToken, scopes }) {
+  return supabase.from('shops').upsert({
+    shop,
+    access_token: accessToken,
+    scopes,
+    installed_at: new Date().toISOString()
+  });
+}
+
+export async function getShop(shop) {
+  const { data } = await supabase
+    .from('shops')
+    .select('*')
+    .eq('shop', shop)
+    .single();
+
+  return data;
+}
+
+PHASE 3 — OAuth Flow Refactor (MANDATORY)
+3.1 Normalize Shop ONCE
+/utils/normalizeShop.js
+
+export function normalizeShop(shop) {
+  return shop
+    .trim()
+    .toLowerCase()
+    .replace(/^https?:\/\//, '')
+    .split('/')[0];
+}
+
+
+Use this everywhere. No exceptions.
+
+3.2 OAuth Callback Change
+
+Replace
+
+sessionStorage.storeSession(...)
+
+
+With
+
+await upsertShop({
+  shop: normalizedShop,
+  accessToken: session.accessToken,
+  scopes: session.scope
+});
+
+
+After this:
+
+Sessions are persistent
+
+Render restarts no longer break auth
+
+PHASE 4 — Webhook Refactor (MOST IMPORTANT)
+4.1 Make Webhooks Stateless
+
+Old
+
+const session = await getSession(shop);
+if (!session) return;
+
+
+New
+
+const shopData = await getShop(normalizedShop);
+if (!shopData) throw new Error('Shop not installed');
+
+const client = new Shopify.Clients.Rest(
+  normalizedShop,
+  shopData.access_token
+);
+
+4.2 Always Verify HMAC
+
+Remove dev bypass
+
+Reject invalid signatures
+
+Shopify expects this even for private apps
+
+PHASE 5 — Order Processing Safety
+5.1 Log Order Processing
+
+Every order:
+
+await supabase.from('order_logs').insert({
+  shop,
+  shopify_order_id,
+  delybell_order_id,
+  status: 'processed'
+});
+
+5.2 Handle Failures Gracefully
+
+If Delybell fails:
+
+Log as failed
+
+Retry manually later if needed
+
+PHASE 6 — Clean Up & Simplify
+REMOVE
+
+❌ In-memory session storage
+
+❌ /custom-app/connect
+
+❌ Admin token UI
+
+❌ Session debug endpoints
+
+❌ App Store logic
+
+KEEP
+
+OAuth install links
+
+Webhooks
+
+Order processing
+
+Legal pages
+
+PHASE 7 — Render Configuration
+Environment Variables
+
+Set in Render:
+
+SUPABASE_URL=...
+SUPABASE_SERVICE_ROLE_KEY=...
+SHOPIFY_API_KEY=...
+SHOPIFY_API_SECRET=...
+SHOPIFY_HOST=your-app.onrender.com
+NODE_ENV=production
+
+PHASE 8 — Testing Checklist (DO NOT SKIP)
+Auth
+
+Install via private link
+
+Confirm shop saved in DB
+
+Webhooks
+
+Create order → webhook fires
+
+Restart Render → webhook still works
+
+Failure test
+
+Kill server
+
+Create order
+
+Restart → order processes
+
+If this passes → production-ready.
+
+FINAL RESULT
+
+After this plan:
+
+No random auth failures
+
+Webhooks survive restarts
+
+Safe private installs
+
+Scales cleanly
+
+Client-ready

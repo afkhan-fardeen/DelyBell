@@ -1,8 +1,10 @@
 const express = require('express');
 const router = express.Router();
 const shopifyClient = require('../services/shopifyClient');
-const sessionStorage = require('../services/sessionStorage');
+const sessionStorage = require('../services/sessionStorage'); // Keep for backward compatibility during migration
 const config = require('../config');
+const { upsertShop } = require('../services/shopRepo');
+const { normalizeShop } = require('../utils/normalizeShop');
 
 /**
  * OAuth Install Route
@@ -167,36 +169,34 @@ router.get('/callback', async (req, res) => {
       console.log('[Auth] Has access token:', !!session.accessToken);
       console.log('[Auth] Scopes:', session.scope || 'not specified');
       
-      // Normalize shop domain to ensure consistency
-      let normalizedShop = (session.shop || shopParam || '').trim().toLowerCase();
-      normalizedShop = normalizedShop.replace(/^https?:\/\//, '').split('/')[0];
-      if (!normalizedShop.endsWith('.myshopify.com')) {
-        normalizedShop = normalizedShop + '.myshopify.com';
-      }
-      
+      // Normalize shop domain ONCE using utility
+      const normalizedShop = normalizeShop(session.shop || shopParam);
       console.log('[Auth] Normalized shop:', normalizedShop);
       
-      // Add installed_at timestamp for proper flow tracking
-      const sessionWithMetadata = {
-        ...session,
-        shop: normalizedShop, // Ensure shop is normalized
-        installedAt: new Date().toISOString(),
-        scopes: session.scope || config.shopify.scopes,
-      };
-      
-      await sessionStorage.storeSession(session.id, sessionWithMetadata);
-      console.log('[Auth] Session stored successfully for shop:', normalizedShop);
-      console.log('[Auth] Session ID used:', session.id);
-      console.log('[Auth] Installed at:', sessionWithMetadata.installedAt);
-      
-      // Verify session was stored correctly
-      const verifySession = await sessionStorage.loadSession(session.id);
-      if (verifySession) {
-        console.log('[Auth] ✅ Session verification: Found stored session');
-        console.log('[Auth] ✅ Session verification: Shop:', verifySession.shop);
-        console.log('[Auth] ✅ Session verification: Has token:', !!verifySession.accessToken);
-      } else {
-        console.error('[Auth] ❌ Session verification: Session NOT found after storing!');
+      // Store in Supabase (persistent storage)
+      try {
+        await upsertShop({
+          shop: normalizedShop,
+          accessToken: session.accessToken,
+          scopes: session.scope || config.shopify.scopes,
+        });
+        console.log('[Auth] ✅ Shop saved to Supabase:', normalizedShop);
+      } catch (dbError) {
+        console.error('[Auth] ❌ Failed to save shop to Supabase:', dbError.message);
+        // Fallback to in-memory storage if Supabase not configured
+        if (!process.env.SUPABASE_URL) {
+          console.warn('[Auth] Supabase not configured, using in-memory storage (sessions will be lost on restart)');
+          const sessionWithMetadata = {
+            ...session,
+            shop: normalizedShop,
+            installedAt: new Date().toISOString(),
+            scopes: session.scope || config.shopify.scopes,
+          };
+          await sessionStorage.storeSession(session.id, sessionWithMetadata);
+        } else {
+          // Supabase is configured but failed - this is an error
+          throw new Error(`Failed to save shop to database: ${dbError.message}`);
+        }
       }
       
       // Auto-register webhooks after successful installation
@@ -239,13 +239,9 @@ router.get('/callback', async (req, res) => {
     const shopDomain = session.shop || shopParam;
     let redirectShop = shopDomain;
     
-    // Normalize shop domain for redirect
+    // Normalize shop domain for redirect ONCE using utility
     if (redirectShop) {
-      redirectShop = redirectShop.trim().toLowerCase();
-      redirectShop = redirectShop.replace(/^https?:\/\//, '').split('/')[0];
-      if (!redirectShop.endsWith('.myshopify.com')) {
-        redirectShop = redirectShop + '.myshopify.com';
-      }
+      redirectShop = normalizeShop(redirectShop);
     }
     
     console.log('[Auth] Redirecting to app with shop:', redirectShop);
@@ -288,106 +284,75 @@ router.get('/check', async (req, res) => {
       });
     }
 
-    // Normalize shop parameter
-    shop = shop.trim().toLowerCase();
-    if (!shop.includes('.myshopify.com')) {
-      console.warn(`[Auth] Invalid shop format: ${shop}`);
+    // Normalize shop parameter ONCE using utility
+    try {
+      shop = normalizeShop(shop);
+    } catch (error) {
       return res.status(400).json({
         success: false,
         error: 'Invalid shop domain format',
       });
     }
-    shop = shop.replace(/^https?:\/\//, '').split('/')[0];
     console.log(`[Auth] Normalized shop: ${shop}`);
 
-    // Check for custom app connection first (no OAuth needed)
+    // Check Supabase first (primary source of truth)
+    const { getShop } = require('../services/shopRepo');
+    
     try {
-      const customSessionId = `custom_${shop}`;
-      const customSession = await sessionStorage.loadSession(customSessionId);
+      const shopData = await getShop(shop);
       
-      if (customSession && customSession.accessToken && customSession.state === 'custom_app') {
+      if (shopData && shopData.access_token) {
         const totalDuration = Date.now() - startTime;
-        console.log(`[Auth] Custom app connected for ${shop} (total: ${totalDuration}ms)`);
+        console.log(`[Auth] ✅ Shop found in Supabase for ${shop}, authenticated: true (total: ${totalDuration}ms)`);
         return res.json({
           success: true,
           authenticated: true,
           shop: shop,
-          type: 'custom_app',
-          sessionId: customSessionId,
-        });
-      }
-    } catch (customError) {
-      // Ignore custom app check errors, fall through to OAuth check
-      console.log(`[Auth] Custom app check failed, trying OAuth: ${customError.message}`);
-    }
-
-    // Try to get OAuth session using shopifyClient method (which handles session ID generation)
-    try {
-      console.log(`[Auth] Attempting to get OAuth session for: ${shop}`);
-      
-      // Debug: Check what session ID would be used
-      const expectedSessionId = shopifyClient.shopify.session.getOfflineId(shop);
-      console.log(`[Auth] Expected session ID for ${shop}: ${expectedSessionId}`);
-      
-      const sessionStartTime = Date.now();
-      const session = await shopifyClient.getSession(shop);
-      const sessionDuration = Date.now() - sessionStartTime;
-      console.log(`[Auth] getSession completed in ${sessionDuration}ms`);
-      console.log(`[Auth] Session result:`, session ? {
-        id: session.id,
-        shop: session.shop,
-        hasAccessToken: !!session.accessToken,
-        hasScopes: !!session.scopes,
-      } : 'null');
-
-      if (session && session.accessToken) {
-        const totalDuration = Date.now() - startTime;
-        console.log(`[Auth] ✅ OAuth session found for ${shop}, authenticated: true (total: ${totalDuration}ms)`);
-        res.json({
-          success: true,
-          authenticated: true,
-          shop: session.shop || shop,
-          expiresAt: session.expires,
-          sessionId: session.id,
+          installedAt: shopData.installed_at,
           type: 'oauth',
-        });
-      } else {
-        const totalDuration = Date.now() - startTime;
-        console.log(`[Auth] ❌ No session found for ${shop}, authenticated: false (total: ${totalDuration}ms)`);
-        console.log(`[Auth] Session was:`, session);
-        
-        // Debug: List all sessions
-        const allSessionIds = sessionStorage.getAllSessionIds();
-        console.log(`[Auth] All available sessions: ${allSessionIds.join(', ') || 'none'}`);
-        console.log(`[Auth] Expected session ID was: ${expectedSessionId}`);
-        
-        res.json({
-          success: true,
-          authenticated: false,
-          shop: shop,
-          installUrl: `/auth/install?shop=${encodeURIComponent(shop)}`,
-          debug: process.env.NODE_ENV !== 'production' ? {
-            sessionFound: !!session,
-            hasAccessToken: session ? !!session.accessToken : false,
-            expectedSessionId: expectedSessionId,
-            availableSessions: allSessionIds,
-          } : undefined,
+          storage: 'supabase',
         });
       }
-    } catch (sessionError) {
-      const totalDuration = Date.now() - startTime;
-      console.error(`[Auth] Session error for ${shop} (${totalDuration}ms):`, sessionError.message);
-      console.error('[Auth] Session error stack:', sessionError.stack);
-      
-      // Return not authenticated instead of error
-      res.json({
-        success: true,
-        authenticated: false,
-        shop: shop,
-        installUrl: `/auth/install?shop=${shop}`,
-        error: sessionError.message,
-      });
+    } catch (dbError) {
+      console.error(`[Auth] Error checking Supabase for ${shop}:`, dbError.message);
+      // Fall through to in-memory check if Supabase not configured
+      if (process.env.SUPABASE_URL) {
+        // Supabase is configured but failed - this is an error
+        throw dbError;
+      }
     }
+
+    // Fallback: Check in-memory storage (for backward compatibility during migration)
+    if (!process.env.SUPABASE_URL) {
+      console.warn('[Auth] Supabase not configured, checking in-memory storage');
+      try {
+        const session = await shopifyClient.getSession(shop);
+        if (session && session.accessToken) {
+          const totalDuration = Date.now() - startTime;
+          console.log(`[Auth] ✅ Found in-memory session for ${shop} (total: ${totalDuration}ms)`);
+          return res.json({
+            success: true,
+            authenticated: true,
+            shop: shop,
+            type: 'oauth',
+            storage: 'memory',
+            warning: 'Using in-memory storage. Sessions will be lost on restart. Configure Supabase for persistence.',
+          });
+        }
+      } catch (sessionError) {
+        console.error(`[Auth] Error checking in-memory storage:`, sessionError.message);
+      }
+    }
+
+    // No session found
+    const totalDuration = Date.now() - startTime;
+    console.log(`[Auth] ❌ No session found for ${shop}, authenticated: false (total: ${totalDuration}ms)`);
+    res.json({
+      success: true,
+      authenticated: false,
+      shop: shop,
+      installUrl: `/auth/install?shop=${encodeURIComponent(shop)}`,
+    });
   } catch (error) {
     const totalDuration = Date.now() - startTime;
     console.error(`[Auth] Auth check error (${totalDuration}ms):`, error.message);
@@ -399,41 +364,6 @@ router.get('/check', async (req, res) => {
   }
 });
 
-/**
- * Debug endpoint - List all sessions
- * GET /auth/debug/sessions
- */
-router.get('/debug/sessions', (req, res) => {
-  const allSessions = sessionStorage.getAllSessionIds();
-  res.json({
-    totalSessions: allSessions.length,
-    sessionIds: allSessions,
-  });
-});
-
-/**
- * Debug endpoint - Show OAuth configuration
- * GET /auth/debug/config
- */
-router.get('/debug/config', (req, res) => {
-  const config = require('../config');
-  const hostName = config.shopify.hostName || 'localhost:3000';
-  // For localhost, use http://, for production/ngrok use https://
-  const protocol = hostName.includes('localhost') ? 'http' : 'https';
-  const redirectUrl = `${protocol}://${hostName}/auth/callback`;
-  
-  res.json({
-    hostName: hostName,
-    redirectUrl: redirectUrl,
-    callbackPath: '/auth/callback',
-    protocol: protocol,
-    apiKey: config.shopify.apiKey ? `${config.shopify.apiKey.substring(0, 8)}...` : 'NOT SET',
-    message: 'Make sure this redirectUrl matches EXACTLY in Shopify app settings',
-    note: hostName.includes('localhost') 
-      ? 'Using http:// for localhost (Shopify allows this for custom apps)'
-      : 'Using https:// for production/ngrok',
-  });
-});
 
 module.exports = router;
 

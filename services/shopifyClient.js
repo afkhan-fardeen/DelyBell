@@ -47,40 +47,42 @@ class ShopifyClient {
   async getSession(shop) {
     try {
       // Normalize shop parameter
-      let normalizedShop = shop.trim().toLowerCase().replace(/^https?:\/\//, '').split('/')[0];
-      
-      // Ensure it ends with .myshopify.com
-      if (!normalizedShop.endsWith('.myshopify.com')) {
-        normalizedShop = normalizedShop + '.myshopify.com';
-      }
+      const { normalizeShop } = require('../utils/normalizeShop');
+      const normalizedShop = normalizeShop(shop);
       
       console.log(`[ShopifyClient] getSession called for shop: ${shop} -> normalized: ${normalizedShop}`);
       
-      // First try custom app session (custom_shop.myshopify.com)
-      const customSessionId = `custom_${normalizedShop}`;
-      let session = await sessionStorage.loadSession(customSessionId);
+      // Try Supabase first (primary source of truth)
+      const { getShop } = require('../services/shopRepo');
+      const shopData = await getShop(normalizedShop);
       
-      if (session && session.state === 'custom_app') {
-        console.log(`[ShopifyClient] Found custom app session for ${normalizedShop}`);
+      if (shopData && shopData.access_token) {
+        // Convert Supabase shop data to session-like object for compatibility
+        const session = {
+          id: `offline_${normalizedShop}`,
+          shop: normalizedShop,
+          accessToken: shopData.access_token,
+          scope: shopData.scopes,
+          scopes: shopData.scopes,
+          isOnline: false,
+        };
+        console.log(`[ShopifyClient] ✅ Found shop in Supabase for ${normalizedShop}`);
         return session;
       }
       
-      // Fallback to OAuth session (offline_shop.myshopify.com)
-      const sessionId = this.shopify.session.getOfflineId(normalizedShop);
-      console.log(`[ShopifyClient] Looking up OAuth session with ID: ${sessionId} for shop: ${normalizedShop}`);
-      console.log(`[ShopifyClient] Session ID format: ${sessionId}`);
-      
-      session = await sessionStorage.loadSession(sessionId);
-      if (session) {
-        console.log(`[ShopifyClient] ✅ Found OAuth session for ${normalizedShop}, has accessToken: ${!!session.accessToken}`);
-        console.log(`[ShopifyClient] Session shop: ${session.shop}`);
-      } else {
-        console.log(`[ShopifyClient] ❌ No OAuth session found for ${normalizedShop}`);
-        // Debug: List all available sessions
-        const allSessionIds = sessionStorage.getAllSessionIds();
-        console.log(`[ShopifyClient] Available session IDs: ${allSessionIds.join(', ') || 'none'}`);
+      // Fallback: Check in-memory storage (for backward compatibility)
+      if (!process.env.SUPABASE_URL) {
+        console.warn('[ShopifyClient] Supabase not configured, checking in-memory storage');
+        const sessionId = this.shopify.session.getOfflineId(normalizedShop);
+        const session = await sessionStorage.loadSession(sessionId);
+        if (session) {
+          console.log(`[ShopifyClient] ✅ Found in-memory session for ${normalizedShop}`);
+          return session;
+        }
       }
-      return session;
+      
+      console.log(`[ShopifyClient] ❌ No session found for ${normalizedShop}`);
+      return null;
     } catch (error) {
       console.error('[ShopifyClient] Error getting session:', error);
       console.error('[ShopifyClient] Error stack:', error.stack);

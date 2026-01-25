@@ -2,6 +2,9 @@ const express = require('express');
 const router = express.Router();
 const orderProcessor = require('../services/orderProcessor');
 const shopifyClient = require('../services/shopifyClient');
+const { getShop } = require('../services/shopRepo');
+const { normalizeShop } = require('../utils/normalizeShop');
+const { supabase } = require('../services/db');
 
 /**
  * Parse webhook body (raw JSON string)
@@ -132,7 +135,7 @@ router.post('/orders/create', async (req, res) => {
     console.log(`[Webhook] Received webhook for new order: ${orderId}`);
 
     // Get shop domain from headers or order data
-    const shop = req.headers['x-shopify-shop-domain'] || shopifyOrder.shop;
+    let shop = req.headers['x-shopify-shop-domain'] || shopifyOrder.shop;
     if (!shop) {
       console.error('[Webhook] Shop domain not found in webhook headers');
       return res.status(200).json({ // Always 200 OK
@@ -141,23 +144,47 @@ router.post('/orders/create', async (req, res) => {
       });
     }
 
+    // Normalize shop domain ONCE
+    shop = normalizeShop(shop);
     console.log(`[Webhook] Processing order for shop: ${shop}`);
 
-    // Retrieve session from storage
-    const session = await shopifyClient.getSession(shop);
-    if (!session) {
-      console.warn(`[Webhook] No session found for shop: ${shop}. Order processing will continue but tags won't be updated.`);
+    // Get shop data from Supabase (stateless)
+    let shopData;
+    try {
+      shopData = await getShop(shop);
+      if (!shopData || !shopData.access_token) {
+        console.error(`[Webhook] Shop ${shop} not installed or missing access token`);
+        // Still respond 200 OK - don't block Shopify
+        if (!respondQuickly()) {
+          return res.status(200).json({
+            success: false,
+            error: 'Shop not installed',
+          });
+        }
+        return; // Process asynchronously
+      }
+      console.log(`[Webhook] ✅ Shop ${shop} found in database`);
+    } catch (dbError) {
+      console.error(`[Webhook] Error fetching shop ${shop}:`, dbError.message);
       // Still respond 200 OK - don't block Shopify
       if (!respondQuickly()) {
         return res.status(200).json({
           success: false,
-          error: 'No session found for shop',
+          error: 'Database error',
         });
       }
-      return; // Process asynchronously
-    } else {
-      console.log(`[Webhook] Session found for shop: ${shop}`);
+      return;
     }
+
+    // Create session-like object for compatibility with existing code
+    const session = {
+      id: `offline_${shop}`,
+      shop: shop,
+      accessToken: shopData.access_token,
+      scope: shopData.scopes,
+      scopes: shopData.scopes,
+      isOnline: false,
+    };
 
     // Process the order
     // Pickup location: Fetched from Shopify store address (per shop)
@@ -274,7 +301,7 @@ router.post('/app/uninstalled', async (req, res) => {
       });
     }
     
-    const shop = req.headers['x-shopify-shop-domain'] || shopifyData.domain;
+    let shop = req.headers['x-shopify-shop-domain'] || shopifyData.domain;
     
     if (!shop) {
       console.error('[Webhook] Shop domain not found in uninstall webhook');
@@ -285,29 +312,39 @@ router.post('/app/uninstalled', async (req, res) => {
       });
     }
     
+    // Normalize shop domain ONCE
+    shop = normalizeShop(shop);
     console.log(`[Webhook] Processing app uninstall for shop: ${shop}`);
     
-    // Delete session from storage
+    // CRITICAL: Delete all shop data (compliance requirement)
+    const { deleteShop } = require('../services/shopRepo');
+    
     try {
-      const session = await shopifyClient.getSession(shop);
-      if (session && session.id) {
-        await sessionStorage.deleteSession(session.id);
-        console.log(`[Webhook] Deleted session for shop: ${shop}`);
+      // Delete from Supabase (primary)
+      await deleteShop(shop);
+      console.log(`[Webhook] ✅ Deleted shop ${shop} from Supabase`);
+      
+      // Clear pickup location cache
+      const pickupLocationService = require('../services/pickupLocationService');
+      pickupLocationService.clearCache(shop);
+      console.log(`[Webhook] Cleared pickup location cache for shop: ${shop}`);
+      
+      // Fallback: Delete from in-memory storage (if exists and Supabase not configured)
+      if (!process.env.SUPABASE_URL) {
+        const session = await shopifyClient.getSession(shop);
+        if (session && session.id) {
+          await sessionStorage.deleteSession(session.id);
+          console.log(`[Webhook] Deleted in-memory session for shop: ${shop}`);
+        }
       }
       
-      // Also try to delete custom app session if exists
-      const customSessionId = `custom_${shop}`;
-      const customSession = await sessionStorage.loadSession(customSessionId);
-      if (customSession) {
-        await sessionStorage.deleteSession(customSessionId);
-        console.log(`[Webhook] Deleted custom app session for shop: ${shop}`);
-      }
-    } catch (sessionError) {
-      console.error('[Webhook] Error deleting session (non-critical):', sessionError.message);
+      // Note: Webhooks are automatically removed by Shopify when app is uninstalled
+      // Order logs are kept for historical record (compliance)
+      
+    } catch (deleteError) {
+      console.error('[Webhook] Error deleting shop data (non-critical):', deleteError.message);
+      // Continue even if cleanup fails - we've already responded to Shopify
     }
-    
-    // Note: Webhooks are automatically removed by Shopify when app is uninstalled
-    // No need to manually delete webhooks
     
     console.log(`[Webhook] App uninstall processed for shop: ${shop}`);
     

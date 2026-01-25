@@ -1,6 +1,7 @@
 const delybellClient = require('./delybellClient');
 const orderTransformer = require('./orderTransformer');
 const shopifyClient = require('./shopifyClient');
+const { supabase } = require('./db');
 
 /**
  * Order Processor Service
@@ -152,7 +153,27 @@ class OrderProcessor {
       const delybellOrderId = createOrderResponse.data?.order_id;
       const customerOrderId = createOrderResponse.data?.customer_input_order_id;
 
+      if (!delybellOrderId) {
+        // Log failed order
+        await this.logOrder({
+          shop,
+          shopifyOrderId: shopifyOrder.id || shopifyOrder.order_number,
+          status: 'failed',
+          errorMessage: 'Delybell order created but no order ID returned',
+        });
+        
+        throw new Error('Delybell order created but no order ID returned');
+      }
+
       console.log(`Order created successfully in Delybell: ${delybellOrderId}`);
+      
+      // Log successful order
+      await this.logOrder({
+        shop,
+        shopifyOrderId: shopifyOrder.id || shopifyOrder.order_number,
+        delybellOrderId: delybellOrderId.toString(),
+        status: 'processed',
+      });
 
       // Step 4: Update Shopify order with Delybell tracking info
       if (session && shopifyOrder.id) {
@@ -192,6 +213,17 @@ class OrderProcessor {
       const errorMessage = errorDetails.message || error.message;
       const errorStatus = error.response?.status;
       
+      // Log failed order
+      const shop = mappingConfig.shop || session?.shop || shopifyOrder.shop;
+      if (shop) {
+        await this.logOrder({
+          shop,
+          shopifyOrderId: shopifyOrder.order_number || shopifyOrder.id,
+          status: 'failed',
+          errorMessage: errorMessage,
+        });
+      }
+      
       return {
         success: false,
         shopifyOrderId: shopifyOrder.order_number || shopifyOrder.id,
@@ -222,6 +254,43 @@ class OrderProcessor {
     }
     
     return results;
+  }
+
+  /**
+   * Log order processing result to database
+   * @param {Object} params - Order log data
+   * @param {string} params.shop - Shop domain
+   * @param {number} params.shopifyOrderId - Shopify order ID
+   * @param {string} params.delybellOrderId - Delybell order ID (optional)
+   * @param {string} params.status - Status ('processed', 'failed')
+   * @param {string} params.errorMessage - Error message (optional)
+   */
+  async logOrder({ shop, shopifyOrderId, delybellOrderId = null, status, errorMessage = null }) {
+    if (!process.env.SUPABASE_URL) {
+      // Supabase not configured - skip logging
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('order_logs')
+        .insert({
+          shop,
+          shopify_order_id: shopifyOrderId,
+          delybell_order_id: delybellOrderId,
+          status,
+          error_message: errorMessage,
+        });
+
+      if (error) {
+        console.error(`[OrderProcessor] Failed to log order ${shopifyOrderId}:`, error.message);
+      } else {
+        console.log(`[OrderProcessor] ✅ Logged order ${shopifyOrderId} with status: ${status}`);
+      }
+    } catch (logError) {
+      // Don't throw - logging failures shouldn't break order processing
+      console.error(`[OrderProcessor] Error logging order:`, logError.message);
+    }
   }
 }
 
