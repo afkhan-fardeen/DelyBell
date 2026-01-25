@@ -3,373 +3,168 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="shopify-api-key" content="<%= SHOPIFY_API_KEY %>">
-  <title>Delybell Order Sync</title>
-  
-  <!-- Shopify App Bridge -->
-  <script src="https://cdn.shopify.com/shopifycloud/app-bridge.js"></script>
-  <script src="https://cdn.shopify.com/shopifycloud/app-bridge-utils.js"></script>
-  <script>
-    // Inject API key from server
-    window.SHOPIFY_API_KEY = '<%= SHOPIFY_API_KEY %>';
-  </script>
-  
+  <title>Install Delybell Order Sync</title>
   <style>
     * {
       margin: 0;
       padding: 0;
       box-sizing: border-box;
     }
-    
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
       background: #ffffff;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 40px 20px;
       color: #1a1a1a;
-      line-height: 1.5;
     }
-    
     .container {
-      max-width: 1400px;
-      margin: 0 auto;
+      background: #ffffff;
+      border: 1px solid #e5e5e5;
       padding: 0;
+      max-width: 600px;
+      width: 100%;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.08);
     }
-    
     .header {
       border-bottom: 1px solid #e5e5e5;
-      padding: 24px 32px;
+      padding: 32px 40px;
       background: #fafafa;
     }
-    
     .header h1 {
-      font-size: 20px;
+      font-size: 24px;
       font-weight: 600;
       color: #1a1a1a;
-      margin-bottom: 4px;
+      margin-bottom: 8px;
       letter-spacing: -0.02em;
     }
-    
-    .header p {
+    .header .subtitle {
       color: #666666;
-      font-size: 13px;
+      font-size: 14px;
       font-weight: 400;
+      line-height: 1.5;
     }
-    
     .content {
-      padding: 32px;
+      padding: 40px;
     }
-    
-    .section {
-      border: 1px solid #e5e5e5;
+    .form-section {
+      margin-bottom: 32px;
+    }
+    .form-group {
       margin-bottom: 24px;
-      background: #ffffff;
     }
-    
-    .section-header {
-      border-bottom: 1px solid #e5e5e5;
-      padding: 16px 24px;
-      background: #fafafa;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-    
-    .section-title {
-      font-size: 13px;
-      font-weight: 600;
-      color: #1a1a1a;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-    }
-    
-    .section-body {
-      padding: 24px;
-    }
-    
-    .status-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-      gap: 24px;
-    }
-    
-    .status-item {
-      padding: 16px 0;
-      border-bottom: 1px solid #e5e5e5;
-    }
-    
-    .status-item:last-child {
-      border-bottom: none;
-    }
-    
-    .status-label {
-      font-size: 11px;
-      font-weight: 600;
-      color: #666666;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
+    label {
+      display: block;
       margin-bottom: 8px;
-    }
-    
-    .status-value {
-      font-size: 15px;
-      font-weight: 400;
       color: #1a1a1a;
-    }
-    
-    .badge {
-      display: inline-block;
-      padding: 4px 10px;
-      font-size: 11px;
-      font-weight: 600;
+      font-weight: 500;
+      font-size: 13px;
       text-transform: uppercase;
       letter-spacing: 0.5px;
-      border: 1px solid;
     }
-    
-    .badge-success {
+    input {
+      width: 100%;
+      padding: 12px 16px;
+      border: 1px solid #d1d1d1;
       background: #ffffff;
+      font-size: 15px;
       color: #1a1a1a;
+      font-family: inherit;
+      transition: border-color 0.15s ease;
+    }
+    input:focus {
+      outline: none;
       border-color: #1a1a1a;
     }
-    
-    .badge-warning {
-      background: #ffffff;
-      color: #666666;
-      border-color: #d1d1d1;
+    input::placeholder {
+      color: #999999;
     }
-    
+    .input-hint {
+      display: block;
+      margin-top: 6px;
+      color: #666666;
+      font-size: 12px;
+      font-weight: 400;
+      line-height: 1.4;
+    }
     .button {
-      display: inline-block;
-      padding: 10px 20px;
+      width: 100%;
+      padding: 14px 24px;
       background: #1a1a1a;
       color: #ffffff;
       border: 1px solid #1a1a1a;
-      font-size: 12px;
+      font-size: 14px;
       font-weight: 500;
       text-transform: uppercase;
       letter-spacing: 0.5px;
       cursor: pointer;
-      text-decoration: none;
       transition: background-color 0.15s ease, color 0.15s ease;
     }
-    
     .button:hover {
       background: #333333;
       border-color: #333333;
     }
-    
     .button:active {
       background: #000000;
       border-color: #000000;
     }
-    
     .button:disabled {
       background: #cccccc;
       border-color: #cccccc;
       cursor: not-allowed;
     }
-    
-    .button-secondary {
-      background: #ffffff;
-      color: #1a1a1a;
-      border-color: #d1d1d1;
+    .info-section {
+      border-top: 1px solid #e5e5e5;
+      padding-top: 24px;
+      margin-top: 32px;
     }
-    
-    .button-secondary:hover {
-      background: #fafafa;
-      border-color: #1a1a1a;
-    }
-    
-    .loading {
-      text-align: center;
-      padding: 60px 20px;
-      color: #666666;
-      font-size: 13px;
-    }
-    
-    .error-message {
-      background: #ffffff;
-      border: 1px solid #d1d1d1;
-      border-left: 3px solid #1a1a1a;
-      padding: 16px 20px;
-      margin-bottom: 24px;
-      color: #1a1a1a;
-      font-size: 13px;
-    }
-    
-    .error-message strong {
-      display: block;
-      margin-bottom: 4px;
-      font-size: 11px;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-    }
-    
-    .table-container {
-      overflow-x: auto;
-    }
-    
-    .table {
-      width: 100%;
-      border-collapse: collapse;
-    }
-    
-    .table thead {
-      background: #fafafa;
-      border-bottom: 2px solid #e5e5e5;
-    }
-    
-    .table th {
-      text-align: left;
-      padding: 12px 16px;
-      font-size: 11px;
-      font-weight: 600;
-      color: #666666;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-    }
-    
-    .table td {
-      padding: 16px;
-      border-bottom: 1px solid #e5e5e5;
-      font-size: 13px;
-      color: #1a1a1a;
-    }
-    
-    .table tbody tr:hover {
-      background: #fafafa;
-    }
-    
-    .table tbody tr:last-child td {
-      border-bottom: none;
-    }
-    
-    .order-number {
-      font-weight: 600;
-      color: #1a1a1a;
-    }
-    
-    .order-name {
-      font-size: 11px;
-      color: #666666;
-      margin-top: 4px;
-      font-family: 'Monaco', 'Menlo', 'Courier New', monospace;
-    }
-    
-    .order-status {
-      display: inline-block;
-      padding: 4px 8px;
-      font-size: 11px;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-      border: 1px solid #1a1a1a;
-      background: #ffffff;
-      color: #1a1a1a;
-    }
-    
-    .delybell-id {
-      font-family: 'Monaco', 'Menlo', 'Courier New', monospace;
+    .info-title {
       font-size: 12px;
-      color: #666666;
-    }
-    
-    .link {
+      font-weight: 600;
       color: #1a1a1a;
-      text-decoration: underline;
-      font-size: 13px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 12px;
     }
-    
-    .link:hover {
-      color: #333333;
-    }
-    
-    .no-data {
-      text-align: center;
-      padding: 60px 20px;
-      color: #666666;
-      font-size: 13px;
-    }
-    
-    .count {
-      color: #666666;
-      font-size: 11px;
-      font-weight: 400;
-      text-transform: none;
-      letter-spacing: 0;
-      margin-left: 8px;
-    }
-    
     .info-list {
       list-style: none;
       padding: 0;
     }
-    
     .info-list li {
-      padding: 8px 0;
-      font-size: 13px;
       color: #666666;
-      border-bottom: 1px solid #e5e5e5;
+      font-size: 13px;
+      line-height: 1.6;
+      margin-bottom: 8px;
+      padding-left: 16px;
+      position: relative;
     }
-    
-    .info-list li:last-child {
-      border-bottom: none;
-    }
-    
     .info-list li:before {
       content: "—";
-      margin-right: 12px;
+      position: absolute;
+      left: 0;
       color: #999999;
     }
-    
-    .input-group {
-      margin-bottom: 20px;
-    }
-    
-    .input-label {
-      display: block;
-      margin-bottom: 8px;
-      font-size: 11px;
-      font-weight: 600;
+    .info-code {
+      display: inline-block;
+      padding: 2px 6px;
+      background: #f5f5f5;
+      border: 1px solid #e5e5e5;
+      font-family: 'Monaco', 'Menlo', 'Courier New', monospace;
+      font-size: 12px;
       color: #1a1a1a;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
     }
-    
-    .input {
-      width: 100%;
-      padding: 10px 14px;
-      border: 1px solid #d1d1d1;
-      background: #ffffff;
-      font-size: 13px;
-      color: #1a1a1a;
-      font-family: inherit;
-    }
-    
-    .input:focus {
-      outline: none;
-      border-color: #1a1a1a;
-    }
-    
-    @media (max-width: 768px) {
-      .content {
-        padding: 20px;
+    @media (max-width: 640px) {
+      .container {
+        border-left: none;
+        border-right: none;
       }
-      
       .header {
-        padding: 20px;
+        padding: 24px 20px;
       }
-      
-      .section-body {
-        padding: 16px;
-      }
-      
-      .table {
-        font-size: 12px;
-      }
-      
-      .table th,
-      .table td {
-        padding: 10px 8px;
+      .content {
+        padding: 32px 20px;
       }
     }
   </style>
@@ -378,696 +173,138 @@
   <div class="container">
     <div class="header">
       <h1>Delybell Order Sync</h1>
-      <p>Automatically sync your Shopify orders to Delybell delivery management system</p>
+      <p class="subtitle">Connect your Shopify store to sync orders automatically</p>
     </div>
     
     <div class="content">
-      <div id="error-container"></div>
-      
-      <div id="app-content">
-        <div class="loading">
-          <div style="margin-bottom: 8px;">Loading app status...</div>
-          <div style="font-size: 11px; color: #999999; margin-top: 8px;" id="loading-details">Initializing...</div>
+      <form onsubmit="installApp(event)" id="installForm">
+        <div class="form-section">
+          <div class="form-group">
+            <label for="shop">Shopify Store Domain</label>
+            <input 
+              type="text" 
+              id="shop" 
+              name="shop" 
+              placeholder="your-store.myshopify.com"
+              required
+              autocomplete="off"
+              autofocus
+            />
+            <span class="input-hint">Enter your custom domain (e.g., babybow.co) or Shopify domain (e.g., 782cba-5a.myshopify.com)</span>
+          </div>
         </div>
-      </div>
+        
+        <button type="submit" class="button" id="submitButton">Install App</button>
+        
+        <div class="info-section">
+          <div class="info-title">Finding Your Shopify Domain</div>
+          <ul class="info-list">
+            <li>Go to your Shopify admin panel</li>
+            <li>Check the URL: <span class="info-code">admin.shopify.com/store/YOUR-STORE-NAME</span></li>
+            <li>Your Shopify domain is: <span class="info-code">YOUR-STORE-NAME.myshopify.com</span></li>
+          </ul>
+        </div>
+      </form>
     </div>
   </div>
   
   <script>
-    // Initialize Shopify App Bridge
-    let app;
-    let shop;
-    
-    // Get API key from server (injected in admin route)
-    const apiKey = window.SHOPIFY_API_KEY || document.querySelector('meta[name="shopify-api-key"]')?.content;
-    
-    // Initialize App Bridge first to get shop from Shopify context
-    if (apiKey && apiKey !== 'YOUR_API_KEY' && apiKey !== '<%= SHOPIFY_API_KEY %>') {
-      try {
-        // Initialize App Bridge
-        if (window['app-bridge']) {
-          const AppBridge = window['app-bridge'].default;
-          const createApp = AppBridge.default;
-          
-          // Try to get shop from URL first
-          const urlParams = new URLSearchParams(window.location.search);
-          shop = urlParams.get('shop') || urlParams.get('shopOrigin');
-          
-          // If no shop in URL, App Bridge will get it from Shopify context
-          const appConfig = {
-            apiKey: apiKey,
-          };
-          
-          if (shop) {
-            appConfig.shopOrigin = shop;
-          }
-          
-          window.app = createApp(appConfig);
-          
-          // Try to get shop from App Bridge context if not in URL
-          if (!shop && window.app && window.app.getState) {
-            try {
-              const state = window.app.getState();
-              if (state && state.shop) {
-                shop = state.shop;
-              }
-            } catch (e) {
-              console.warn('Could not get shop from App Bridge state:', e);
-            }
-          }
-          
-          // Set up title bar
-          if (AppBridge.actions) {
-            const TitleBar = AppBridge.actions.TitleBar;
-            TitleBar.create(window.app, {
-              title: 'Delybell Order Sync',
-            });
-          }
-        }
-      } catch (appBridgeError) {
-        console.warn('App Bridge initialization failed (non-critical):', appBridgeError);
-      }
-    }
-    
-    // Fallback: Get shop from various sources
-    if (!shop) {
-      console.log('[Delybell] No shop from App Bridge, trying fallbacks...');
-      
-      // Try window.SHOPIFY_SHOP (injected by backend)
-      shop = window.SHOPIFY_SHOP;
-      console.log('[Delybell] Shop from window.SHOPIFY_SHOP:', shop || 'not found');
-      
-      // Try URL query parameter
-      if (!shop) {
-        const urlParams = new URLSearchParams(window.location.search);
-        shop = urlParams.get('shop') || urlParams.get('shopOrigin');
-        console.log('[Delybell] Shop from URL params:', shop || 'not found');
+    async function resolveShopDomain(customDomain) {
+      const domainParts = customDomain.split('.');
+      if (domainParts.length < 2) {
+        return null;
       }
       
-      // Try to extract from current URL
-      if (!shop && window.location.href) {
-        const urlMatch = window.location.href.match(/[?&]shop=([^&]+)/);
-        if (urlMatch) {
-          shop = decodeURIComponent(urlMatch[1]);
-          console.log('[Delybell] Shop from URL match:', shop);
-        }
-      }
-    }
-    
-    console.log('[Delybell] Final shop value:', shop || 'NOT DETECTED');
-    
-    // Load app status
-    async function loadAppStatus() {
-      const loadingDetails = document.getElementById('loading-details');
+      const storeName = domainParts[0];
+      const possibleShop = storeName + '.myshopify.com';
       
       try {
-        console.log('[Delybell] loadAppStatus called, shop:', shop || 'not detected');
-        
-        if (loadingDetails) {
-          loadingDetails.textContent = shop ? `Checking status for ${shop}...` : 'Detecting shop domain...';
-        }
-        
-        if (!shop) {
-          console.log('[Delybell] No shop detected, showing installation form');
-          if (loadingDetails) loadingDetails.textContent = 'No shop detected';
-          
-          // Show installation prompt if no shop parameter
-          const appContent = document.getElementById('app-content');
-          appContent.innerHTML = `
-            <div class="section">
-              <div class="section-header">
-                <div class="section-title">Install Delybell Order Sync</div>
-              </div>
-              <div class="section-body">
-                <p style="margin-bottom: 24px; color: #666666; font-size: 13px;">To use this app, you need to install it in your Shopify store.</p>
-                
-                <div class="input-group">
-                  <label class="input-label">Shopify Store Domain</label>
-                  <input 
-                    type="text" 
-                    id="shop-input" 
-                    placeholder="your-store.myshopify.com" 
-                    class="input"
-                  />
-                </div>
-                
-                <button onclick="installFromInput()" class="button" style="width: 100%;">Install App</button>
-              </div>
-            </div>
-            
-            <div class="section">
-              <div class="section-header">
-                <div class="section-title">Installation Guide</div>
-              </div>
-              <div class="section-body">
-                <ul class="info-list">
-                  <li>Enter your Shopify store domain above (e.g., your-store.myshopify.com)</li>
-                  <li>You can use your custom domain (e.g., babybow.co) - we'll find your Shopify domain automatically</li>
-                  <li>Click "Install App" to begin the authorization process</li>
-                  <li>You'll be redirected to Shopify to grant permissions</li>
-                  <li>Once installed, orders will sync automatically to Delybell</li>
-                </ul>
-              </div>
-            </div>
-            
-            <div class="section">
-              <div class="section-header">
-                <div class="section-title">Finding Your Shopify Domain</div>
-              </div>
-              <div class="section-body">
-                <ul class="info-list">
-                  <li>Go to your Shopify admin panel</li>
-                  <li>Check the URL: <code style="background: #f5f5f5; padding: 2px 6px; border: 1px solid #e5e5e5; font-family: 'Monaco', 'Menlo', 'Courier New', monospace; font-size: 12px;">admin.shopify.com/store/YOUR-STORE-NAME</code></li>
-                  <li>Your Shopify domain is: <code style="background: #f5f5f5; padding: 2px 6px; border: 1px solid #e5e5e5; font-family: 'Monaco', 'Menlo', 'Courier New', monospace; font-size: 12px;">YOUR-STORE-NAME.myshopify.com</code></li>
-                </ul>
-              </div>
-            </div>
-          `;
-          return;
-        }
-        
-        // Check authentication status
-        console.log(`[Delybell] Checking auth status for shop: ${shop}`);
-        console.log(`[Delybell] Making request to: /auth/check?shop=${encodeURIComponent(shop)}`);
-        
-        if (loadingDetails) {
-          loadingDetails.textContent = `Checking authentication for ${shop}...`;
-        }
-        
-        // Add timeout to prevent hanging (reduced to 5 seconds)
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => {
-          console.warn('[Delybell] Request timeout after 5 seconds');
-          if (loadingDetails) {
-            loadingDetails.textContent = 'Request timed out - check server logs';
-          }
-          controller.abort();
-        }, 5000); // 5 second timeout
-        
-        let authResponse;
-        try {
-          const startTime = Date.now();
-          authResponse = await fetch(`/auth/check?shop=${encodeURIComponent(shop)}`, {
-            signal: controller.signal,
-            headers: {
-              'Accept': 'application/json',
-            }
-          });
-          const duration = Date.now() - startTime;
-          console.log(`[Delybell] Auth check response received in ${duration}ms, status: ${authResponse.status}`);
-          clearTimeout(timeoutId);
-          
-          if (!authResponse.ok) {
-            const errorText = await authResponse.text();
-            console.error('[Delybell] Auth check failed:', authResponse.status, errorText);
-            throw new Error(`Auth check failed: ${authResponse.status} ${authResponse.statusText}`);
-          }
-        } catch (fetchError) {
-          clearTimeout(timeoutId);
-          if (fetchError.name === 'AbortError') {
-            console.error('[Delybell] Request timed out after 5 seconds');
-            throw new Error('Request timed out. The server may be slow or unresponsive. Check server logs for details.');
-          }
-          console.error('[Delybell] Fetch error:', fetchError);
-          throw fetchError;
-        }
-        
-        if (!authResponse.ok) {
-          const errorText = await authResponse.text();
-          console.error('[Delybell] Auth check failed:', authResponse.status, errorText);
-          throw new Error(`Auth check failed: ${authResponse.status} ${authResponse.statusText}. ${errorText}`);
-        }
-        
-        const authData = await authResponse.json();
-        console.log('[Delybell] Auth check response:', authData);
-        
-        if (loadingDetails) {
-          loadingDetails.textContent = authData.authenticated 
-            ? `App is installed and ready` 
-            : `App needs to be installed`;
-        }
-        
-        const appContent = document.getElementById('app-content');
-        
-        if (authData.authenticated) {
-          // App is installed and authenticated
-          console.log('[Delybell] App is authenticated, showing dashboard');
-          
-          // Clear loading state
-          if (loadingDetails) loadingDetails.textContent = '';
-          
-          appContent.innerHTML = `
-            <div class="section">
-              <div class="section-header">
-                <div class="section-title">App Status</div>
-              </div>
-              <div class="section-body">
-                <div class="status-grid">
-                  <div class="status-item">
-                    <div class="status-label">Installation Status</div>
-                    <div class="status-value">
-                      <span class="badge badge-success">Installed</span>
-                    </div>
-                  </div>
-                  <div class="status-item">
-                    <div class="status-label">Shop</div>
-                    <div class="status-value">${authData.shop}</div>
-                  </div>
-                  <div class="status-item">
-                    <div class="status-label">Session Status</div>
-                    <div class="status-value">
-                      <span class="badge badge-success">Active</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-            
-            <div class="section">
-              <div class="section-header">
-                <div class="section-title">Synced Orders <span class="count" id="orders-count"></span></div>
-                <button class="button button-secondary" id="refresh-orders" onclick="loadSyncedOrders()">Refresh</button>
-              </div>
-              <div class="section-body">
-                <div id="orders-container">
-                  <div class="loading">Loading synced orders...</div>
-                </div>
-              </div>
-            </div>
-            
-            <div class="section">
-              <div class="section-header">
-                <div class="section-title">How It Works</div>
-              </div>
-              <div class="section-body">
-                <ul class="info-list">
-                  <li>Orders are automatically synced to Delybell when created in Shopify</li>
-                  <li>Webhooks are registered and active - no manual action required</li>
-                  <li>Synced orders appear in the table above with Delybell order IDs</li>
-                  <li>Tracking information is automatically updated when available</li>
-                  <li>All order processing is handled automatically in the background</li>
-                </ul>
-              </div>
-            </div>
-            
-            <div class="section">
-              <div class="section-header">
-                <div class="section-title">Legal & Support</div>
-              </div>
-              <div class="section-body">
-                <ul class="info-list">
-                  <li><a href="/privacy-policy.html" target="_blank" class="link">Privacy Policy</a></li>
-                  <li><a href="/terms-of-service.html" target="_blank" class="link">Terms of Service</a></li>
-                  <li>Support: <a href="mailto:support@delybell.com" class="link">support@delybell.com</a></li>
-                </ul>
-              </div>
-            </div>
-          `;
-          
-          // Load synced orders
-          console.log('[Delybell] Loading synced orders...');
-          loadSyncedOrders();
-        } else {
-          // App needs to be installed
-          console.log('[Delybell] App not authenticated, showing installation prompt');
-          
-          // Clear loading state
-          if (loadingDetails) loadingDetails.textContent = '';
-          
-          appContent.innerHTML = `
-            <div class="section">
-              <div class="section-header">
-                <div class="section-title">Installation Required</div>
-              </div>
-              <div class="section-body">
-                <div class="status-item">
-                  <div class="status-label">Installation Status</div>
-                  <div class="status-value">
-                    <span class="badge badge-warning">Not Installed</span>
-                  </div>
-                </div>
-                <div class="status-item">
-                  <div class="status-label">Shop</div>
-                  <div class="status-value">${shop}</div>
-                </div>
-              </div>
-            </div>
-            
-            <div class="section">
-              <div class="section-header">
-                <div class="section-title">Install the App</div>
-              </div>
-              <div class="section-body">
-                <p style="margin-bottom: 24px; color: #666666; font-size: 13px;">Click the button below to install. You'll be redirected to Shopify to authorize the app - it only takes a few seconds!</p>
-                <a href="/auth/install?shop=${shop}" class="button" style="width: 100%; text-align: center; display: block;">Install App</a>
-              </div>
-            </div>
-            
-            <div class="section">
-              <div class="section-header">
-                <div class="section-title">What Happens Next</div>
-              </div>
-              <div class="section-body">
-                <ul class="info-list">
-                  <li>Click "Install App" above</li>
-                  <li>You'll be redirected to Shopify</li>
-                  <li>Click "Install" to authorize</li>
-                  <li>You'll be redirected back here</li>
-                  <li>Orders will start syncing automatically!</li>
-                </ul>
-              </div>
-            </div>
-            
-            <div class="section">
-              <div class="section-header">
-                <div class="section-title">Alternative: Use Custom App (Advanced)</div>
-              </div>
-              <div class="section-body">
-                <p style="margin-bottom: 16px; color: #666666; font-size: 13px;">If you prefer to use your own Custom App instead:</p>
-                
-                <div class="input-group">
-                  <label class="input-label">Admin API Access Token</label>
-                  <input 
-                    type="password" 
-                    id="access-token-input" 
-                    placeholder="shpat_..." 
-                    class="input"
-                    style="font-family: 'Monaco', 'Menlo', 'Courier New', monospace;"
-                  />
-                </div>
-                
-                <button onclick="connectCustomApp()" class="button button-secondary" style="width: 100%;">Connect with Custom App</button>
-                
-                <p style="margin-top: 16px; font-size: 11px; color: #999999;">
-                  Get token from: Shopify Admin → Settings → Apps → Develop apps → Create app → Install → Copy token
-                </p>
-              </div>
-            </div>
-          `;
-        }
-      } catch (error) {
-        console.error('[Delybell] Error loading app status:', error);
-        console.error('[Delybell] Error details:', {
-          message: error.message,
-          stack: error.stack,
-          shop: shop,
-          url: window.location.href,
-        });
-        
-        if (loadingDetails) {
-          loadingDetails.textContent = `Error: ${error.message}`;
-        }
-        
-        const errorContainer = document.getElementById('error-container');
-        const appContent = document.getElementById('app-content');
-        
-        if (errorContainer) {
-          errorContainer.innerHTML = `
-            <div class="error-message">
-              <strong>Error Loading App Status</strong>
-              ${error.message}
-              <br><br>
-              <small style="color: #666666;">Shop: ${shop || 'not detected'}</small>
-              <br>
-              <small style="color: #666666;">Check browser console (F12) for more details.</small>
-            </div>
-          `;
-        }
-        
-        if (appContent) {
-          appContent.innerHTML = `
-            <div class="section">
-              <div class="section-header">
-                <div class="section-title">Error</div>
-              </div>
-              <div class="section-body">
-                <p style="color: #666666; font-size: 13px; margin-bottom: 16px;">
-                  Unable to load app status. Error: ${error.message}
-                </p>
-                <p style="color: #666666; font-size: 12px; margin-bottom: 16px;">
-                  Shop detected: <strong>${shop || 'None - please enter your shop domain'}</strong>
-                </p>
-                ${!shop ? `
-                  <div class="input-group">
-                    <label class="input-label">Enter Your Shopify Store Domain</label>
-                    <input 
-                      type="text" 
-                      id="shop-input-manual" 
-                      placeholder="782cba-5a.myshopify.com" 
-                      class="input"
-                    />
-                    <button onclick="setShopManually()" class="button" style="width: 100%; margin-top: 12px;">Load App</button>
-                  </div>
-                ` : `
-                  <button onclick="loadAppStatus()" class="button">Retry</button>
-                `}
-              </div>
-            </div>
-          `;
-        }
-      }
-    }
-    
-    // Manual shop input function
-    function setShopManually() {
-      const shopInput = document.getElementById('shop-input-manual');
-      if (shopInput && shopInput.value.trim()) {
-        shop = shopInput.value.trim().toLowerCase();
-        if (!shop.includes('.myshopify.com')) {
-          shop = shop + '.myshopify.com';
-        }
-        console.log('[Delybell] Shop set manually:', shop);
-        loadAppStatus();
-      }
-    }
-    
-    // Load synced orders
-    async function loadSyncedOrders() {
-      try {
-        if (!shop) {
-          console.warn('[Delybell] Cannot load orders: shop not detected');
-          return;
-        }
-        
-        console.log(`[Delybell] Loading synced orders for shop: ${shop}`);
-        const refreshButton = document.getElementById('refresh-orders');
-        const ordersContainer = document.getElementById('orders-container');
-        const ordersCount = document.getElementById('orders-count');
-        
-        if (refreshButton) refreshButton.disabled = true;
-        if (ordersContainer) ordersContainer.innerHTML = '<div class="loading">Loading synced orders...</div>';
-        
-        const startTime = Date.now();
-        const response = await fetch(`/admin/api/synced-orders?shop=${encodeURIComponent(shop)}&limit=50`);
-        const duration = Date.now() - startTime;
-        console.log(`[Delybell] Orders API response received in ${duration}ms, status: ${response.status}`);
-        
-        const data = await response.json();
-        console.log(`[Delybell] Orders data:`, { count: data.count, success: data.success });
-        
-        if (refreshButton) refreshButton.disabled = false;
-        
-        if (!data.success) {
-          throw new Error(data.error || 'Failed to load orders');
-        }
-        
-        const orders = data.orders || [];
-        
-        if (ordersCount) {
-          ordersCount.textContent = `(${orders.length})`;
-        }
-        
-        console.log(`[Delybell] Found ${orders.length} synced orders`);
-        
-        if (orders.length === 0) {
-          if (ordersContainer) {
-            ordersContainer.innerHTML = `
-              <div class="no-data">
-                <p>No synced orders yet.</p>
-                <p style="margin-top: 8px; font-size: 12px; color: #999999;">Orders will appear here once they are synced to Delybell.</p>
-              </div>
-            `;
-          }
-          return;
-        }
-        
-        // Format date
-        function formatDate(dateString) {
-          const date = new Date(dateString);
-          return date.toLocaleDateString('en-US', { 
-            year: 'numeric', 
-            month: 'short', 
-            day: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit'
-          });
-        }
-        
-        // Format currency
-        function formatCurrency(amount, currency) {
-          return new Intl.NumberFormat('en-US', {
-            style: 'currency',
-            currency: currency || 'USD',
-          }).format(amount);
-        }
-        
-        if (ordersContainer) {
-          ordersContainer.innerHTML = `
-            <div class="table-container">
-              <table class="table">
-                <thead>
-                  <tr>
-                    <th>Order #</th>
-                    <th>Customer</th>
-                    <th>Total</th>
-                    <th>Delybell Order ID</th>
-                    <th>Tracking</th>
-                    <th>Synced Date</th>
-                    <th>Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  ${orders.map(order => `
-                    <tr>
-                      <td>
-                        <div class="order-number">#${order.shopifyOrderNumber}</div>
-                        <div class="order-name">${order.shopifyOrderName}</div>
-                      </td>
-                      <td>
-                        <div>${order.customerName || 'Guest'}</div>
-                        ${order.customerEmail ? `<div style="font-size: 11px; color: #666666; margin-top: 4px;">${order.customerEmail}</div>` : ''}
-                      </td>
-                      <td>${formatCurrency(order.totalPrice, order.currency)}</td>
-                      <td>
-                        ${order.delybellOrderId ? `<span class="delybell-id">${order.delybellOrderId}</span>` : '<span style="color: #999999;">-</span>'}
-                      </td>
-                      <td>
-                        ${order.trackingUrl ? `<a href="${order.trackingUrl}" target="_blank" class="link">Track</a>` : '<span style="color: #999999;">-</span>'}
-                      </td>
-                      <td style="font-size: 12px; color: #666666;">${formatDate(order.createdAt)}</td>
-                      <td>
-                        <span class="order-status">Synced</span>
-                      </td>
-                    </tr>
-                  `).join('')}
-                </tbody>
-              </table>
-            </div>
-          `;
-        }
-      } catch (error) {
-        console.error('[Delybell] Error loading synced orders:', error);
-        const ordersContainer = document.getElementById('orders-container');
-        const refreshButton = document.getElementById('refresh-orders');
-        
-        if (refreshButton) refreshButton.disabled = false;
-        
-        if (ordersContainer) {
-          ordersContainer.innerHTML = `
-            <div class="error-message">
-              <strong>Error loading orders</strong>
-              ${error.message}
-            </div>
-          `;
-        }
-      }
-    }
-    
-    // Connect custom app (no OAuth)
-    async function connectCustomApp() {
-      const accessTokenInput = document.getElementById('access-token-input');
-      const accessToken = accessTokenInput?.value.trim();
-      
-      if (!accessToken) {
-        alert('Please enter your Admin API access token');
-        accessTokenInput?.focus();
-        return;
-      }
-      
-      if (!accessToken.startsWith('shpat_')) {
-        alert('Invalid access token format. Should start with "shpat_"');
-        accessTokenInput?.focus();
-        return;
-      }
-      
-      if (!shop) {
-        alert('Shop domain not detected. Please refresh the page.');
-        return;
-      }
-      
-      const button = document.querySelector('button[onclick="connectCustomApp()"]');
-      const originalText = button?.textContent || 'Connect Store';
-      
-      if (button) {
-        button.disabled = true;
-        button.textContent = 'CONNECTING...';
-      }
-      
-      try {
-        console.log(`[Delybell] Connecting custom app for shop: ${shop}`);
-        const response = await fetch('/custom-app/connect', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            shop: shop,
-            accessToken: accessToken,
-          }),
-        });
-        
+        const response = await fetch(`/admin/api/resolve-shop?domain=${encodeURIComponent(customDomain)}&suggested=${encodeURIComponent(possibleShop)}`);
         const data = await response.json();
         
-        if (data.success) {
-          console.log('[Delybell] Custom app connected successfully');
-          alert('Store connected successfully! Reloading...');
-          window.location.reload();
-        } else {
-          throw new Error(data.error || 'Connection failed');
+        if (data.success && data.shop) {
+          return data.shop;
         }
       } catch (error) {
-        console.error('[Delybell] Custom app connection error:', error);
-        alert(`Connection failed: ${error.message}`);
-      } finally {
-        if (button) {
-          button.disabled = false;
-          button.textContent = originalText;
-        }
+        console.error('Error resolving shop domain:', error);
       }
+      
+      return possibleShop;
     }
     
-    // Install app from input field (OAuth - deprecated, use custom app instead)
-    function installFromInput() {
-      const shopInput = document.getElementById('shop-input');
-      const shop = shopInput.value.trim();
+    async function installApp(event) {
+      event.preventDefault();
+      const form = document.getElementById('installForm');
+      const input = document.getElementById('shop');
+      const button = document.getElementById('submitButton');
+      
+      let shop = input.value.trim();
       
       if (!shop) {
-        alert('Please enter your Shopify store domain');
+        input.focus();
         return;
       }
+      
+      shop = shop.toLowerCase();
+      shop = shop.replace(/^https?:\/\//, '');
+      shop = shop.split('/')[0];
       
       if (!shop.includes('.myshopify.com')) {
-        alert('Please enter a valid Shopify store domain (e.g., your-store.myshopify.com)');
+        const originalText = button.textContent;
+        button.textContent = 'RESOLVING DOMAIN...';
+        button.disabled = true;
+        input.disabled = true;
+        
+        try {
+          const resolvedShop = await resolveShopDomain(shop);
+          
+          if (resolvedShop) {
+            const message = `We detected a custom domain: ${shop}\n\nWe'll use: ${resolvedShop}\n\nIf this is incorrect, click Cancel and enter your Shopify domain manually.`;
+            
+            const confirmed = confirm(message);
+            if (!confirmed) {
+              button.textContent = originalText;
+              button.disabled = false;
+              input.disabled = false;
+              input.focus();
+              return;
+            }
+            
+            shop = resolvedShop;
+          } else {
+            button.textContent = originalText;
+            button.disabled = false;
+            input.disabled = false;
+            alert(`Unable to resolve "${shop}". Please enter your Shopify domain (e.g., your-store.myshopify.com) directly.`);
+            input.focus();
+            return;
+          }
+        } catch (error) {
+          console.error('Error resolving domain:', error);
+          button.textContent = originalText;
+          button.disabled = false;
+          input.disabled = false;
+          alert('Error resolving domain. Please enter your Shopify domain directly.');
+          input.focus();
+          return;
+        } finally {
+          button.textContent = originalText;
+          button.disabled = false;
+          input.disabled = false;
+        }
+      }
+      
+      if (!shop.endsWith('.myshopify.com')) {
+        alert('Shop domain must end with .myshopify.com');
+        input.focus();
         return;
       }
       
-      // Redirect to custom app setup instead
-      window.location.href = `/?shop=${shop}`;
-    }
-    
-    // Load status on page load
-    console.log('[Delybell] Page loaded, initializing app...');
-    console.log('[Delybell] API Key:', apiKey ? 'Found' : 'Not found');
-    console.log('[Delybell] Initial shop:', shop || 'Not detected');
-    
-    // Wait a bit for App Bridge to initialize if needed
-    if (window.app && !shop) {
-      setTimeout(() => {
-        console.log('[Delybell] Retrying shop detection after App Bridge initialization...');
-        loadAppStatus();
-      }, 500);
-    } else {
-      loadAppStatus();
+      button.textContent = 'INSTALLING...';
+      button.disabled = true;
+      input.disabled = true;
+      
+      window.location.href = `/auth/install?shop=${encodeURIComponent(shop)}`;
     }
   </script>
 </body>

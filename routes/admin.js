@@ -452,36 +452,65 @@ router.get('/', async (req, res) => {
     }
     
     // Inject Shopify API key into HTML
-    if (config.shopify.apiKey) {
-      // Replace meta tag placeholder
+    // CRITICAL: This MUST happen or App Bridge will fail with 400 Bad Request
+    if (config.shopify.apiKey && config.shopify.apiKey.trim()) {
+      const apiKey = config.shopify.apiKey.trim();
+      
+      // Replace meta tag placeholder (multiple formats)
       html = html.replace(
         /<meta name="shopify-api-key" content="<%= SHOPIFY_API_KEY %>">/g,
-        `<meta name="shopify-api-key" content="${config.shopify.apiKey}">`
+        `<meta name="shopify-api-key" content="${apiKey}">`
+      );
+      html = html.replace(
+        /<meta name="shopify-api-key" content='<%= SHOPIFY_API_KEY %>'>/g,
+        `<meta name="shopify-api-key" content="${apiKey}">`
       );
       
-      // Replace script placeholder
+      // Replace script placeholder (multiple formats)
       html = html.replace(
         /window\.SHOPIFY_API_KEY = '<%= SHOPIFY_API_KEY %>';/g,
-        `window.SHOPIFY_API_KEY = '${config.shopify.apiKey}';`
+        `window.SHOPIFY_API_KEY = '${apiKey}';`
+      );
+      html = html.replace(
+        /window\.SHOPIFY_API_KEY = "<%= SHOPIFY_API_KEY %>";/g,
+        `window.SHOPIFY_API_KEY = '${apiKey}';`
       );
       
       // Replace old placeholder format
       html = html.replace(
         /window\.SHOPIFY_API_KEY\s*\|\|\s*['"]YOUR_API_KEY['"]/g,
-        `'${config.shopify.apiKey}'`
+        `'${apiKey}'`
       );
       
-      console.log(`[Admin] ✅ API key injected: ${config.shopify.apiKey.substring(0, 10)}...`);
+      // Verify replacement worked
+      const hasPlaceholder = html.includes('<%= SHOPIFY_API_KEY %>');
+      if (hasPlaceholder) {
+        console.error('[Admin] ❌ CRITICAL: API key placeholder still exists after replacement!');
+        console.error('[Admin] This will cause 400 Bad Request errors. Check replacement logic.');
+      } else {
+        console.log(`[Admin] ✅ API key injected successfully: ${apiKey.substring(0, 10)}...`);
+      }
     } else {
-      console.error('[Admin] ⚠️ WARNING: SHOPIFY_API_KEY not set! Placeholders will remain in HTML.');
-      // Remove placeholder meta tag if API key is missing (prevent errors)
+      // CRITICAL ERROR: API key is missing
+      console.error('[Admin] ❌ CRITICAL ERROR: SHOPIFY_API_KEY environment variable is NOT SET!');
+      console.error('[Admin] This will cause 400 Bad Request: /admin/apps/<%= SHOPIFY_API_KEY %>/');
+      console.error('[Admin] Fix: Set SHOPIFY_API_KEY in Render Dashboard → Environment Variables');
+      
+      // Show error in HTML instead of placeholder (prevents 400 error)
+      const errorMessage = 'SHOPIFY_API_KEY_NOT_SET';
       html = html.replace(
         /<meta name="shopify-api-key" content="<%= SHOPIFY_API_KEY %>">/g,
-        '<!-- API key not configured -->'
+        `<meta name="shopify-api-key" content="${errorMessage}">`
       );
       html = html.replace(
         /window\.SHOPIFY_API_KEY = '<%= SHOPIFY_API_KEY %>';/g,
-        '// API key not configured'
+        `window.SHOPIFY_API_KEY = '${errorMessage}'; console.error('CRITICAL: SHOPIFY_API_KEY not set in Render environment variables!');`
+      );
+      
+      // Also inject error message into page
+      html = html.replace(
+        /<body>/,
+        `<body><script>console.error('❌ CRITICAL: SHOPIFY_API_KEY environment variable is not set in Render!'); console.error('Fix: Render Dashboard → Environment Variables → Add SHOPIFY_API_KEY');</script>`
       );
     }
     
@@ -708,5 +737,140 @@ router.get('/admin/api/synced-orders', async (req, res) => {
     });
   }
 });
+
+/**
+ * Diagnostic endpoint - Helps debug 400 errors
+ * GET /admin/api/diagnose?shop=your-shop.myshopify.com
+ */
+router.get('/admin/api/diagnose', async (req, res) => {
+  try {
+    const diagnostics = {
+      timestamp: new Date().toISOString(),
+      request: {
+        url: req.url,
+        method: req.method,
+        query: req.query,
+        headers: {
+          'x-shopify-shop-domain': req.headers['x-shopify-shop-domain'] || 'not found',
+          'x-shopify-shop': req.headers['x-shopify-shop'] || 'not found',
+          'shop': req.headers['shop'] || 'not found',
+          'referer': req.headers['referer'] || 'not found',
+        },
+      },
+      config: {
+        apiKey: config.shopify.apiKey ? `${config.shopify.apiKey.substring(0, 10)}...` : 'NOT SET',
+        apiSecret: config.shopify.apiSecret ? 'SET' : 'NOT SET',
+        hostName: config.shopify.hostName || 'NOT SET',
+        scopes: config.shopify.scopes || 'NOT SET',
+      },
+      shop: {
+        fromQuery: req.query.shop || 'not provided',
+        normalized: null,
+        isValid: false,
+        error: null,
+      },
+    };
+
+    // Try to normalize shop
+    if (req.query.shop) {
+      try {
+        const { normalizeShop } = require('../utils/normalizeShop');
+        diagnostics.shop.normalized = normalizeShop(req.query.shop);
+        diagnostics.shop.isValid = diagnostics.shop.normalized.endsWith('.myshopify.com');
+      } catch (error) {
+        diagnostics.shop.error = error.message;
+      }
+    }
+
+    // Check session if shop is valid
+    if (diagnostics.shop.isValid) {
+      try {
+        const session = await shopifyClient.getSession(diagnostics.shop.normalized);
+        diagnostics.session = {
+          exists: !!session,
+          hasAccessToken: !!(session && session.accessToken),
+        };
+      } catch (error) {
+        diagnostics.session = {
+          error: error.message,
+        };
+      }
+    }
+
+    res.json({
+      success: true,
+      diagnostics,
+      recommendations: generateRecommendations(diagnostics),
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error.message,
+      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined,
+    });
+  }
+});
+
+function generateRecommendations(diagnostics) {
+  const recommendations = [];
+
+  if (!diagnostics.config.apiKey || diagnostics.config.apiKey === 'NOT SET') {
+    recommendations.push({
+      issue: 'SHOPIFY_API_KEY not set',
+      fix: 'Set SHOPIFY_API_KEY environment variable in Render Dashboard',
+      severity: 'critical',
+    });
+  }
+
+  if (!diagnostics.config.apiSecret || diagnostics.config.apiSecret === 'NOT SET') {
+    recommendations.push({
+      issue: 'SHOPIFY_API_SECRET not set',
+      fix: 'Set SHOPIFY_API_SECRET environment variable in Render Dashboard',
+      severity: 'critical',
+    });
+  }
+
+  if (!diagnostics.shop.fromQuery || diagnostics.shop.fromQuery === 'not provided') {
+    recommendations.push({
+      issue: 'Shop parameter missing',
+      fix: 'Add ?shop=your-shop.myshopify.com to URL',
+      severity: 'high',
+    });
+  }
+
+  if (diagnostics.shop.error) {
+    recommendations.push({
+      issue: `Shop normalization failed: ${diagnostics.shop.error}`,
+      fix: 'Ensure shop format is: your-shop.myshopify.com',
+      severity: 'high',
+    });
+  }
+
+  if (!diagnostics.shop.isValid && diagnostics.shop.normalized) {
+    recommendations.push({
+      issue: 'Invalid shop format',
+      fix: 'Shop must end with .myshopify.com',
+      severity: 'high',
+    });
+  }
+
+  if (diagnostics.session && !diagnostics.session.exists) {
+    recommendations.push({
+      issue: 'Shop not authenticated',
+      fix: 'Install app first: /auth/install?shop=' + diagnostics.shop.normalized,
+      severity: 'medium',
+    });
+  }
+
+  if (recommendations.length === 0) {
+    recommendations.push({
+      issue: 'No issues detected',
+      fix: 'Everything looks good!',
+      severity: 'info',
+    });
+  }
+
+  return recommendations;
+}
 
 module.exports = router;
