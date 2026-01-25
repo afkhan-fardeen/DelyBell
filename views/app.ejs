@@ -386,6 +386,19 @@
           
           window.app = createApp(appConfig);
           
+          // Try to get shop from App Bridge if not already set
+          if (!shop && window.app && window.app.getState) {
+            try {
+              const state = window.app.getState();
+              if (state && state.shop) {
+                shop = state.shop;
+                console.log('[App] Got shop from App Bridge state:', shop);
+              }
+            } catch (e) {
+              console.warn('[App] Could not get shop from App Bridge state:', e);
+            }
+          }
+          
           // Set up title bar
           if (AppBridge.actions) {
             const TitleBar = AppBridge.actions.TitleBar;
@@ -399,17 +412,47 @@
       }
     }
     
+    // Final fallback: Get shop from URL params
+    if (!shop) {
+      const urlParams = new URLSearchParams(window.location.search);
+      shop = urlParams.get('shop') || urlParams.get('shopOrigin');
+      if (shop) {
+        console.log('[App] Got shop from URL params:', shop);
+      }
+    }
+    
+    console.log('[App] Final shop value:', shop || 'NOT DETECTED');
+    
     // Load app status
     async function loadAppStatus() {
       const loadingDetails = document.getElementById('loading-details');
       
       try {
+        // Wait a bit for App Bridge to fully initialize if shop not detected
+        if (!shop && window.app) {
+          console.log('[App] Waiting for App Bridge to initialize...');
+          await new Promise(resolve => setTimeout(resolve, 500));
+          
+          // Try to get shop from App Bridge state
+          if (window.app && window.app.getState) {
+            try {
+              const state = window.app.getState();
+              if (state && state.shop) {
+                shop = state.shop;
+                console.log('[App] Got shop from App Bridge state (after wait):', shop);
+              }
+            } catch (e) {
+              console.warn('[App] Could not get shop from App Bridge state:', e);
+            }
+          }
+        }
+        
         if (loadingDetails) {
-          loadingDetails.textContent = `Checking authentication for ${shop}...`;
+          loadingDetails.textContent = shop ? `Checking authentication for ${shop}...` : 'Detecting shop domain...';
         }
         
         if (!shop) {
-          console.error('[App] No shop detected, redirecting to install page');
+          console.error('[App] No shop detected after all attempts, redirecting to install page');
           window.location.href = '/';
           return;
         }

@@ -27,34 +27,82 @@ router.get('/app', async (req, res) => {
       referer: req.headers.referer,
       'x-shopify-shop-domain': req.headers['x-shopify-shop-domain'],
       'x-shopify-shop': req.headers['x-shopify-shop'],
+      host: req.headers.host,
     });
     
-    // Get shop from URL params only (simplified - shop is always known in embedded context)
-    let { shop } = req.query;
+    // Get shop from multiple sources (for embedded apps, Shopify passes it in headers)
+    let shop = req.query.shop;
     
+    // If not in query, try Shopify headers (for embedded apps)
     if (!shop) {
-      // If no shop in URL, redirect to install page
-      console.log('[App] No shop parameter, redirecting to install page');
-      return res.redirect('/');
+      shop = req.headers['x-shopify-shop-domain'] || 
+             req.headers['x-shopify-shop'] ||
+             req.headers['shop'];
+      
+      console.log(`[App] Shop from headers: ${shop || 'not found'}`);
+      
+      // Also check referer header for shop domain pattern
+      // Handles: admin.shopify.com/store/782cba-5a or admin.shopify.com/store/782cba-5a/
+      if (!shop && req.headers.referer) {
+        const refererMatch = req.headers.referer.match(/admin\.shopify\.com\/store\/([^\/\?]+)/);
+        if (refererMatch) {
+          const storeName = refererMatch[1];
+          shop = storeName + '.myshopify.com';
+          console.log(`[App] Extracted shop from referer: ${shop} (from store name: ${storeName})`);
+        }
+        
+        // Also try extracting from full Shopify admin URL pattern
+        // Handles: https://782cba-5a.myshopify.com/admin/apps/{API_KEY}/
+        if (!shop) {
+          const shopifyUrlMatch = req.headers.referer.match(/https?:\/\/([^\.]+)\.myshopify\.com/);
+          if (shopifyUrlMatch) {
+            shop = shopifyUrlMatch[1] + '.myshopify.com';
+            console.log(`[App] Extracted shop from Shopify URL: ${shop}`);
+          }
+        }
+      }
+      
+      // Also check if shop is in the URL path
+      if (!shop && req.url) {
+        const urlMatch = req.url.match(/[?&]shop=([^&]+)/);
+        if (urlMatch) {
+          shop = decodeURIComponent(urlMatch[1]);
+          console.log(`[App] Extracted shop from URL: ${shop}`);
+        }
+      }
     }
     
     // Normalize shop domain
-    const { normalizeShop } = require('../utils/normalizeShop');
-    shop = normalizeShop(shop);
+    if (shop) {
+      const { normalizeShop } = require('../utils/normalizeShop');
+      shop = normalizeShop(shop);
+    }
     
     if (!shop || !shop.includes('.myshopify.com')) {
-      console.log('[App] Invalid shop format, redirecting to install page');
-      return res.redirect('/');
+      // If no shop detected, render app template anyway - let frontend App Bridge detect it
+      // This handles cases where shop is only available client-side
+      console.log('[App] No shop detected server-side, rendering app template (App Bridge will detect shop)');
+      return res.render('app', {
+        SHOPIFY_API_KEY: config.shopify.apiKey || '',
+        shop: '',
+        isAuthenticated: false,
+      });
     }
     
     console.log(`[App] Rendering embedded app for shop: ${shop}`);
     
-    // Check if shop is authenticated
+    // Check if shop is authenticated (from Supabase - persists across devices)
     const session = await shopifyClient.getSession(shop);
     const isAuthenticated = session && session.accessToken;
     
     console.log(`[App] Shop authenticated: ${isAuthenticated}`);
     console.log(`[App] API key present: ${!!config.shopify.apiKey}`);
+    
+    if (!isAuthenticated) {
+      // Shop not authenticated - redirect to install
+      console.log(`[App] Shop ${shop} not authenticated, redirecting to install`);
+      return res.redirect(`/auth/install?shop=${encodeURIComponent(shop)}`);
+    }
     
     // Render EJS template with API key injected
     res.render('app', {
