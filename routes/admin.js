@@ -470,6 +470,19 @@ router.get('/', async (req, res) => {
         /window\.SHOPIFY_API_KEY\s*\|\|\s*['"]YOUR_API_KEY['"]/g,
         `'${config.shopify.apiKey}'`
       );
+      
+      console.log(`[Admin] ✅ API key injected: ${config.shopify.apiKey.substring(0, 10)}...`);
+    } else {
+      console.error('[Admin] ⚠️ WARNING: SHOPIFY_API_KEY not set! Placeholders will remain in HTML.');
+      // Remove placeholder meta tag if API key is missing (prevent errors)
+      html = html.replace(
+        /<meta name="shopify-api-key" content="<%= SHOPIFY_API_KEY %>">/g,
+        '<!-- API key not configured -->'
+      );
+      html = html.replace(
+        /window\.SHOPIFY_API_KEY = '<%= SHOPIFY_API_KEY %>';/g,
+        '// API key not configured'
+      );
     }
     
     // Inject shop parameter into HTML if we have it (for embedded apps)
