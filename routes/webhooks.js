@@ -210,6 +210,7 @@ router.post('/orders/create', async (req, res) => {
 
     // Process order (may take longer than 5 seconds, but we've already responded)
     try {
+      console.log(`[Webhook] Starting order processing for order ${orderId}...`);
       const result = await orderProcessor.processOrder(
         shopifyOrder,
         session,
@@ -220,15 +221,22 @@ router.post('/orders/create', async (req, res) => {
         console.log(`[Webhook] Order processing result:`, JSON.stringify(result, null, 2));
       } else {
         console.log(`[Webhook] Order processing completed:`, result.success ? 'Success' : 'Failed');
+        if (!result.success) {
+          console.error(`[Webhook] Order processing failed for order ${orderId}:`, result.error);
+        } else {
+          console.log(`[Webhook] ✅ Order ${orderId} synced to Delybell: ${result.delybellOrderId}`);
+        }
       }
 
       // Log result but don't send response (already sent)
       if (!result.success) {
-        console.error(`[Webhook] Order processing failed for order ${orderId}:`, result.error);
+        console.error(`[Webhook] ❌ Order processing failed for order ${orderId}:`, result.error);
+        console.error(`[Webhook] Error details:`, result.errorDetails || 'No details');
         // TODO: Add to retry queue for failed orders
       }
     } catch (processError) {
-      console.error(`[Webhook] Order processing error for order ${orderId}:`, processError.message);
+      console.error(`[Webhook] ❌ Order processing error for order ${orderId}:`, processError.message);
+      console.error(`[Webhook] Error stack:`, processError.stack);
       // TODO: Add to retry queue for failed orders
       // Don't throw - we've already responded to Shopify
     }

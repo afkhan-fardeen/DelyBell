@@ -921,4 +921,146 @@ function generateRecommendations(diagnostics) {
   return recommendations;
 }
 
+/**
+ * Diagnostic endpoint to check webhook registration status
+ * GET /admin/api/webhooks/status?shop=your-shop.myshopify.com
+ */
+router.get('/admin/api/webhooks/status', async (req, res) => {
+  try {
+    const { shop } = req.query;
+    
+    if (!shop) {
+      return res.status(400).json({
+        success: false,
+        error: 'Shop parameter is required',
+      });
+    }
+    
+    const normalizedShop = normalizeShop(shop);
+    const session = await shopifyClient.getSession(normalizedShop);
+    
+    if (!session || !session.accessToken) {
+      return res.status(401).json({
+        success: false,
+        error: 'Shop not authenticated',
+        shop: normalizedShop,
+      });
+    }
+    
+    // Get registered webhooks from Shopify
+    const client = new shopifyClient.shopify.clients.Rest({ session });
+    const webhooksResponse = await client.get({
+      path: 'webhooks',
+    });
+    
+    const registeredWebhooks = webhooksResponse.body.webhooks || [];
+    
+    // Check which webhooks are registered
+    const config = require('../config');
+    const hostName = config.shopify.hostName || 'localhost:3000';
+    const protocol = hostName.includes('localhost') ? 'http' : 'https';
+    const webhookBaseUrl = `${protocol}://${hostName}`;
+    
+    const expectedWebhooks = [
+      {
+        topic: 'orders/create',
+        address: `${webhookBaseUrl}/webhooks/orders/create`,
+      },
+      {
+        topic: 'orders/updated',
+        address: `${webhookBaseUrl}/webhooks/orders/update`,
+      },
+      {
+        topic: 'app/uninstalled',
+        address: `${webhookBaseUrl}/webhooks/app/uninstalled`,
+      },
+    ];
+    
+    const webhookStatus = expectedWebhooks.map(expected => {
+      const registered = registeredWebhooks.find(
+        w => w.topic === expected.topic && w.address === expected.address
+      );
+      
+      return {
+        topic: expected.topic,
+        address: expected.address,
+        registered: !!registered,
+        status: registered ? registered.api_version : 'not registered',
+        createdAt: registered ? registered.created_at : null,
+        updatedAt: registered ? registered.updated_at : null,
+      };
+    });
+    
+    res.json({
+      success: true,
+      shop: normalizedShop,
+      webhookBaseUrl,
+      webhooks: webhookStatus,
+      allRegistered: webhookStatus.every(w => w.registered),
+      allWebhooks: registeredWebhooks.map(w => ({
+        topic: w.topic,
+        address: w.address,
+        status: w.api_version,
+      })),
+    });
+  } catch (error) {
+    console.error('[Admin] Error checking webhook status:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message,
+    });
+  }
+});
+
+/**
+ * Get recent order logs from Supabase
+ * GET /admin/api/order-logs?shop=your-shop.myshopify.com&limit=10
+ */
+router.get('/admin/api/order-logs', async (req, res) => {
+  try {
+    const { shop, limit = 10 } = req.query;
+    
+    if (!shop) {
+      return res.status(400).json({
+        success: false,
+        error: 'Shop parameter is required',
+      });
+    }
+    
+    const normalizedShop = normalizeShop(shop);
+    
+    if (!process.env.SUPABASE_URL) {
+      return res.status(503).json({
+        success: false,
+        error: 'Supabase not configured',
+      });
+    }
+    
+    const { supabase } = require('../services/db');
+    const { data, error } = await supabase
+      .from('order_logs')
+      .select('*')
+      .eq('shop', normalizedShop)
+      .order('created_at', { ascending: false })
+      .limit(parseInt(limit));
+    
+    if (error) {
+      throw error;
+    }
+    
+    res.json({
+      success: true,
+      shop: normalizedShop,
+      logs: data || [],
+      count: data?.length || 0,
+    });
+  } catch (error) {
+    console.error('[Admin] Error fetching order logs:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message,
+    });
+  }
+});
+
 module.exports = router;
