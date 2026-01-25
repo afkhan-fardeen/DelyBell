@@ -1,80 +1,80 @@
 const express = require('express');
 const router = express.Router();
+const path = require('path');
 const shopifyClient = require('../services/shopifyClient');
 const config = require('../config');
 
 /**
- * Main App Route - Installation page or Dashboard
- * Serves the installation form or embedded admin interface
- * GET /?shop=your-shop.myshopify.com
+ * Public Landing/Install Page - STATIC
+ * Purpose: Accept shop domain, redirect to OAuth
+ * GET /
  */
-router.get('/', async (req, res) => {
+router.get('/', (req, res) => {
+  // Serve static install page (no App Bridge, no SHOPIFY_API_KEY)
+  // This is a public page - no shop detection needed
+  res.sendFile(path.join(__dirname, '../public/index.html'));
+});
+
+/**
+ * Embedded Shopify Admin App - SERVER-RENDERED (EJS)
+ * Purpose: Actual app UI inside Shopify Admin
+ * GET /app?shop=your-shop.myshopify.com
+ */
+router.get('/app', async (req, res) => {
   try {
-    // Debug: Log all headers and query params
-    console.log(`[Admin] ${req.path} route - Debug info:`);
-    console.log('[Admin] Query params:', req.query);
-    console.log('[Admin] Referer:', req.headers.referer);
-    console.log('[Admin] x-shopify-shop-domain:', req.headers['x-shopify-shop-domain']);
-    console.log('[Admin] x-shopify-shop:', req.headers['x-shopify-shop']);
-    console.log('[Admin] shop header:', req.headers['shop']);
+    console.log(`[App] GET /app - Query params:`, req.query);
+    console.log(`[App] GET /app - Headers:`, {
+      referer: req.headers.referer,
+      'x-shopify-shop-domain': req.headers['x-shopify-shop-domain'],
+      'x-shopify-shop': req.headers['x-shopify-shop'],
+    });
     
-    // Try to get shop from query parameter first
+    // Get shop from URL params only (simplified - shop is always known in embedded context)
     let { shop } = req.query;
     
-    // If not in query, try to get from Shopify headers (for embedded apps)
     if (!shop) {
-      // Shopify passes shop domain in various headers for embedded apps
-      shop = req.headers['x-shopify-shop-domain'] || 
-             req.headers['x-shopify-shop'] ||
-             req.headers['shop'];
-      
-      console.log(`  Shop from headers: ${shop || 'not found'}`);
-      
-      // Also check referer header for shop domain pattern
-      // Handles: admin.shopify.com/store/782cba-5a or admin.shopify.com/store/782cba-5a/
-      if (!shop && req.headers.referer) {
-        const refererMatch = req.headers.referer.match(/admin\.shopify\.com\/store\/([^\/\?]+)/);
-        if (refererMatch) {
-          const storeName = refererMatch[1];
-          shop = storeName + '.myshopify.com';
-          console.log(`[Admin] Extracted shop from referer: ${shop} (from store name: ${storeName})`);
-        }
-      }
-      
-      // Also check if shop is in the URL path (for embedded apps)
-      // Handles: /?shop=782cba-5a.myshopify.com or just the store name
-      if (!shop && req.url) {
-        const urlMatch = req.url.match(/[?&]shop=([^&]+)/);
-        if (urlMatch) {
-          shop = decodeURIComponent(urlMatch[1]);
-          console.log(`[Admin] Extracted shop from URL: ${shop}`);
-        }
-      }
+      // If no shop in URL, redirect to install page
+      console.log('[App] No shop parameter, redirecting to install page');
+      return res.redirect('/');
     }
     
-    console.log(`[Admin] Final shop value before normalization: ${shop || 'not found'}`);
+    // Normalize shop domain
+    const { normalizeShop } = require('../utils/normalizeShop');
+    shop = normalizeShop(shop);
     
-    // Normalize shop domain if we have it
-    if (shop) {
-      shop = shop.trim().toLowerCase();
-      // Remove protocol if present
-      shop = shop.replace(/^https?:\/\//, '');
-      // Remove trailing slash and path
-      shop = shop.split('/')[0];
-      // Remove query parameters if present
-      shop = shop.split('?')[0];
-      // If it's just the shop name without .myshopify.com, add it
-      // This handles cases like "782cba-5a" -> "782cba-5a.myshopify.com"
-      if (shop && !shop.includes('.')) {
-        shop = shop + '.myshopify.com';
-        console.log(`[Admin] Normalized shop (added .myshopify.com): ${shop}`);
-      } else if (shop && shop.includes('.myshopify.com')) {
-        console.log(`[Admin] Shop already has .myshopify.com: ${shop}`);
-      }
+    if (!shop || !shop.includes('.myshopify.com')) {
+      console.log('[App] Invalid shop format, redirecting to install page');
+      return res.redirect('/');
     }
     
-    console.log(`[Admin] Final normalized shop: ${shop || 'not found'}`);
+    console.log(`[App] Rendering embedded app for shop: ${shop}`);
     
+    // Check if shop is authenticated
+    const session = await shopifyClient.getSession(shop);
+    const isAuthenticated = session && session.accessToken;
+    
+    console.log(`[App] Shop authenticated: ${isAuthenticated}`);
+    console.log(`[App] API key present: ${!!config.shopify.apiKey}`);
+    
+    // Render EJS template with API key injected
+    res.render('app', {
+      SHOPIFY_API_KEY: config.shopify.apiKey || '',
+      shop: shop,
+      isAuthenticated: isAuthenticated,
+    });
+    
+    console.log(`[App] ✅ Successfully rendered app template for shop: ${shop}`);
+  } catch (error) {
+    console.error('[App] ❌ Error rendering app:', error);
+    console.error('[App] Error stack:', error.stack);
+    res.status(500).send(`Error loading app: ${error.message}`);
+  }
+});
+
+// OLD CODE BELOW - TO BE REMOVED AFTER TESTING
+/*
+router.get('/OLD', async (req, res) => {
+  try {
     // If no shop parameter, show installation prompt
     if (!shop) {
       const installHtml = `<!DOCTYPE html>

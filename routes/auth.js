@@ -247,8 +247,12 @@ router.get('/callback', async (req, res) => {
     console.log('[Auth] Redirecting to app with shop:', redirectShop);
     
     if (redirectShop) {
-      res.redirect(`/?shop=${encodeURIComponent(redirectShop)}`);
+      // Redirect to /app (embedded admin UI) instead of / (public install page)
+      const redirectUrl = `/app?shop=${encodeURIComponent(redirectShop)}`;
+      console.log(`[Auth] Redirect URL: ${redirectUrl}`);
+      res.redirect(redirectUrl);
     } else {
+      console.log('[Auth] No shop for redirect, going to success page');
       res.redirect('/auth/success');
     }
   } catch (error) {

@@ -10,13 +10,17 @@ const verifyWebhook = require('./middleware/webhookVerification');
 
 const app = express();
 
+// Configure EJS view engine for server-rendered templates
+app.set('view engine', 'ejs');
+app.set('views', path.join(__dirname, 'views'));
+
 // Middleware
 // For webhooks, we need raw body for HMAC verification
 app.use('/webhooks', bodyParser.raw({ type: 'application/json' }));
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
-// Serve static files (admin UI)
+// Serve static files (public install page, legal pages, etc.)
 app.use(express.static(path.join(__dirname, 'public')));
 
 // Request logging

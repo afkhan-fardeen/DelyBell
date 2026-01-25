@@ -33,19 +33,26 @@ function verifyWebhook(req, res, next) {
     }
 
     // Get raw body (for webhooks, body is Buffer from raw body parser)
+    // CRITICAL: Must use the raw body exactly as Shopify sent it for HMAC verification
     let body;
     if (Buffer.isBuffer(req.body)) {
+      // Use Buffer directly (this is what Shopify sends)
       body = req.body;
     } else if (typeof req.body === 'string') {
+      // Convert string to Buffer
       body = Buffer.from(req.body, 'utf8');
     } else {
+      // If body was already parsed, we need the raw body
+      // This shouldn't happen if bodyParser.raw is configured correctly
+      console.warn('[Webhook] Body is not Buffer or string, attempting to reconstruct');
       body = Buffer.from(JSON.stringify(req.body), 'utf8');
     }
     
     // Calculate expected HMAC
+    // CRITICAL: Use body directly (not stringified) - Shopify sends raw bytes
     const hash = crypto
       .createHmac('sha256', config.shopify.apiSecret)
-      .update(body, 'utf8')
+      .update(body) // Don't specify encoding - use raw Buffer
       .digest('base64');
 
     // Compare HMACs
