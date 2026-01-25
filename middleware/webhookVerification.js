@@ -13,10 +13,21 @@ function verifyWebhook(req, res, next) {
     const shop = req.headers['x-shopify-shop-domain'];
     const topic = req.headers['x-shopify-topic'];
 
+    console.log('[Webhook Verification] Incoming webhook:', {
+      path: req.path,
+      method: req.method,
+      shop: shop || 'not found',
+      topic: topic || 'not found',
+      hasHmac: !!hmac,
+      hasBody: !!req.body,
+      bodyType: req.body ? (Buffer.isBuffer(req.body) ? 'Buffer' : typeof req.body) : 'none',
+    });
+
     if (!hmac) {
       console.error('[Webhook] Verification failed: No HMAC header found');
       // Require HMAC verification in production (Shopify App Store requirement)
       if (process.env.NODE_ENV === 'production') {
+        console.error('[Webhook] Production mode: Rejecting webhook without HMAC');
         return res.status(401).json({
           success: false,
           error: 'Webhook verification required',

@@ -1065,4 +1065,77 @@ router.get('/admin/api/order-logs', async (req, res) => {
   }
 });
 
+/**
+ * Manual test endpoint to process a specific order
+ * GET /admin/api/test-order?shop=your-shop.myshopify.com&orderId=ORDER_ID
+ */
+router.get('/admin/api/test-order', async (req, res) => {
+  try {
+    const { shop, orderId } = req.query;
+    
+    if (!shop || !orderId) {
+      return res.status(400).json({
+        success: false,
+        error: 'Shop and orderId parameters are required',
+      });
+    }
+    
+    const { normalizeShop } = require('../utils/normalizeShop');
+    const normalizedShop = normalizeShop(shop);
+    
+    const session = await shopifyClient.getSession(normalizedShop);
+    if (!session || !session.accessToken) {
+      return res.status(401).json({
+        success: false,
+        error: 'Shop not authenticated',
+      });
+    }
+    
+    // Fetch the order from Shopify
+    const client = new shopifyClient.shopify.clients.Rest({ session });
+    const orderResponse = await client.get({
+      path: `orders/${orderId}`,
+    });
+    
+    const shopifyOrder = orderResponse.body.order;
+    if (!shopifyOrder) {
+      return res.status(404).json({
+        success: false,
+        error: 'Order not found',
+      });
+    }
+    
+    // Process the order
+    const orderProcessor = require('../services/orderProcessor');
+    const mappingConfig = {
+      service_type_id: parseInt(process.env.DEFAULT_SERVICE_TYPE_ID) || 1,
+      shop: normalizedShop,
+      session: session,
+      destination: null,
+    };
+    
+    console.log(`[Test] Manually processing order ${orderId}...`);
+    const result = await orderProcessor.processOrder(
+      shopifyOrder,
+      session,
+      mappingConfig
+    );
+    
+    res.json({
+      success: result.success,
+      message: result.success 
+        ? `Order ${orderId} processed successfully` 
+        : `Order processing failed: ${result.error}`,
+      result: result,
+    });
+  } catch (error) {
+    console.error('[Admin] Error testing order:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message,
+      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined,
+    });
+  }
+});
+
 module.exports = router;
