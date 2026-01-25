@@ -100,7 +100,9 @@ router.post('/orders/create', async (req, res) => {
   };
 
   try {
-    console.log('[Webhook] Handler called: /orders/create');
+    console.log('[Webhook] ========================================');
+    console.log('[Webhook] 🎯 Handler called: /orders/create');
+    console.log('[Webhook] ========================================');
     
     // Parse webhook body (raw body is Buffer, need to parse JSON)
     let shopifyOrder;
@@ -132,7 +134,12 @@ router.post('/orders/create', async (req, res) => {
     }
     
     const orderId = shopifyOrder.order_number || shopifyOrder.id;
-    console.log(`[Webhook] Received webhook for new order: ${orderId}`);
+    const orderStatus = shopifyOrder.financial_status || 'unknown';
+    const orderFulfillmentStatus = shopifyOrder.fulfillment_status || 'unfulfilled';
+    
+    console.log(`[Webhook] 📦 Received webhook for NEW order: ${orderId}`);
+    console.log(`[Webhook] Order status - Financial: ${orderStatus}, Fulfillment: ${orderFulfillmentStatus}`);
+    console.log(`[Webhook] Order will be synced to Delybell immediately (regardless of payment status)`);
 
     // Get shop domain from headers or order data
     let shop = req.headers['x-shopify-shop-domain'] || shopifyOrder.shop;
@@ -209,8 +216,11 @@ router.post('/orders/create', async (req, res) => {
     }
 
     // Process order (may take longer than 5 seconds, but we've already responded)
+    // IMPORTANT: We process ALL orders immediately when created, regardless of payment status
     try {
-      console.log(`[Webhook] Starting order processing for order ${orderId}...`);
+      console.log(`[Webhook] 🚀 Starting order processing for order ${orderId} (Status: ${orderStatus})...`);
+      console.log(`[Webhook] Processing order immediately - no payment status check`);
+      
       const result = await orderProcessor.processOrder(
         shopifyOrder,
         session,
@@ -222,7 +232,7 @@ router.post('/orders/create', async (req, res) => {
       } else {
         console.log(`[Webhook] Order processing completed:`, result.success ? 'Success' : 'Failed');
         if (!result.success) {
-          console.error(`[Webhook] Order processing failed for order ${orderId}:`, result.error);
+          console.error(`[Webhook] ❌ Order processing failed for order ${orderId}:`, result.error);
         } else {
           console.log(`[Webhook] ✅ Order ${orderId} synced to Delybell: ${result.delybellOrderId}`);
         }
@@ -256,34 +266,196 @@ router.post('/orders/create', async (req, res) => {
 
 /**
  * Webhook endpoint for order updates
+ * Processes orders when they are updated (e.g., marked as paid, fulfilled, etc.)
  */
 router.post('/orders/update', async (req, res) => {
+  const startTime = Date.now();
+  
+  // CRITICAL: Always respond 200 OK within 5 seconds (Shopify requirement)
+  const respondQuickly = () => {
+    const elapsed = Date.now() - startTime;
+    if (elapsed < 4500) {
+      res.status(200).json({
+        success: true,
+        message: 'Webhook received, processing order update',
+      });
+      return true;
+    }
+    return false;
+  };
+
   try {
-    const shopifyOrder = parseWebhookBody(req);
-    const shop = req.headers['x-shopify-shop-domain'] || shopifyOrder.shop;
+    console.log('[Webhook] Handler called: /orders/update');
     
-    console.log(`[Webhook] Received webhook for order update: ${shopifyOrder.order_number || shopifyOrder.id} from ${shop}`);
+    // Parse webhook body
+    let shopifyOrder;
+    try {
+      shopifyOrder = parseWebhookBody(req);
+      console.log('[Webhook] Parsed order update data:', shopifyOrder ? `Order ID: ${shopifyOrder.id || shopifyOrder.order_number || 'unknown'}` : 'NULL');
+      
+      if (!shopifyOrder) {
+        console.error('[Webhook] Parsed order is null or undefined');
+        return res.status(200).json({
+          success: false,
+          error: 'Invalid webhook payload: order is null',
+        });
+      }
+      
+      if (!shopifyOrder.id && !shopifyOrder.order_number) {
+        console.error('[Webhook] Order missing ID');
+        return res.status(200).json({
+          success: false,
+          error: 'Invalid webhook payload: missing order ID',
+        });
+      }
+    } catch (parseError) {
+      console.error('[Webhook] Failed to parse webhook body:', parseError.message);
+      return res.status(200).json({
+        success: false,
+        error: `Failed to parse webhook body: ${parseError.message}`,
+      });
+    }
     
-    // Handle order updates if needed
-    // For now, just acknowledge the webhook
-    // You can add logic here to sync order updates to Delybell if needed
+    const orderId = shopifyOrder.order_number || shopifyOrder.id;
+    const orderStatus = shopifyOrder.financial_status || 'unknown';
+    console.log(`[Webhook] Received webhook for order update: ${orderId} (Status: ${orderStatus})`);
+
+    // Get shop domain from headers or order data
+    let shop = req.headers['x-shopify-shop-domain'] || shopifyOrder.shop;
+    if (!shop) {
+      console.error('[Webhook] Shop domain not found in webhook headers');
+      return res.status(200).json({
+        success: false,
+        error: 'Shop domain not found in webhook headers',
+      });
+    }
+
+    // Normalize shop domain
+    shop = normalizeShop(shop);
+    console.log(`[Webhook] Processing order update for shop: ${shop}`);
+
+    // Get shop data from Supabase
+    let shopData;
+    try {
+      shopData = await getShop(shop);
+      if (!shopData || !shopData.access_token) {
+        console.error(`[Webhook] Shop ${shop} not installed or missing access token`);
+        if (!respondQuickly()) {
+          return res.status(200).json({
+            success: false,
+            error: 'Shop not installed',
+          });
+        }
+        return;
+      }
+      console.log(`[Webhook] ✅ Shop ${shop} found in database`);
+    } catch (dbError) {
+      console.error(`[Webhook] Error fetching shop ${shop}:`, dbError.message);
+      if (!respondQuickly()) {
+        return res.status(200).json({
+          success: false,
+          error: 'Database error',
+        });
+      }
+      return;
+    }
+
+    // Create session-like object
+    const session = {
+      id: `offline_${shop}`,
+      shop: shop,
+      accessToken: shopData.access_token,
+      scope: shopData.scopes,
+      scopes: shopData.scopes,
+      isOnline: false,
+    };
+
+    // Check if order was already synced (has delybell tag)
+    const existingTags = shopifyOrder.tags ? shopifyOrder.tags.split(', ') : [];
+    const alreadySynced = existingTags.some(tag => tag.startsWith('delybell-synced') || tag.startsWith('delybell-order-id:'));
     
-    // Always respond 200 OK (Shopify requirement)
-    res.status(200).json({ 
-      success: true, 
-      message: 'Order update received',
-      orderId: shopifyOrder.id,
-      shop,
-    });
+    if (alreadySynced) {
+      console.log(`[Webhook] Order ${orderId} already synced to Delybell, skipping`);
+      if (!respondQuickly()) {
+        return res.status(200).json({
+          success: true,
+          message: 'Order already synced, update skipped',
+        });
+      }
+      return;
+    }
+
+    // Only process orders that are paid or authorized (not pending/unpaid)
+    // This ensures we sync orders when they are marked as paid
+    const shouldProcess = orderStatus === 'paid' || orderStatus === 'authorized' || orderStatus === 'partially_paid';
+    
+    if (!shouldProcess) {
+      console.log(`[Webhook] Order ${orderId} status is ${orderStatus}, skipping (will sync when marked as paid)`);
+      if (!respondQuickly()) {
+        return res.status(200).json({
+          success: true,
+          message: `Order status is ${orderStatus}, will sync when marked as paid`,
+        });
+      }
+      return;
+    }
+
+    console.log(`[Webhook] Order ${orderId} is ${orderStatus}, processing sync to Delybell...`);
+
+    // Process the order (same as orders/create)
+    const mappingConfig = {
+      service_type_id: parseInt(process.env.DEFAULT_SERVICE_TYPE_ID) || 1,
+      shop: shop,
+      session: session,
+      destination: null,
+    };
+
+    // Respond quickly to Shopify (within 5 seconds)
+    if (!respondQuickly()) {
+      return res.status(200).json({
+        success: true,
+        message: 'Webhook received, processing asynchronously',
+      });
+    }
+
+    // Process order (may take longer than 5 seconds, but we've already responded)
+    try {
+      console.log(`[Webhook] Starting order processing for order ${orderId}...`);
+      const result = await orderProcessor.processOrder(
+        shopifyOrder,
+        session,
+        mappingConfig
+      );
+
+      if (process.env.NODE_ENV !== 'production') {
+        console.log(`[Webhook] Order processing result:`, JSON.stringify(result, null, 2));
+      } else {
+        console.log(`[Webhook] Order processing completed:`, result.success ? 'Success' : 'Failed');
+        if (!result.success) {
+          console.error(`[Webhook] Order processing failed for order ${orderId}:`, result.error);
+        } else {
+          console.log(`[Webhook] ✅ Order ${orderId} synced to Delybell: ${result.delybellOrderId}`);
+        }
+      }
+
+      if (!result.success) {
+        console.error(`[Webhook] ❌ Order processing failed for order ${orderId}:`, result.error);
+        console.error(`[Webhook] Error details:`, result.errorDetails || 'No details');
+      }
+    } catch (processError) {
+      console.error(`[Webhook] ❌ Order processing error for order ${orderId}:`, processError.message);
+      console.error(`[Webhook] Error stack:`, processError.stack);
+    }
   } catch (error) {
     console.error('[Webhook] Order update webhook error:', error.message);
-    // Always respond 200 OK - never block Shopify
-    res.status(200).json({ 
-      success: false, 
-      error: process.env.NODE_ENV === 'production' 
-        ? 'Order update webhook received'
-        : error.message
-    });
+    if (!res.headersSent) {
+      res.status(200).json({
+        success: false,
+        error: process.env.NODE_ENV === 'production'
+          ? 'Webhook received, processing error logged'
+          : error.message,
+      });
+    }
   }
 });
 
