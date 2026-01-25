@@ -936,6 +936,7 @@ router.get('/admin/api/webhooks/status', async (req, res) => {
       });
     }
     
+    const { normalizeShop } = require('../utils/normalizeShop');
     const normalizedShop = normalizeShop(shop);
     const session = await shopifyClient.getSession(normalizedShop);
     
@@ -1027,6 +1028,7 @@ router.get('/admin/api/order-logs', async (req, res) => {
       });
     }
     
+    const { normalizeShop } = require('../utils/normalizeShop');
     const normalizedShop = normalizeShop(shop);
     
     if (!process.env.SUPABASE_URL) {
