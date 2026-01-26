@@ -127,19 +127,6 @@ class OrderProcessor {
       
       console.log(`Destination address IDs validated successfully`);
 
-      // 🔒 Idempotency Guard: Check if order already synced BEFORE calling Delybell API
-      const existing = await this.findOrderLog(shop, shopifyOrderId);
-      if (existing?.delybell_order_id) {
-        console.log(`[OrderProcessor] Order ${shopifyOrderId} already synced to Delybell (${existing.delybell_order_id}), skipping`);
-        return {
-          success: true,
-          shopifyOrderId: shopifyOrderId,
-          delybellOrderId: existing.delybell_order_id,
-          message: 'Order already synced',
-          skipped: true,
-        };
-      }
-
       // Step 2: Calculate shipping charge (optional, non-blocking)
       // 4️⃣ Make Shipping Charge NON-BLOCKING - errors must NEVER fail the order
       let shippingCharge = null;
