@@ -72,13 +72,52 @@ class PickupLocationService {
       // Parse the store address to extract block/road/building numbers
       const addressNumbers = addressMapper.parseShopifyAddress(storeAddress);
 
-      if (!addressMapper.isValidMapping(addressNumbers)) {
+      // For pickup location, we're more flexible - Block is required, Road is optional
+      // If zip code is available, use it as Block number (common in Bahrain)
+      if (!addressNumbers || !addressNumbers.block_number) {
+        // Try to use zip code as Block if available
+        if (storeAddress.zip && /^\d+$/.test(storeAddress.zip.trim())) {
+          const zipAsBlock = parseInt(storeAddress.zip.trim());
+          if (zipAsBlock > 0 && zipAsBlock < 10000) {
+            console.log(`Using zip code ${zipAsBlock} as Block number for pickup location`);
+            // Create a minimal address mapping with just Block from zip
+            // Road will need to be looked up or we'll use a default
+            const minimalMapping = {
+              block_number: zipAsBlock,
+              road_number: null, // Will need to be provided or looked up
+              building_number: null,
+              flat_number: 'N/A',
+            };
+            
+            // If we still can't get Road, throw a helpful error
+            throw new Error(
+              `Could not parse store address for shop ${shop}. ` +
+              `Store address must contain Road information. ` +
+              `Received: ${storeAddress.address1}, ${storeAddress.city}, ${storeAddress.zip}. ` +
+              `Using zip code ${zipAsBlock} as Block, but Road is still required. ` +
+              `Expected format: "Building X, Road Y, Block Z" or "Road Y" in address fields. ` +
+              `Please update the store address in Shopify Admin → Settings → Store details to include Road number.`
+            );
+          }
+        }
+        
         throw new Error(
           `Could not parse store address for shop ${shop}. ` +
           `Store address must contain Block and Road information in parseable format. ` +
           `Received: ${storeAddress.address1}, ${storeAddress.city}, ${storeAddress.zip}. ` +
           `Expected format: "Building X, Road Y, Block Z" or "Building: X, Road: Y, Block: Z" or similar. ` +
           `Please update the store address in Shopify Admin → Settings → Store details.`
+        );
+      }
+      
+      // Road is required for pickup location
+      if (!addressNumbers.road_number) {
+        throw new Error(
+          `Could not parse Road number from store address for shop ${shop}. ` +
+          `Store address must contain Road information. ` +
+          `Received: ${storeAddress.address1}, ${storeAddress.city}, ${storeAddress.zip}. ` +
+          `Block found: ${addressNumbers.block_number}, but Road is missing. ` +
+          `Please update the store address in Shopify Admin → Settings → Store details to include Road number.`
         );
       }
 

@@ -272,15 +272,22 @@ class OrderProcessor {
     }
 
     try {
+      // Build insert object - only include error_message if it's provided and column exists
+      const insertData = {
+        shop,
+        shopify_order_id: shopifyOrderId,
+        delybell_order_id: delybellOrderId,
+        status,
+      };
+      
+      // Only add error_message if provided (handle case where column might not exist)
+      if (errorMessage) {
+        insertData.error_message = errorMessage;
+      }
+      
       const { error } = await supabase
         .from('order_logs')
-        .insert({
-          shop,
-          shopify_order_id: shopifyOrderId,
-          delybell_order_id: delybellOrderId,
-          status,
-          error_message: errorMessage,
-        });
+        .insert(insertData);
 
       if (error) {
         console.error(`[OrderProcessor] Failed to log order ${shopifyOrderId}:`, error.message);
