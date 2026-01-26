@@ -90,19 +90,6 @@ class OrderProcessor {
         console.warn('Shop domain not found - pickup location may not be fetched correctly');
       }
 
-      // 3️⃣ Idempotency Guard: Skip if already synced
-      const existing = await this.findOrderLog(shop, shopifyOrderId);
-      if (existing?.delybell_order_id) {
-        console.log(`[OrderProcessor] Order ${shopifyOrderId} already synced to Delybell (ID: ${existing.delybell_order_id}), skipping`);
-        return {
-          success: true,
-          shopifyOrderId: shopifyOrderId,
-          delybellOrderId: existing.delybell_order_id,
-          message: 'Order already synced',
-          skipped: true,
-        };
-      }
-
       // Step 1: Transform Shopify order to Delybell format (async - includes ID lookup and pickup location fetch)
       // Pass session to transformer so it can fetch store address from Shopify
       const transformerConfig = {
@@ -140,6 +127,19 @@ class OrderProcessor {
       
       console.log(`Destination address IDs validated successfully`);
 
+      // 🔒 Idempotency Guard: Check if order already synced BEFORE calling Delybell API
+      const existing = await this.findOrderLog(shop, shopifyOrderId);
+      if (existing?.delybell_order_id) {
+        console.log(`[OrderProcessor] Order ${shopifyOrderId} already synced to Delybell (${existing.delybell_order_id}), skipping`);
+        return {
+          success: true,
+          shopifyOrderId: shopifyOrderId,
+          delybellOrderId: existing.delybell_order_id,
+          message: 'Order already synced',
+          skipped: true,
+        };
+      }
+
       // Step 2: Calculate shipping charge (optional, non-blocking)
       // 4️⃣ Make Shipping Charge NON-BLOCKING - errors must NEVER fail the order
       let shippingCharge = null;
@@ -158,8 +158,75 @@ class OrderProcessor {
         console.warn('[OrderProcessor] Shipping charge calculation failed (non-blocking):', error.message);
       }
 
+      // 🔒 Idempotency Guard: Check if order already synced BEFORE calling Delybell API
+      const existing = await this.findOrderLog(shop, shopifyOrderId);
+      if (existing?.delybell_order_id) {
+        console.log(`[OrderProcessor] Order ${shopifyOrderId} already synced to Delybell (${existing.delybell_order_id}), skipping`);
+        return {
+          success: true,
+          shopifyOrderId: shopifyOrderId,
+          delybellOrderId: existing.delybell_order_id,
+          message: 'Order already synced',
+          skipped: true,
+        };
+      }
+
       // Step 3: Create order in Delybell
-      const delybellResponse = await delybellClient.createOrder(delybellOrderData);
+      let delybellResponse;
+      try {
+        delybellResponse = await delybellClient.createOrder(delybellOrderData);
+      } catch (error) {
+        // 2️⃣ Treat "already exists" as SUCCESS (Safety Net)
+        if (
+          error.response?.status === 400 &&
+          (error.response?.data?.message?.includes('already exists') ||
+           error.response?.data?.message?.includes('duplicate') ||
+           error.response?.data?.message?.toLowerCase().includes('exist'))
+        ) {
+          console.warn(`[OrderProcessor] Order ${shopifyOrderId} already exists in Delybell, marking as success`);
+          
+          // Try to extract order ID from error response if available
+          const existingOrderId = error.response?.data?.orderId || 
+                                  error.response?.data?.data?.orderId ||
+                                  error.response?.data?.existing_order_id;
+          
+          if (existingOrderId) {
+            // Log as success with the existing order ID
+            await this.logOrder({
+              shop,
+              shopifyOrderId: shopifyOrderId,
+              delybellOrderId: existingOrderId.toString(),
+              status: 'processed',
+            });
+            
+            return {
+              success: true,
+              shopifyOrderId: shopifyOrderId,
+              delybellOrderId: existingOrderId.toString(),
+              message: 'Order already exists in Delybell',
+              skipped: true,
+            };
+          } else {
+            // Order exists but we don't have the ID - log as success anyway
+            await this.logOrder({
+              shop,
+              shopifyOrderId: shopifyOrderId,
+              status: 'processed',
+              errorMessage: 'Order already exists in Delybell (order ID not available)',
+            });
+            
+            return {
+              success: true,
+              shopifyOrderId: shopifyOrderId,
+              message: 'Order already exists in Delybell',
+              skipped: true,
+            };
+          }
+        }
+        
+        // Re-throw if it's not an "already exists" error
+        throw error;
+      }
 
       // 1️⃣ Fix Order ID Extraction (CRITICAL - EXACT FORMAT)
       // delybellClient.createOrder() returns response.data (already parsed)
