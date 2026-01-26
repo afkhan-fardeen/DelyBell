@@ -123,8 +123,30 @@ class PickupLocationService {
 
       console.log(`Parsed address numbers: Block ${addressNumbers.block_number}, Road ${addressNumbers.road_number}, Building ${addressNumbers.building_number || 'N/A'}`);
 
-      // Extract area name from city (for block lookup)
-      const areaName = storeAddress.city ? storeAddress.city.trim() : null;
+      // Extract area name from address2 first (often contains area like "Ras Ruman"), then fallback to city
+      // Example: address2: "Block 306, Ras Ruman" -> area is "Ras Ruman"
+      let areaName = null;
+      if (storeAddress.address2) {
+        // Try to extract area name from address2 (common format: "Block 306, Ras Ruman")
+        const address2Parts = storeAddress.address2.split(',').map(p => p.trim());
+        // Look for parts that don't contain block/road/building numbers (likely area name)
+        const areaParts = address2Parts.filter(part => {
+          const lower = part.toLowerCase();
+          return !lower.match(/\b(block|road|building|blk|rd|bldg)\s*:?\s*\d+/i) && 
+                 !/^\d+$/.test(part) && // Not just a number
+                 part.length > 2; // Not too short
+        });
+        if (areaParts.length > 0) {
+          areaName = areaParts.join(' ').trim();
+          console.log(`Extracted area name from address2: "${areaName}"`);
+        }
+      }
+      
+      // Fallback to city if no area found in address2
+      if (!areaName && storeAddress.city) {
+        areaName = storeAddress.city.trim();
+        console.log(`Using city as area name: "${areaName}"`);
+      }
 
       // Convert address numbers to Delybell IDs
       console.log(`Converting address numbers to Delybell IDs...`);

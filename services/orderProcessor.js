@@ -146,23 +146,52 @@ class OrderProcessor {
       // Step 3: Create order in Delybell
       const createOrderResponse = await delybellClient.createOrder(delybellOrderData);
 
-      if (!createOrderResponse.status) {
-        throw new Error(`Delybell API error: ${createOrderResponse.message}`);
+      // Log full response for debugging
+      console.log('[OrderProcessor] Delybell API response:', JSON.stringify(createOrderResponse, null, 2));
+
+      // Check response structure - Delybell API might return different formats
+      // Format 1: { status: true, data: { order_id: ... } }
+      // Format 2: { order_id: ..., ... } (direct response)
+      // Format 3: { data: { order_id: ... } } (no status field)
+      
+      let delybellOrderId = null;
+      let customerOrderId = null;
+      
+      if (createOrderResponse.status === false) {
+        const errorMsg = createOrderResponse.message || 'Delybell API returned status false';
+        throw new Error(`Delybell API error: ${errorMsg}`);
+      }
+      
+      // Try to extract order ID from different possible response structures
+      if (createOrderResponse.data) {
+        // Response has data object
+        delybellOrderId = createOrderResponse.data.order_id || createOrderResponse.data.id;
+        customerOrderId = createOrderResponse.data.customer_input_order_id || createOrderResponse.data.customer_order_id;
+      } else if (createOrderResponse.order_id) {
+        // Response is direct (no data wrapper)
+        delybellOrderId = createOrderResponse.order_id;
+        customerOrderId = createOrderResponse.customer_input_order_id || createOrderResponse.customer_order_id;
+      } else if (createOrderResponse.id) {
+        // Response has id field directly
+        delybellOrderId = createOrderResponse.id;
+        customerOrderId = createOrderResponse.customer_input_order_id || createOrderResponse.customer_order_id;
       }
 
-      const delybellOrderId = createOrderResponse.data?.order_id;
-      const customerOrderId = createOrderResponse.data?.customer_input_order_id;
-
       if (!delybellOrderId) {
-        // Log failed order
+        // Log the full response for debugging
+        console.error('[OrderProcessor] ❌ Delybell order created but no order ID found in response');
+        console.error('[OrderProcessor] Response structure:', JSON.stringify(createOrderResponse, null, 2));
+        
+        // Log failed order with more details
+        const errorDetails = `Delybell order created but no order ID returned. Response: ${JSON.stringify(createOrderResponse).substring(0, 500)}`;
         await this.logOrder({
           shop,
           shopifyOrderId: shopifyOrder.id || shopifyOrder.order_number,
           status: 'failed',
-          errorMessage: 'Delybell order created but no order ID returned',
+          errorMessage: errorDetails,
         });
         
-        throw new Error('Delybell order created but no order ID returned');
+        throw new Error(`Delybell order created but no order ID returned. Response structure: ${JSON.stringify(createOrderResponse).substring(0, 200)}`);
       }
 
       console.log(`Order created successfully in Delybell: ${delybellOrderId}`);
@@ -286,7 +315,7 @@ class OrderProcessor {
     }
 
     try {
-      // Build insert object - only include error_message if it's provided and column exists
+      // Build insert object
       const insertData = {
         shop,
         shopify_order_id: shopifyOrderId,
@@ -294,14 +323,34 @@ class OrderProcessor {
         status,
       };
       
-      // Only add error_message if provided (handle case where column might not exist)
+      // Try to add error_message if provided
+      // If column doesn't exist, this will fail gracefully
       if (errorMessage) {
-        insertData.error_message = errorMessage;
+        try {
+          insertData.error_message = errorMessage;
+        } catch (e) {
+          // Column might not exist - log but continue
+          console.warn('[OrderProcessor] error_message column might not exist, skipping');
+        }
       }
       
       const { error } = await supabase
         .from('order_logs')
         .insert(insertData);
+      
+      // If error is about missing column, try without error_message
+      if (error && error.message && error.message.includes('error_message')) {
+        console.warn('[OrderProcessor] error_message column not found, inserting without it');
+        delete insertData.error_message;
+        const { error: retryError } = await supabase
+          .from('order_logs')
+          .insert(insertData);
+        
+        if (retryError) {
+          throw retryError;
+        }
+        return; // Success on retry
+      }
 
       if (error) {
         console.error(`[OrderProcessor] Failed to log order ${shopifyOrderId}:`, error.message);

@@ -63,15 +63,18 @@ class AddressIdMapper {
       }
       
       // Fallback: Try to find block by code only (if area name didn't match or wasn't provided)
-      if (!normalizedAreaName) {
-        const blockByCode = blocks.find(block => {
-          return block.code && String(block.code) === String(blockNumber);
-        });
-        
-        if (blockByCode) {
-          console.log(`Found Block ID ${blockByCode.id} for Block Number ${blockNumber} (matched by code only)`);
-          return blockByCode.id;
+      // This is important because area names might not match exactly (e.g., "Manama" vs "Ras Ruman")
+      const blockByCode = blocks.find(block => {
+        return block.code && String(block.code) === String(blockNumber);
+      });
+      
+      if (blockByCode) {
+        if (normalizedAreaName) {
+          // Area was provided but didn't match - log warning but still return the block
+          console.warn(`Block Number ${blockNumber} found by code, but area "${normalizedAreaName}" didn't match block name "${blockByCode.name}". Using block anyway.`);
         }
+        console.log(`Found Block ID ${blockByCode.id} for Block Number ${blockNumber} (matched by code only)`);
+        return blockByCode.id;
       }
       
       // Fallback: Try to extract number from name (e.g., "BLK 457" or "Block 929")
