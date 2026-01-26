@@ -1068,6 +1068,10 @@ router.get('/admin/api/order-logs', async (req, res) => {
 /**
  * Manual test endpoint to process a specific order
  * GET /admin/api/test-order?shop=your-shop.myshopify.com&orderId=ORDER_ID
+ * 
+ * orderId can be:
+ * - Numeric order ID (e.g., 1234567890)
+ * - Order number/name (e.g., 1006) - will search by name
  */
 router.get('/admin/api/test-order', async (req, res) => {
   try {
@@ -1093,15 +1097,52 @@ router.get('/admin/api/test-order', async (req, res) => {
     
     // Fetch the order from Shopify
     const client = new shopifyClient.shopify.clients.Rest({ session });
-    const orderResponse = await client.get({
-      path: `orders/${orderId}`,
-    });
+    let shopifyOrder;
     
-    const shopifyOrder = orderResponse.body.order;
+    // Try to fetch by numeric ID first
+    if (/^\d+$/.test(orderId)) {
+      try {
+        const orderResponse = await client.get({
+          path: `orders/${orderId}`,
+        });
+        shopifyOrder = orderResponse.body.order;
+      } catch (idError) {
+        // If numeric ID fails, try searching by order number/name
+        console.log(`[Test] Order ID ${orderId} not found, trying to search by order number...`);
+        const searchResponse = await client.get({
+          path: 'orders',
+          query: {
+            name: orderId, // Search by order name/number
+            limit: 1,
+          },
+        });
+        const orders = searchResponse.body.orders || [];
+        if (orders.length > 0) {
+          shopifyOrder = orders[0];
+          console.log(`[Test] Found order by number: ${shopifyOrder.name} (ID: ${shopifyOrder.id})`);
+        }
+      }
+    } else {
+      // Not numeric, search by order number/name
+      const searchResponse = await client.get({
+        path: 'orders',
+        query: {
+          name: orderId,
+          limit: 1,
+        },
+      });
+      const orders = searchResponse.body.orders || [];
+      if (orders.length > 0) {
+        shopifyOrder = orders[0];
+        console.log(`[Test] Found order by number: ${shopifyOrder.name} (ID: ${shopifyOrder.id})`);
+      }
+    }
+    
     if (!shopifyOrder) {
       return res.status(404).json({
         success: false,
-        error: 'Order not found',
+        error: `Order not found. Tried ID: ${orderId}. Make sure the order exists and you have access to it.`,
+        hint: 'Order ID should be numeric (e.g., 1234567890) or order number (e.g., #1006 or 1006)',
       });
     }
     

@@ -174,6 +174,8 @@ class OrderProcessor {
         delybellOrderId: delybellOrderId.toString(),
         status: 'processed',
       });
+      
+      console.log(`[OrderProcessor] ✅ Order ${shopifyOrder.order_number || shopifyOrder.id} logged to database`);
 
       // Step 4: Update Shopify order with Delybell tracking info
       if (session && shopifyOrder.id) {
@@ -206,7 +208,8 @@ class OrderProcessor {
         message: 'Order processed successfully',
       };
     } catch (error) {
-      console.error('Error processing order:', error);
+      console.error('[OrderProcessor] ❌ Error processing order:', error);
+      console.error('[OrderProcessor] Error stack:', error.stack);
       
       // Extract detailed error message from Delybell API response
       const errorDetails = error.response?.data || {};
@@ -215,13 +218,24 @@ class OrderProcessor {
       
       // Log failed order
       const shop = mappingConfig.shop || session?.shop || shopifyOrder.shop;
+      const shopifyOrderId = shopifyOrder.order_number || shopifyOrder.id;
+      
+      console.log(`[OrderProcessor] Attempting to log failed order ${shopifyOrderId} to database...`);
       if (shop) {
-        await this.logOrder({
-          shop,
-          shopifyOrderId: shopifyOrder.order_number || shopifyOrder.id,
-          status: 'failed',
-          errorMessage: errorMessage,
-        });
+        try {
+          await this.logOrder({
+            shop,
+            shopifyOrderId: shopifyOrderId,
+            status: 'failed',
+            errorMessage: errorMessage,
+          });
+          console.log(`[OrderProcessor] ✅ Failed order ${shopifyOrderId} logged to database`);
+        } catch (logError) {
+          console.error(`[OrderProcessor] ❌ Failed to log order to database:`, logError.message);
+          console.error(`[OrderProcessor] Log error stack:`, logError.stack);
+        }
+      } else {
+        console.error(`[OrderProcessor] ❌ Cannot log order - shop domain missing`);
       }
       
       return {

@@ -102,6 +102,11 @@ router.post('/orders/create', async (req, res) => {
   try {
     console.log('[Webhook] ========================================');
     console.log('[Webhook] 🎯 Handler called: /orders/create');
+    console.log('[Webhook] Headers:', {
+      'x-shopify-shop-domain': req.headers['x-shopify-shop-domain'],
+      'x-shopify-topic': req.headers['x-shopify-topic'],
+      'x-shopify-hmac-sha256': req.headers['x-shopify-hmac-sha256'] ? 'present' : 'missing',
+    });
     console.log('[Webhook] ========================================');
     
     // Parse webhook body (raw body is Buffer, need to parse JSON)
@@ -242,11 +247,15 @@ router.post('/orders/create', async (req, res) => {
       if (!result.success) {
         console.error(`[Webhook] ❌ Order processing failed for order ${orderId}:`, result.error);
         console.error(`[Webhook] Error details:`, result.errorDetails || 'No details');
+        // Order is already logged to database by orderProcessor.processOrder
         // TODO: Add to retry queue for failed orders
+      } else {
+        console.log(`[Webhook] ✅ Order ${orderId} successfully processed and logged to database`);
       }
     } catch (processError) {
       console.error(`[Webhook] ❌ Order processing error for order ${orderId}:`, processError.message);
       console.error(`[Webhook] Error stack:`, processError.stack);
+      // Order is already logged to database by orderProcessor.processOrder (in catch block)
       // TODO: Add to retry queue for failed orders
       // Don't throw - we've already responded to Shopify
     }
@@ -285,7 +294,14 @@ router.post('/orders/update', async (req, res) => {
   };
 
   try {
-    console.log('[Webhook] Handler called: /orders/update');
+    console.log('[Webhook] ========================================');
+    console.log('[Webhook] 🎯 Handler called: /orders/update');
+    console.log('[Webhook] Headers:', {
+      'x-shopify-shop-domain': req.headers['x-shopify-shop-domain'],
+      'x-shopify-topic': req.headers['x-shopify-topic'],
+      'x-shopify-hmac-sha256': req.headers['x-shopify-hmac-sha256'] ? 'present' : 'missing',
+    });
+    console.log('[Webhook] ========================================');
     
     // Parse webhook body
     let shopifyOrder;
