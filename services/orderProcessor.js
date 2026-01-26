@@ -80,13 +80,27 @@ class OrderProcessor {
    */
   async processOrder(shopifyOrder, session, mappingConfig = {}) {
     try {
-      console.log(`Processing Shopify order: ${shopifyOrder.order_number || shopifyOrder.id}`);
+      const shopifyOrderId = shopifyOrder.order_number || shopifyOrder.id;
+      console.log(`Processing Shopify order: ${shopifyOrderId}`);
 
       // Extract shop domain from session or mappingConfig
       const shop = mappingConfig.shop || session?.shop || shopifyOrder.shop;
       
       if (!shop) {
         console.warn('Shop domain not found - pickup location may not be fetched correctly');
+      }
+
+      // 3️⃣ Idempotency Guard: Skip if already synced
+      const existing = await this.findOrderLog(shop, shopifyOrderId);
+      if (existing?.delybell_order_id) {
+        console.log(`[OrderProcessor] Order ${shopifyOrderId} already synced to Delybell (ID: ${existing.delybell_order_id}), skipping`);
+        return {
+          success: true,
+          shopifyOrderId: shopifyOrderId,
+          delybellOrderId: existing.delybell_order_id,
+          message: 'Order already synced',
+          skipped: true,
+        };
       }
 
       // Step 1: Transform Shopify order to Delybell format (async - includes ID lookup and pickup location fetch)
@@ -126,7 +140,8 @@ class OrderProcessor {
       
       console.log(`Destination address IDs validated successfully`);
 
-      // Step 2: Calculate shipping charge (optional, for verification)
+      // Step 2: Calculate shipping charge (optional, non-blocking)
+      // 4️⃣ Make Shipping Charge NON-BLOCKING - errors must NEVER fail the order
       let shippingCharge = null;
       try {
         const shippingData = await delybellClient.calculateShippingCharge({
@@ -139,64 +154,23 @@ class OrderProcessor {
         shippingCharge = shippingData.data?.shipping_charge;
         console.log(`Calculated shipping charge: ${shippingCharge}`);
       } catch (error) {
-        console.warn('Could not calculate shipping charge:', error.message);
-        // Continue with order creation even if shipping calculation fails
+        // Ignore shipping charge errors - they must never fail the order
+        console.warn('[OrderProcessor] Shipping charge calculation failed (non-blocking):', error.message);
       }
 
       // Step 3: Create order in Delybell
       const createOrderResponse = await delybellClient.createOrder(delybellOrderData);
 
-      // Log full response for debugging
-      console.log('[OrderProcessor] Delybell API response:', JSON.stringify(createOrderResponse, null, 2));
-
-      // Check response structure - Delybell API might return different formats
-      // Format 1: { status: true, data: { order_id: ... } }
-      // Format 2: { order_id: ..., ... } (direct response)
-      // Format 3: { data: { order_id: ... } } (no status field)
-      
-      let delybellOrderId = null;
-      let customerOrderId = null;
-      
-      if (createOrderResponse.status === false) {
-        const errorMsg = createOrderResponse.message || 'Delybell API returned status false';
-        throw new Error(`Delybell API error: ${errorMsg}`);
-      }
-      
-      // Try to extract order ID from different possible response structures
-      if (createOrderResponse.data) {
-        // Response has data object
-        delybellOrderId = createOrderResponse.data.order_id || createOrderResponse.data.id;
-        customerOrderId = createOrderResponse.data.customer_input_order_id || createOrderResponse.data.customer_order_id;
-      } else if (createOrderResponse.order_id) {
-        // Response is direct (no data wrapper)
-        delybellOrderId = createOrderResponse.order_id;
-        customerOrderId = createOrderResponse.customer_input_order_id || createOrderResponse.customer_order_id;
-      } else if (createOrderResponse.id) {
-        // Response has id field directly
-        delybellOrderId = createOrderResponse.id;
-        customerOrderId = createOrderResponse.customer_input_order_id || createOrderResponse.customer_order_id;
-      }
+      // 1️⃣ Fix Order ID Extraction (CRITICAL - EXACT FORMAT)
+      const delybellOrderId = createOrderResponse?.data?.data?.orderId;
 
       if (!delybellOrderId) {
-        // Log the full response for debugging
-        console.error('[OrderProcessor] ❌ Delybell order created but no order ID found in response');
-        console.error('[OrderProcessor] Response structure:', JSON.stringify(createOrderResponse, null, 2));
-        
-        // Log failed order with more details
-        const errorDetails = `Delybell order created but no order ID returned. Response: ${JSON.stringify(createOrderResponse).substring(0, 500)}`;
-        await this.logOrder({
-          shop,
-          shopifyOrderId: shopifyOrder.id || shopifyOrder.order_number,
-          status: 'failed',
-          errorMessage: errorDetails,
-        });
-        
-        throw new Error(`Delybell order created but no order ID returned. Response structure: ${JSON.stringify(createOrderResponse).substring(0, 200)}`);
+        throw new Error('No orderId returned');
       }
 
       console.log(`Order created successfully in Delybell: ${delybellOrderId}`);
       
-      // Log successful order
+      // 2️⃣ Log successful order and RETURN IMMEDIATELY (CRITICAL)
       await this.logOrder({
         shop,
         shopifyOrderId: shopifyOrder.id || shopifyOrder.order_number,
@@ -205,35 +179,14 @@ class OrderProcessor {
       });
       
       console.log(`[OrderProcessor] ✅ Order ${shopifyOrder.order_number || shopifyOrder.id} logged to database`);
-
-      // Step 4: Update Shopify order with Delybell tracking info
-      if (session && shopifyOrder.id) {
-        try {
-          const tags = [
-            `delybell-synced`,
-            `delybell-order-id:${delybellOrderId}`,
-            `delybell-tracking:${createOrderResponse.data?.tracking_url || ''}`,
-          ];
-          
-          // Keep existing tags
-          const existingTags = shopifyOrder.tags ? shopifyOrder.tags.split(', ') : [];
-          const allTags = [...new Set([...existingTags, ...tags])];
-          
-          await shopifyClient.updateOrderTags(session, shopifyOrder.id, allTags);
-          console.log(`Updated Shopify order tags`);
-        } catch (error) {
-          console.warn('Could not update Shopify order tags:', error.message);
-          // Don't fail the whole process if tag update fails
-        }
-      }
-
+      
+      // RETURN IMMEDIATELY - no code after this should run
       return {
         success: true,
         shopifyOrderId: shopifyOrder.order_number || shopifyOrder.id,
-        delybellOrderId,
-        customerOrderId,
+        delybellOrderId: delybellOrderId.toString(),
         shippingCharge,
-        trackingUrl: createOrderResponse.data?.tracking_url,
+        trackingUrl: createOrderResponse.data?.data?.tracking_url,
         message: 'Order processed successfully',
       };
     } catch (error) {
@@ -297,6 +250,44 @@ class OrderProcessor {
     }
     
     return results;
+  }
+
+  /**
+   * Find order log by Shopify order ID
+   * 3️⃣ Idempotency Guard: Check if order already synced
+   * @param {string} shop - Shop domain
+   * @param {number|string} shopifyOrderId - Shopify order ID
+   * @returns {Promise<Object|null>} Order log or null if not found
+   */
+  async findOrderLog(shop, shopifyOrderId) {
+    if (!process.env.SUPABASE_URL) {
+      return null;
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from('order_logs')
+        .select('*')
+        .eq('shop', shop)
+        .eq('shopify_order_id', shopifyOrderId)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single();
+
+      if (error) {
+        if (error.code === 'PGRST116') {
+          // No rows returned
+          return null;
+        }
+        console.error(`[OrderProcessor] Error finding order log:`, error.message);
+        return null;
+      }
+
+      return data;
+    } catch (error) {
+      console.error(`[OrderProcessor] Error finding order log:`, error.message);
+      return null;
+    }
   }
 
   /**
