@@ -716,7 +716,7 @@
                       <td>
                         ${order.trackingUrl ? `<a href="${order.trackingUrl}" target="_blank" class="link">Track</a>` : '<span style="color: #999999;">-</span>'}
                       </td>
-                      <td style="font-size: 12px; color: #666666;">${formatDate(order.createdAt)}</td>
+                      <td style="font-size: 12px; color: #666666;">${formatDate(order.syncedAt || order.createdAt)}</td>
                       <td>
                         <span class="order-status">Synced</span>
                       </td>

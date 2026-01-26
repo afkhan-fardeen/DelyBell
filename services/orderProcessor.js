@@ -159,13 +159,26 @@ class OrderProcessor {
       }
 
       // Step 3: Create order in Delybell
-      const createOrderResponse = await delybellClient.createOrder(delybellOrderData);
+      const delybellResponse = await delybellClient.createOrder(delybellOrderData);
 
       // 1️⃣ Fix Order ID Extraction (CRITICAL - EXACT FORMAT)
-      const delybellOrderId = createOrderResponse?.data?.data?.orderId;
+      // delybellClient.createOrder() returns response.data (already parsed)
+      // So structure is: { status: true, data: { orderId: "..." } }
+      // NOT: { data: { data: { orderId: "..." } } }
+      const delybellOrderId = delybellResponse?.data?.orderId;
+
+      // Debug log to verify extraction
+      console.log('[OrderProcessor] DEBUG orderId extraction:', {
+        hasResponse: !!delybellResponse,
+        hasData: !!delybellResponse?.data,
+        orderId: delybellOrderId,
+        responseStructure: JSON.stringify(delybellResponse).substring(0, 300),
+      });
 
       if (!delybellOrderId) {
-        throw new Error('No orderId returned');
+        throw new Error(
+          `No orderId returned. Raw response: ${JSON.stringify(delybellResponse).substring(0, 500)}`
+        );
       }
 
       console.log(`Order created successfully in Delybell: ${delybellOrderId}`);
@@ -186,7 +199,7 @@ class OrderProcessor {
         shopifyOrderId: shopifyOrder.order_number || shopifyOrder.id,
         delybellOrderId: delybellOrderId.toString(),
         shippingCharge,
-        trackingUrl: createOrderResponse.data?.data?.tracking_url,
+        trackingUrl: delybellResponse?.data?.tracking_url,
         message: 'Order processed successfully',
       };
     } catch (error) {

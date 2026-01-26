@@ -701,6 +701,8 @@ router.get('/admin/api/resolve-shop', async (req, res) => {
 /**
  * Admin API - Get synced orders
  * GET /admin/api/synced-orders?shop=your-shop.myshopify.com&limit=50
+ * 
+ * Uses order_logs table from Supabase (more reliable than Shopify tags)
  */
 router.get('/admin/api/synced-orders', async (req, res) => {
   try {
@@ -713,64 +715,107 @@ router.get('/admin/api/synced-orders', async (req, res) => {
       });
     }
     
-    // Get session
-    const session = await shopifyClient.getSession(shop);
+    const { normalizeShop } = require('../utils/normalizeShop');
+    const normalizedShop = normalizeShop(shop);
+    
+    // Get session for fetching order details from Shopify
+    const session = await shopifyClient.getSession(normalizedShop);
     
     if (!session || !session.accessToken) {
       return res.status(401).json({
         success: false,
         error: 'Shop not authenticated',
-        installUrl: `/auth/install?shop=${shop}`,
+        installUrl: `/auth/install?shop=${normalizedShop}`,
       });
     }
     
-    // Fetch orders with delybell-synced tag
+    // Get synced orders from order_logs table (source of truth)
+    if (!process.env.SUPABASE_URL) {
+      return res.status(503).json({
+        success: false,
+        error: 'Supabase not configured',
+      });
+    }
+    
+    const { supabase } = require('../services/db');
+    const { data: orderLogs, error: logsError } = await supabase
+      .from('order_logs')
+      .select('*')
+      .eq('shop', normalizedShop)
+      .eq('status', 'processed') // Only successfully synced orders
+      .not('delybell_order_id', 'is', null) // Must have Delybell order ID
+      .order('created_at', { ascending: false })
+      .limit(parseInt(limit) || 50);
+    
+    if (logsError) {
+      throw logsError;
+    }
+    
+    if (!orderLogs || orderLogs.length === 0) {
+      return res.json({
+        success: true,
+        count: 0,
+        orders: [],
+      });
+    }
+    
+    // Fetch order details from Shopify for each synced order
     const client = new shopifyClient.shopify.clients.Rest({ session });
+    const syncedOrders = [];
     
-    // Get orders with delybell-synced tag
-    const ordersResponse = await client.get({
-      path: 'orders',
-      query: {
-        limit: Math.min(parseInt(limit) || 50, 250), // Max 250 per Shopify API
-        status: 'any',
-        fields: 'id,name,order_number,created_at,updated_at,tags,financial_status,fulfillment_status,customer,total_price,currency',
-      },
-    });
-    
-    const allOrders = ordersResponse.body.orders || [];
-    
-    // Filter orders that have been synced to Delybell
-    const syncedOrders = allOrders
-      .filter(order => {
-        const tags = order.tags ? order.tags.split(', ') : [];
-        return tags.some(tag => tag.startsWith('delybell-synced'));
-      })
-      .map(order => {
-        const tags = order.tags ? order.tags.split(', ') : [];
-        const delybellOrderIdTag = tags.find(tag => tag.startsWith('delybell-order-id:'));
-        const trackingTag = tags.find(tag => tag.startsWith('delybell-tracking:'));
+    for (const log of orderLogs) {
+      try {
+        // Fetch order details from Shopify
+        const orderResponse = await client.get({
+          path: `orders/${log.shopify_order_id}`,
+          query: {
+            fields: 'id,name,order_number,created_at,updated_at,financial_status,fulfillment_status,customer,total_price,currency',
+          },
+        });
         
-        const delybellOrderId = delybellOrderIdTag ? delybellOrderIdTag.split(':')[1] : null;
-        const trackingUrl = trackingTag ? trackingTag.split(':')[1] : null;
-        
-        return {
-          shopifyOrderId: order.id,
-          shopifyOrderNumber: order.order_number || order.name,
-          shopifyOrderName: order.name,
-          delybellOrderId,
-          trackingUrl,
-          createdAt: order.created_at,
-          updatedAt: order.updated_at,
-          customerName: order.customer ? `${order.customer.first_name || ''} ${order.customer.last_name || ''}`.trim() : 'Guest',
-          customerEmail: order.customer?.email || null,
-          totalPrice: order.total_price,
-          currency: order.currency,
-          financialStatus: order.financial_status,
-          fulfillmentStatus: order.fulfillment_status,
+        const order = orderResponse.body.order;
+        if (order) {
+          syncedOrders.push({
+            shopifyOrderId: order.id,
+            shopifyOrderNumber: order.order_number || order.name,
+            shopifyOrderName: order.name,
+            delybellOrderId: log.delybell_order_id,
+            trackingUrl: null, // Can be fetched from Delybell API if needed
+            createdAt: order.created_at,
+            updatedAt: order.updated_at,
+            syncedAt: log.created_at,
+            customerName: order.customer ? `${order.customer.first_name || ''} ${order.customer.last_name || ''}`.trim() : 'Guest',
+            customerEmail: order.customer?.email || null,
+            totalPrice: order.total_price,
+            currency: order.currency,
+            financialStatus: order.financial_status,
+            fulfillmentStatus: order.fulfillment_status,
+            synced: true,
+          });
+        }
+      } catch (orderError) {
+        // Order might have been deleted in Shopify, but still show it from logs
+        console.warn(`Order ${log.shopify_order_id} not found in Shopify:`, orderError.message);
+        syncedOrders.push({
+          shopifyOrderId: log.shopify_order_id,
+          shopifyOrderNumber: `#${log.shopify_order_id}`,
+          shopifyOrderName: `Order ${log.shopify_order_id}`,
+          delybellOrderId: log.delybell_order_id,
+          trackingUrl: null,
+          createdAt: log.created_at,
+          updatedAt: log.created_at,
+          syncedAt: log.created_at,
+          customerName: 'N/A',
+          customerEmail: null,
+          totalPrice: null,
+          currency: null,
+          financialStatus: 'unknown',
+          fulfillmentStatus: 'unknown',
           synced: true,
-        };
-      })
-      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)); // Most recent first
+          note: 'Order details not available in Shopify',
+        });
+      }
+    }
     
     res.json({
       success: true,
