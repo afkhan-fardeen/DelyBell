@@ -1245,9 +1245,18 @@ router.get('/admin/api/test-order', async (req, res) => {
  * OPERATIONS ADMIN DASHBOARD
  * ============================================================================
  * Shared admin for ALL shops - Operations control panel for Delybell staff
- * GET /admin
+ * GET /admin/login - Login page
+ * GET /admin - Dashboard (requires authentication)
  */
+router.get('/admin/login', (req, res) => {
+  res.render('login', {
+    title: 'Delybell Admin - Login',
+  });
+});
+
 router.get('/admin', (req, res) => {
+  // Simple session check (in production, use proper session management)
+  // For now, we'll rely on client-side sessionStorage
   res.render('admin-dashboard', {
     title: 'Delybell Operations Admin',
   });

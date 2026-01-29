@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Delybell Admin - Login</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+      color: #ffffff;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      position: relative;
+      overflow: hidden;
+    }
+    
+    body::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: 
+        radial-gradient(circle at 20% 50%, rgba(59, 130, 246, 0.15) 0%, transparent 50%),
+        radial-gradient(circle at 80% 80%, rgba(139, 92, 246, 0.15) 0%, transparent 50%);
+      pointer-events: none;
+    }
+    
+    .login-container {
+      width: 100%;
+      max-width: 420px;
+      position: relative;
+      z-index: 1;
+    }
+    
+    .login-card {
+      background: rgba(255, 255, 255, 0.05);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 24px;
+      padding: 48px;
+      box-shadow: 
+        0 8px 32px rgba(0, 0, 0, 0.3),
+        inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    }
+    
+    .login-header {
+      text-align: center;
+      margin-bottom: 40px;
+    }
+    
+    .login-header h1 {
+      font-size: 32px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      margin-bottom: 8px;
+      background: linear-gradient(135deg, #ffffff 0%, rgba(255, 255, 255, 0.8) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    
+    .login-header p {
+      font-size: 15px;
+      color: rgba(255, 255, 255, 0.6);
+      font-weight: 400;
+    }
+    
+    .form-group {
+      margin-bottom: 24px;
+    }
+    
+    .form-label {
+      display: block;
+      font-size: 14px;
+      font-weight: 500;
+      color: rgba(255, 255, 255, 0.9);
+      margin-bottom: 8px;
+    }
+    
+    .form-input {
+      width: 100%;
+      padding: 14px 16px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 12px;
+      font-size: 15px;
+      color: #ffffff;
+      font-family: inherit;
+      transition: all 0.2s ease;
+    }
+    
+    .form-input::placeholder {
+      color: rgba(255, 255, 255, 0.4);
+    }
+    
+    .form-input:focus {
+      outline: none;
+      background: rgba(255, 255, 255, 0.08);
+      border-color: rgba(59, 130, 246, 0.5);
+      box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
+    }
+    
+    .btn-login {
+      width: 100%;
+      padding: 14px 24px;
+      background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+      border: none;
+      border-radius: 12px;
+      font-size: 15px;
+      font-weight: 600;
+      color: #ffffff;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      font-family: inherit;
+      margin-top: 8px;
+      box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+    }
+    
+    .btn-login:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 6px 16px rgba(59, 130, 246, 0.4);
+    }
+    
+    .btn-login:active {
+      transform: translateY(0);
+    }
+    
+    .error-message {
+      background: rgba(239, 68, 68, 0.15);
+      border: 1px solid rgba(239, 68, 68, 0.3);
+      color: #fca5a5;
+      padding: 12px 16px;
+      border-radius: 12px;
+      font-size: 14px;
+      margin-bottom: 24px;
+      display: none;
+    }
+    
+    .error-message.show {
+      display: block;
+    }
+    
+    @media (max-width: 480px) {
+      .login-card {
+        padding: 32px 24px;
+      }
+      
+      .login-header h1 {
+        font-size: 28px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="login-container">
+    <div class="login-card">
+      <div class="login-header">
+        <h1>Delybell Admin</h1>
+        <p>Operations Control Panel</p>
+      </div>
+      
+      <div class="error-message" id="errorMessage"></div>
+      
+      <form id="loginForm" onsubmit="handleLogin(event)">
+        <div class="form-group">
+          <label class="form-label" for="username">Username</label>
+          <input 
+            type="text" 
+            id="username" 
+            name="username" 
+            class="form-input" 
+            placeholder="Enter your username"
+            required
+            autocomplete="username"
+            autofocus
+          />
+        </div>
+        
+        <div class="form-group">
+          <label class="form-label" for="password">Password</label>
+          <input 
+            type="password" 
+            id="password" 
+            name="password" 
+            class="form-input" 
+            placeholder="Enter your password"
+            required
+            autocomplete="current-password"
+          />
+        </div>
+        
+        <button type="submit" class="btn-login">Sign In</button>
+      </form>
+    </div>
+  </div>
+  
+  <script>
+    function handleLogin(event) {
+      event.preventDefault();
+      
+      const username = document.getElementById('username').value;
+      const password = document.getElementById('password').value;
+      const errorMessage = document.getElementById('errorMessage');
+      
+      // Simple authentication (username: admin, password: password)
+      if (username === 'admin' && password === 'password') {
+        // Set session
+        sessionStorage.setItem('adminAuthenticated', 'true');
+        sessionStorage.setItem('adminLoginTime', Date.now().toString());
+        
+        // Redirect to admin dashboard
+        window.location.href = '/admin';
+      } else {
+        errorMessage.textContent = 'Invalid username or password';
+        errorMessage.classList.add('show');
+        
+        // Clear error after 3 seconds
+        setTimeout(() => {
+          errorMessage.classList.remove('show');
+        }, 3000);
+      }
+    }
+    
+    // Check if already authenticated
+    if (sessionStorage.getItem('adminAuthenticated') === 'true') {
+      window.location.href = '/admin';
+    }
+  </script>
+</body>
+</html>
