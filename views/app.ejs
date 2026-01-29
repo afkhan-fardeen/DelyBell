@@ -677,10 +677,15 @@
         }
         
         function formatCurrency(amount, currency) {
+          // 6️⃣ Fix dashboard rendering - Never hardcode $, always render {currency} {amount}
+          if (!amount && amount !== 0) {
+            return 'N/A';
+          }
+          const currencyCode = currency || 'USD';
           return new Intl.NumberFormat('en-US', {
             style: 'currency',
-            currency: currency || 'USD',
-          }).format(amount);
+            currency: currencyCode,
+          }).format(parseFloat(amount));
         }
         
         if (ordersContainer) {

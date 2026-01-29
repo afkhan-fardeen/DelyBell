@@ -97,8 +97,17 @@ class OrderProcessor {
    */
   async processOrder(shopifyOrder, session, mappingConfig = {}) {
     try {
-      const shopifyOrderId = shopifyOrder.order_number || shopifyOrder.id;
-      console.log(`Processing Shopify order: ${shopifyOrderId}`);
+      // 1️⃣ Store Shopify order ID (long ID for API calls) and order number (display number) separately
+      // shopifyOrder.id = long ID (e.g., 10643266011430) - USE FOR API CALLS
+      // shopifyOrder.order_number = display number (e.g., 1022) - USE FOR DISPLAY ONLY
+      const shopifyOrderId = shopifyOrder.id?.toString() || shopifyOrder.order_number?.toString();
+      const shopifyOrderNumber = shopifyOrder.order_number || null;
+      
+      if (!shopifyOrderId) {
+        throw new Error('Shopify order ID is required');
+      }
+      
+      console.log(`Processing Shopify order: ID=${shopifyOrderId}, Number=${shopifyOrderNumber || 'N/A'}`);
 
       // Extract shop domain from session or mappingConfig
       const shop = mappingConfig.shop || session?.shop || shopifyOrder.shop;
@@ -164,6 +173,7 @@ class OrderProcessor {
 
       // 🔒 Idempotency Guard: Check if order already synced BEFORE calling Delybell API
       // 5️⃣ Log duplicate webhooks as INFO, not ERROR
+      // Use shopify_order_id (long ID) for lookup
       const existing = await this.findOrderLog(shop, shopifyOrderId);
       if (existing?.delybell_order_id) {
         // Duplicate webhook is normal - log as INFO
@@ -226,9 +236,12 @@ class OrderProcessor {
             // Log as success with the existing order ID
             await this.logOrder({
               shop,
-              shopifyOrderId: shopifyOrderId,
+              shopifyOrderId: shopifyOrderId, // Long ID
+              shopifyOrderNumber: shopifyOrderNumber, // Display number
               delybellOrderId: existingOrderId.toString(),
               status: 'processed',
+              totalPrice: shopifyOrder.total_price ? parseFloat(shopifyOrder.total_price) : null,
+              currency: shopifyOrder.currency || 'USD',
             });
             
             return {
@@ -243,10 +256,13 @@ class OrderProcessor {
             console.error(`[OrderProcessor] Order ${shopifyOrderId} already exists in Delybell but orderId could not be retrieved - marking as FAILED`);
             await this.logOrder({
               shop,
-              shopifyOrderId: shopifyOrderId,
+              shopifyOrderId: shopifyOrderId, // Long ID
+              shopifyOrderNumber: shopifyOrderNumber, // Display number
               delybellOrderId: null, // Must be null for failed status
               status: 'failed',
               errorMessage: 'Order already exists in Delybell but orderId could not be retrieved',
+              totalPrice: shopifyOrder.total_price ? parseFloat(shopifyOrder.total_price) : null,
+              currency: shopifyOrder.currency || 'USD',
             });
             
             return {
@@ -284,10 +300,13 @@ class OrderProcessor {
         // Log as FAILED (delybell_order_id must be null for failed status)
         await this.logOrder({
           shop,
-          shopifyOrderId: shopifyOrderId,
+          shopifyOrderId: shopifyOrderId, // Long ID
+          shopifyOrderNumber: shopifyOrderNumber, // Display number
           delybellOrderId: null, // Must be null for failed status
           status: 'failed',
           errorMessage: errorMessage,
+          totalPrice: shopifyOrder.total_price ? parseFloat(shopifyOrder.total_price) : null,
+          currency: shopifyOrder.currency || 'USD',
         });
         
         throw new Error(errorMessage);
@@ -297,11 +316,15 @@ class OrderProcessor {
       
       // 3️⃣ Log successful order and RETURN IMMEDIATELY (CRITICAL)
       // Only log as processed if we have delybellOrderId
+      // Extract total_price and currency from Shopify order
       await this.logOrder({
         shop,
-        shopifyOrderId: shopifyOrderId,
+        shopifyOrderId: shopifyOrderId, // Long ID (e.g., 10643266011430)
+        shopifyOrderNumber: shopifyOrderNumber, // Display number (e.g., 1022)
         delybellOrderId: delybellOrderId.toString(), // Required for processed status
         status: 'processed',
+        totalPrice: shopifyOrder.total_price ? parseFloat(shopifyOrder.total_price) : null,
+        currency: shopifyOrder.currency || 'USD',
       });
       
       console.log(`[OrderProcessor] ✅ Order ${shopifyOrderId} logged to database with status: processed`);
@@ -309,7 +332,8 @@ class OrderProcessor {
       // RETURN IMMEDIATELY - no code after this should run
       return {
         success: true,
-        shopifyOrderId: shopifyOrder.order_number || shopifyOrder.id,
+        shopifyOrderId: shopifyOrderId, // Long ID
+        shopifyOrderNumber: shopifyOrderNumber, // Display number
         delybellOrderId: delybellOrderId.toString(),
         shippingCharge,
         trackingUrl: delybellResponse?.data?.tracking_url,
@@ -326,16 +350,21 @@ class OrderProcessor {
       
       // Log failed order
       const shop = mappingConfig.shop || session?.shop || shopifyOrder.shop;
-      const shopifyOrderId = shopifyOrder.order_number || shopifyOrder.id;
+      // Use long ID for shopifyOrderId, order_number for display
+      const failedShopifyOrderId = shopifyOrder.id?.toString() || shopifyOrder.order_number?.toString();
+      const failedShopifyOrderNumber = shopifyOrder.order_number || null;
       
-      console.log(`[OrderProcessor] Attempting to log failed order ${shopifyOrderId} to database...`);
+      console.log(`[OrderProcessor] Attempting to log failed order ${failedShopifyOrderId} to database...`);
       if (shop) {
         try {
           await this.logOrder({
             shop,
-            shopifyOrderId: shopifyOrderId,
+            shopifyOrderId: failedShopifyOrderId, // Long ID
+            shopifyOrderNumber: failedShopifyOrderNumber, // Display number
             status: 'failed',
             errorMessage: errorMessage,
+            totalPrice: shopifyOrder.total_price ? parseFloat(shopifyOrder.total_price) : null,
+            currency: shopifyOrder.currency || 'USD',
           });
           console.log(`[OrderProcessor] ✅ Failed order ${shopifyOrderId} logged to database`);
         } catch (logError) {
@@ -420,12 +449,15 @@ class OrderProcessor {
    * Log order processing result to database
    * @param {Object} params - Order log data
    * @param {string} params.shop - Shop domain
-   * @param {number} params.shopifyOrderId - Shopify order ID
+   * @param {string} params.shopifyOrderId - Shopify order ID (long ID like 10643266011430) - USE FOR API CALLS
+   * @param {number} params.shopifyOrderNumber - Shopify order number (display number like 1022) - USE FOR DISPLAY ONLY
    * @param {string} params.delybellOrderId - Delybell order ID (required for 'processed', must be null for 'failed')
    * @param {string} params.status - Status ('processed', 'failed')
    * @param {string} params.errorMessage - Error message (optional)
+   * @param {number} params.totalPrice - Order total price from Shopify (optional)
+   * @param {string} params.currency - Order currency from Shopify (optional, defaults to USD)
    */
-  async logOrder({ shop, shopifyOrderId, delybellOrderId = null, status, errorMessage = null }) {
+  async logOrder({ shop, shopifyOrderId, shopifyOrderNumber = null, delybellOrderId = null, status, errorMessage = null, totalPrice = null, currency = 'USD' }) {
     if (!process.env.SUPABASE_URL) {
       // Supabase not configured - skip logging
       return;
@@ -451,9 +483,12 @@ class OrderProcessor {
       // Build insert object
       const insertData = {
         shop,
-        shopify_order_id: shopifyOrderId,
+        shopify_order_id: shopifyOrderId, // Long ID (e.g., 10643266011430) - USE FOR API CALLS
+        shopify_order_number: shopifyOrderNumber, // Display number (e.g., 1022) - USE FOR DISPLAY ONLY
         delybell_order_id: delybellOrderId, // null for failed, required for processed
         status,
+        total_price: totalPrice, // Order total from Shopify
+        currency: currency || 'USD', // Order currency from Shopify
       };
       
       // Try to add error_message if provided

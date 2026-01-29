@@ -765,29 +765,45 @@ router.get('/admin/api/synced-orders', async (req, res) => {
     
     for (const log of orderLogs) {
       try {
-        // Fetch order details from Shopify
+        // 2️⃣ Use Shopify order ID (long ID) for API calls, NOT order number
+        // log.shopify_order_id should be the long ID (e.g., 10643266011430)
+        // log.shopify_order_number is the display number (e.g., 1022) - for display only
+        const shopifyOrderIdForApi = log.shopify_order_id; // This should be the long ID
+        
+        // Fetch order details from Shopify using the long ID
         const orderResponse = await client.get({
-          path: `orders/${log.shopify_order_id}`,
+          path: `orders/${shopifyOrderIdForApi}`,
           query: {
-            fields: 'id,name,order_number,created_at,updated_at,financial_status,fulfillment_status,customer,total_price,currency',
+            fields: 'id,name,order_number,created_at,updated_at,financial_status,fulfillment_status,customer,shipping_address,total_price,currency',
           },
         });
         
         const order = orderResponse.body.order;
         if (order) {
+          // 5️⃣ Fix customer name - Read from shipping_address first, fallback to customer
+          let customerName = 'Guest';
+          if (order.shipping_address?.name) {
+            customerName = order.shipping_address.name.trim();
+          } else if (order.customer) {
+            const firstName = order.customer.first_name || '';
+            const lastName = order.customer.last_name || '';
+            customerName = `${firstName} ${lastName}`.trim() || 'Guest';
+          }
+          
+          // Use saved values from order_logs if available, otherwise use Shopify API response
           syncedOrders.push({
-            shopifyOrderId: order.id,
-            shopifyOrderNumber: order.order_number || order.name,
+            shopifyOrderId: order.id, // Long ID (e.g., 10643266011430)
+            shopifyOrderNumber: log.shopify_order_number || order.order_number || order.name, // Display number from logs or API
             shopifyOrderName: order.name,
             delybellOrderId: log.delybell_order_id,
             trackingUrl: null, // Can be fetched from Delybell API if needed
             createdAt: order.created_at,
             updatedAt: order.updated_at,
             syncedAt: log.created_at,
-            customerName: order.customer ? `${order.customer.first_name || ''} ${order.customer.last_name || ''}`.trim() : 'Guest',
+            customerName: customerName, // Fixed: shipping_address.name first, then customer
             customerEmail: order.customer?.email || null,
-            totalPrice: order.total_price,
-            currency: order.currency,
+            totalPrice: log.total_price || order.total_price, // Use saved value if available
+            currency: log.currency || order.currency || 'USD', // Use saved value if available
             financialStatus: order.financial_status,
             fulfillmentStatus: order.fulfillment_status,
             synced: true,
