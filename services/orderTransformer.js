@@ -130,7 +130,10 @@ class OrderTransformer {
       // Mandatory fields
       order_type: 1, // Domestic = 1, International = 2 (currently only Domestic is supported)
       service_type_id: mappingConfig.service_type_id || 1, // Provided by the List of Services API
-      customer_input_order_id: shopifyOrder.order_number?.toString() || shopifyOrder.id?.toString(),
+      // Use Shopify long order ID for globally unique customer_input_order_id
+      // This prevents Delybell from rejecting orders due to duplicate customer_input_order_id
+      // Format: Use shopifyOrder.id (long ID like 10643266011430) instead of order_number (1019, 1020, etc.)
+      customer_input_order_id: shopifyOrder.id?.toString() || shopifyOrder.order_number?.toString(),
       
       // Destination (Recipient) Information
       destination_customer_name: shippingAddress?.name || 

@@ -163,15 +163,18 @@ class OrderProcessor {
       }
 
       // 🔒 Idempotency Guard: Check if order already synced BEFORE calling Delybell API
+      // 5️⃣ Log duplicate webhooks as INFO, not ERROR
       const existing = await this.findOrderLog(shop, shopifyOrderId);
       if (existing?.delybell_order_id) {
-        console.log(`[OrderProcessor] Order ${shopifyOrderId} already synced to Delybell (${existing.delybell_order_id}), skipping`);
+        // Duplicate webhook is normal - log as INFO
+        console.log(`[OrderProcessor] ℹ️ Duplicate webhook detected - Order ${shopifyOrderId} already synced to Delybell (${existing.delybell_order_id}), skipping`);
         return {
           success: true,
           shopifyOrderId: shopifyOrderId,
           delybellOrderId: existing.delybell_order_id,
           message: 'Order already synced',
           skipped: true,
+          isDuplicate: true, // Flag to indicate this is a duplicate
         };
       }
 
@@ -180,20 +183,45 @@ class OrderProcessor {
       try {
         delybellResponse = await delybellClient.createOrder(delybellOrderData);
       } catch (error) {
-        // 2️⃣ Treat "already exists" as SUCCESS (Safety Net)
+        // 3️⃣ "Order already exists" - MUST fetch existing order and get orderId
         if (
           error.response?.status === 400 &&
           (error.response?.data?.message?.includes('already exists') ||
            error.response?.data?.message?.includes('duplicate') ||
            error.response?.data?.message?.toLowerCase().includes('exist'))
         ) {
-          console.warn(`[OrderProcessor] Order ${shopifyOrderId} already exists in Delybell, marking as success`);
+          console.warn(`[OrderProcessor] Order ${shopifyOrderId} already exists in Delybell, fetching existing order...`);
           
-          // Try to extract order ID from error response if available
-          const existingOrderId = error.response?.data?.orderId || 
-                                  error.response?.data?.data?.orderId ||
-                                  error.response?.data?.existing_order_id;
+          // Try to extract order ID from error response first
+          let existingOrderId = error.response?.data?.orderId || 
+                               error.response?.data?.data?.orderId ||
+                               error.response?.data?.existing_order_id;
           
+          // If not in error response, fetch order using customer_input_order_id
+          if (!existingOrderId) {
+            try {
+              // Use customer_input_order_id to fetch the existing order
+              const customerInputOrderId = delybellOrderData.customer_input_order_id;
+              console.log(`[OrderProcessor] Fetching existing order using customer_input_order_id: ${customerInputOrderId}`);
+              
+              const trackingResponse = await delybellClient.trackOrder(customerInputOrderId);
+              // Extract orderId from tracking response
+              existingOrderId = trackingResponse?.data?.orderId || 
+                               trackingResponse?.orderId ||
+                               trackingResponse?.data?.id;
+              
+              if (existingOrderId) {
+                console.log(`[OrderProcessor] Found existing order ID: ${existingOrderId}`);
+              } else {
+                console.error(`[OrderProcessor] Could not extract orderId from tracking response:`, JSON.stringify(trackingResponse).substring(0, 500));
+              }
+            } catch (fetchError) {
+              console.error(`[OrderProcessor] Failed to fetch existing order:`, fetchError.message);
+              // Continue to failure path below
+            }
+          }
+          
+          // Only mark as success if we have the orderId
           if (existingOrderId) {
             // Log as success with the existing order ID
             await this.logOrder({
@@ -211,19 +239,21 @@ class OrderProcessor {
               skipped: true,
             };
           } else {
-            // Order exists but we don't have the ID - log as success anyway
+            // Order exists but we couldn't get the orderId - FAILED
+            console.error(`[OrderProcessor] Order ${shopifyOrderId} already exists in Delybell but orderId could not be retrieved - marking as FAILED`);
             await this.logOrder({
               shop,
               shopifyOrderId: shopifyOrderId,
-              status: 'processed',
-              errorMessage: 'Order already exists in Delybell (order ID not available)',
+              delybellOrderId: null, // Must be null for failed status
+              status: 'failed',
+              errorMessage: 'Order already exists in Delybell but orderId could not be retrieved',
             });
             
             return {
-              success: true,
+              success: false,
               shopifyOrderId: shopifyOrderId,
-              message: 'Order already exists in Delybell',
-              skipped: true,
+              error: 'Order already exists in Delybell but orderId could not be retrieved',
+              message: 'Failed to process order',
             };
           }
         }
@@ -246,23 +276,35 @@ class OrderProcessor {
         responseStructure: JSON.stringify(delybellResponse).substring(0, 300),
       });
 
+      // 2️⃣ Never mark as processed without Delybell orderId
       if (!delybellOrderId) {
-        throw new Error(
-          `No orderId returned. Raw response: ${JSON.stringify(delybellResponse).substring(0, 500)}`
-        );
+        const errorMessage = `No orderId returned. Raw response: ${JSON.stringify(delybellResponse).substring(0, 500)}`;
+        console.error(`[OrderProcessor] ❌ Order ${shopifyOrderId} created but no orderId returned - marking as FAILED`);
+        
+        // Log as FAILED (delybell_order_id must be null for failed status)
+        await this.logOrder({
+          shop,
+          shopifyOrderId: shopifyOrderId,
+          delybellOrderId: null, // Must be null for failed status
+          status: 'failed',
+          errorMessage: errorMessage,
+        });
+        
+        throw new Error(errorMessage);
       }
 
       console.log(`Order created successfully in Delybell: ${delybellOrderId}`);
       
-      // 2️⃣ Log successful order and RETURN IMMEDIATELY (CRITICAL)
+      // 3️⃣ Log successful order and RETURN IMMEDIATELY (CRITICAL)
+      // Only log as processed if we have delybellOrderId
       await this.logOrder({
         shop,
-        shopifyOrderId: shopifyOrder.id || shopifyOrder.order_number,
-        delybellOrderId: delybellOrderId.toString(),
+        shopifyOrderId: shopifyOrderId,
+        delybellOrderId: delybellOrderId.toString(), // Required for processed status
         status: 'processed',
       });
       
-      console.log(`[OrderProcessor] ✅ Order ${shopifyOrder.order_number || shopifyOrder.id} logged to database`);
+      console.log(`[OrderProcessor] ✅ Order ${shopifyOrderId} logged to database with status: processed`);
       
       // RETURN IMMEDIATELY - no code after this should run
       return {
@@ -379,7 +421,7 @@ class OrderProcessor {
    * @param {Object} params - Order log data
    * @param {string} params.shop - Shop domain
    * @param {number} params.shopifyOrderId - Shopify order ID
-   * @param {string} params.delybellOrderId - Delybell order ID (optional)
+   * @param {string} params.delybellOrderId - Delybell order ID (required for 'processed', must be null for 'failed')
    * @param {string} params.status - Status ('processed', 'failed')
    * @param {string} params.errorMessage - Error message (optional)
    */
@@ -390,11 +432,27 @@ class OrderProcessor {
     }
 
     try {
+      // 4️⃣ Fix Supabase status rules
+      // Rule: processed → delybell_order_id is REQUIRED
+      // Rule: failed → delybell_order_id is NULL
+      if (status === 'processed' && !delybellOrderId) {
+        console.error(`[OrderProcessor] ❌ Invalid state: status='processed' but delybell_order_id is null. This should never happen.`);
+        // Force to failed status if processed without orderId
+        status = 'failed';
+        delybellOrderId = null;
+        errorMessage = errorMessage || 'Order marked as processed but delybell_order_id is missing';
+      }
+      
+      if (status === 'failed' && delybellOrderId !== null) {
+        console.warn(`[OrderProcessor] ⚠️ Invalid state: status='failed' but delybell_order_id is provided. Setting delybell_order_id to null.`);
+        delybellOrderId = null;
+      }
+
       // Build insert object
       const insertData = {
         shop,
         shopify_order_id: shopifyOrderId,
-        delybell_order_id: delybellOrderId,
+        delybell_order_id: delybellOrderId, // null for failed, required for processed
         status,
       };
       

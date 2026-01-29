@@ -237,7 +237,17 @@ router.post('/orders/create', async (req, res) => {
       } else {
         console.log(`[Webhook] Order processing completed:`, result.success ? 'Success' : 'Failed');
         if (!result.success) {
-          console.error(`[Webhook] ❌ Order processing failed for order ${orderId}:`, result.error);
+          // 5️⃣ Only log ERROR when Delybell order was not created AND no orderId is available
+          if (result.isDuplicate) {
+            // Duplicate webhook is normal - log as INFO
+            console.log(`[Webhook] ℹ️ Duplicate webhook for order ${orderId} - already synced, skipping`);
+          } else if (!result.delybellOrderId) {
+            // Actual failure - no orderId means order was not created
+            console.error(`[Webhook] ❌ Order processing failed for order ${orderId}:`, result.error);
+          } else {
+            // Has orderId but marked as failed - this shouldn't happen, but log as warning
+            console.warn(`[Webhook] ⚠️ Order ${orderId} has orderId ${result.delybellOrderId} but marked as failed:`, result.error);
+          }
         } else {
           console.log(`[Webhook] ✅ Order ${orderId} synced to Delybell: ${result.delybellOrderId}`);
         }
@@ -245,8 +255,18 @@ router.post('/orders/create', async (req, res) => {
 
       // Log result but don't send response (already sent)
       if (!result.success) {
-        console.error(`[Webhook] ❌ Order processing failed for order ${orderId}:`, result.error);
-        console.error(`[Webhook] Error details:`, result.errorDetails || 'No details');
+        // 5️⃣ Only log ERROR when Delybell order was not created AND no orderId is available
+        if (result.isDuplicate) {
+          // Duplicate webhook is normal - log as INFO
+          console.log(`[Webhook] ℹ️ Duplicate webhook for order ${orderId} - already synced, skipping`);
+        } else if (!result.delybellOrderId) {
+          // Actual failure - no orderId means order was not created
+          console.error(`[Webhook] ❌ Order processing failed for order ${orderId}:`, result.error);
+          console.error(`[Webhook] Error details:`, result.errorDetails || 'No details');
+        } else {
+          // Has orderId but marked as failed - this shouldn't happen, but log as warning
+          console.warn(`[Webhook] ⚠️ Order ${orderId} has orderId ${result.delybellOrderId} but marked as failed:`, result.error);
+        }
         // Order is already logged to database by orderProcessor.processOrder
         // TODO: Add to retry queue for failed orders
       } else {
@@ -391,7 +411,8 @@ router.post('/orders/update', async (req, res) => {
     const alreadySynced = existingTags.some(tag => tag.startsWith('delybell-synced') || tag.startsWith('delybell-order-id:'));
     
     if (alreadySynced) {
-      console.log(`[Webhook] Order ${orderId} already synced to Delybell, skipping`);
+      // 5️⃣ Log duplicate webhooks as INFO, not ERROR
+      console.log(`[Webhook] ℹ️ Duplicate webhook detected - Order ${orderId} already synced to Delybell, skipping`);
       if (!respondQuickly()) {
         return res.status(200).json({
           success: true,
@@ -448,15 +469,35 @@ router.post('/orders/update', async (req, res) => {
       } else {
         console.log(`[Webhook] Order processing completed:`, result.success ? 'Success' : 'Failed');
         if (!result.success) {
-          console.error(`[Webhook] Order processing failed for order ${orderId}:`, result.error);
+          // 5️⃣ Only log ERROR when Delybell order was not created AND no orderId is available
+          if (result.isDuplicate) {
+            // Duplicate webhook is normal - log as INFO
+            console.log(`[Webhook] ℹ️ Duplicate webhook for order ${orderId} - already synced, skipping`);
+          } else if (!result.delybellOrderId) {
+            // Actual failure - no orderId means order was not created
+            console.error(`[Webhook] ❌ Order processing failed for order ${orderId}:`, result.error);
+          } else {
+            // Has orderId but marked as failed - this shouldn't happen, but log as warning
+            console.warn(`[Webhook] ⚠️ Order ${orderId} has orderId ${result.delybellOrderId} but marked as failed:`, result.error);
+          }
         } else {
           console.log(`[Webhook] ✅ Order ${orderId} synced to Delybell: ${result.delybellOrderId}`);
         }
       }
 
       if (!result.success) {
-        console.error(`[Webhook] ❌ Order processing failed for order ${orderId}:`, result.error);
-        console.error(`[Webhook] Error details:`, result.errorDetails || 'No details');
+        // 5️⃣ Only log ERROR when Delybell order was not created AND no orderId is available
+        if (result.isDuplicate) {
+          // Duplicate webhook is normal - log as INFO
+          console.log(`[Webhook] ℹ️ Duplicate webhook for order ${orderId} - already synced, skipping`);
+        } else if (!result.delybellOrderId) {
+          // Actual failure - no orderId means order was not created
+          console.error(`[Webhook] ❌ Order processing failed for order ${orderId}:`, result.error);
+          console.error(`[Webhook] Error details:`, result.errorDetails || 'No details');
+        } else {
+          // Has orderId but marked as failed - this shouldn't happen, but log as warning
+          console.warn(`[Webhook] ⚠️ Order ${orderId} has orderId ${result.delybellOrderId} but marked as failed:`, result.error);
+        }
       }
     } catch (processError) {
       console.error(`[Webhook] ❌ Order processing error for order ${orderId}:`, processError.message);
