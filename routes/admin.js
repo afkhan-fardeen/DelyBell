@@ -1240,4 +1240,359 @@ router.get('/admin/api/test-order', async (req, res) => {
   }
 });
 
+/**
+ * ============================================================================
+ * OPERATIONS ADMIN DASHBOARD
+ * ============================================================================
+ * Shared admin for ALL shops - Operations control panel for Delybell staff
+ * GET /admin
+ */
+router.get('/admin', (req, res) => {
+  res.render('admin-dashboard', {
+    title: 'Delybell Operations Admin',
+  });
+});
+
+/**
+ * Admin API - Get summary statistics
+ * GET /admin/api/stats
+ */
+router.get('/admin/api/stats', async (req, res) => {
+  try {
+    if (!process.env.SUPABASE_URL) {
+      return res.status(503).json({
+        success: false,
+        error: 'Supabase not configured',
+      });
+    }
+
+    const { supabase } = require('../services/db');
+    const now = new Date();
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    
+    // Get today's orders
+    const { data: todayOrders, error: todayError } = await supabase
+      .from('order_logs')
+      .select('status, delybell_order_id')
+      .gte('created_at', todayStart.toISOString());
+
+    if (todayError) throw todayError;
+
+    const totalToday = todayOrders?.length || 0;
+    const syncedToday = todayOrders?.filter(o => o.status === 'processed' && o.delybell_order_id).length || 0;
+    const failedToday = todayOrders?.filter(o => o.status === 'failed').length || 0;
+    const needsAttention = failedToday; // Orders that failed and need retry
+
+    res.json({
+      success: true,
+      stats: {
+        totalOrdersToday: totalToday,
+        successfullySynced: syncedToday,
+        failed: failedToday,
+        needsAttention: needsAttention,
+      },
+    });
+  } catch (error) {
+    console.error('[Admin] Error fetching stats:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message,
+    });
+  }
+});
+
+/**
+ * Admin API - Get all orders with filters
+ * GET /admin/api/orders?shop=...&status=...&search=...&dateFrom=...&dateTo=...&limit=...&offset=...
+ */
+router.get('/admin/api/orders', async (req, res) => {
+  try {
+    if (!process.env.SUPABASE_URL) {
+      return res.status(503).json({
+        success: false,
+        error: 'Supabase not configured',
+      });
+    }
+
+    const { supabase } = require('../services/db');
+    const {
+      shop,
+      status,
+      search,
+      dateFrom,
+      dateTo,
+      limit = 50,
+      offset = 0,
+    } = req.query;
+
+    // Build query
+    let query = supabase
+      .from('order_logs')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .range(parseInt(offset), parseInt(offset) + parseInt(limit) - 1);
+
+    // Apply filters
+    if (shop) {
+      query = query.eq('shop', shop);
+    }
+
+    if (status) {
+      query = query.eq('status', status);
+    }
+
+    if (dateFrom) {
+      query = query.gte('created_at', dateFrom);
+    }
+
+    if (dateTo) {
+      query = query.lte('created_at', dateTo);
+    }
+
+    // Search by order number, phone, or Delybell order ID
+    if (search) {
+      const searchNum = parseInt(search);
+      if (!isNaN(searchNum)) {
+        // Search by order number
+        query = query.eq('shopify_order_number', searchNum);
+      } else {
+        // Search by phone or Delybell order ID (use OR with multiple queries)
+        // Since Supabase doesn't support OR easily, we'll fetch and filter
+        // For now, prioritize Delybell order ID search
+        query = query.ilike('delybell_order_id', `%${search}%`);
+      }
+    }
+    
+    const { data: orders, error } = await query;
+    
+    if (error) throw error;
+    
+    // Filter by phone if search is text and not a number
+    let filteredOrders = orders || [];
+    if (search && isNaN(parseInt(search))) {
+      const searchLower = search.toLowerCase();
+      filteredOrders = filteredOrders.filter(order => 
+        order.delybell_order_id?.toLowerCase().includes(searchLower) ||
+        order.phone?.toLowerCase().includes(searchLower) ||
+        order.customer_name?.toLowerCase().includes(searchLower)
+      );
+    }
+
+    // Format orders for display
+    const formattedOrders = filteredOrders.map(order => ({
+      id: order.id,
+      shop: order.shop,
+      shopifyOrderId: order.shopify_order_id,
+      shopifyOrderNumber: order.shopify_order_number,
+      delybellOrderId: order.delybell_order_id,
+      status: order.status,
+      customerName: order.customer_name || 'N/A',
+      phone: order.phone || 'N/A',
+      amount: order.total_price,
+      currency: order.currency || 'USD',
+      createdAt: order.created_at,
+      errorMessage: order.error_message,
+    }));
+
+    res.json({
+      success: true,
+      orders: formattedOrders,
+      count: formattedOrders.length,
+      hasMore: formattedOrders.length === parseInt(limit),
+    });
+  } catch (error) {
+    console.error('[Admin] Error fetching orders:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message,
+    });
+  }
+});
+
+/**
+ * Admin API - Get order details
+ * GET /admin/api/orders/:id
+ */
+router.get('/admin/api/orders/:id', async (req, res) => {
+  try {
+    if (!process.env.SUPABASE_URL) {
+      return res.status(503).json({
+        success: false,
+        error: 'Supabase not configured',
+      });
+    }
+
+    const { supabase } = require('../services/db');
+    const { id } = req.params;
+
+    const { data: order, error } = await supabase
+      .from('order_logs')
+      .select('*')
+      .eq('id', id)
+      .single();
+
+    if (error) throw error;
+
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        error: 'Order not found',
+      });
+    }
+
+    res.json({
+      success: true,
+      order: {
+        id: order.id,
+        shop: order.shop,
+        shopifyOrderId: order.shopify_order_id,
+        shopifyOrderNumber: order.shopify_order_number,
+        delybellOrderId: order.delybell_order_id,
+        status: order.status,
+        customerName: order.customer_name || 'N/A',
+        phone: order.phone || 'N/A',
+        amount: order.total_price,
+        currency: order.currency || 'USD',
+        createdAt: order.created_at,
+        errorMessage: order.error_message,
+      },
+    });
+  } catch (error) {
+    console.error('[Admin] Error fetching order details:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message,
+    });
+  }
+});
+
+/**
+ * Admin API - Retry failed order
+ * POST /admin/api/orders/:id/retry
+ */
+router.post('/admin/api/orders/:id/retry', async (req, res) => {
+  try {
+    if (!process.env.SUPABASE_URL) {
+      return res.status(503).json({
+        success: false,
+        error: 'Supabase not configured',
+      });
+    }
+
+    const { supabase } = require('../services/db');
+    const { id } = req.params;
+
+    // Get order details
+    const { data: order, error: fetchError } = await supabase
+      .from('order_logs')
+      .select('*')
+      .eq('id', id)
+      .single();
+
+    if (fetchError || !order) {
+      return res.status(404).json({
+        success: false,
+        error: 'Order not found',
+      });
+    }
+
+    if (order.status !== 'failed') {
+      return res.status(400).json({
+        success: false,
+        error: 'Only failed orders can be retried',
+      });
+    }
+
+    // Get shop session
+    const session = await shopifyClient.getSession(order.shop);
+    if (!session || !session.accessToken) {
+      return res.status(401).json({
+        success: false,
+        error: 'Shop not authenticated',
+      });
+    }
+
+    // Fetch order from Shopify
+    const shopifyClientInstance = new shopifyClient.shopify.clients.Rest({ session });
+    const shopifyOrderResponse = await shopifyClientInstance.get({
+      path: `orders/${order.shopify_order_id}`,
+    });
+
+    const shopifyOrder = shopifyOrderResponse.body.order;
+    if (!shopifyOrder) {
+      return res.status(404).json({
+        success: false,
+        error: 'Shopify order not found',
+      });
+    }
+
+    // Generate new customer_input_order_id for retry
+    // Format: {original_id}_retry_{timestamp}
+    const retryId = `${order.shopify_order_id}_retry_${Date.now()}`;
+    
+    // Process order with retry ID
+    const orderProcessor = require('../services/orderProcessor');
+    const mappingConfig = {
+      service_type_id: parseInt(process.env.DEFAULT_SERVICE_TYPE_ID) || 1,
+      shop: order.shop,
+      session: session,
+    };
+
+    // Override customer_input_order_id in transformer
+    const result = await orderProcessor.processOrder(shopifyOrder, session, {
+      ...mappingConfig,
+      retryCustomerInputOrderId: retryId,
+    });
+
+    res.json({
+      success: result.success,
+      message: result.success 
+        ? 'Order retried successfully' 
+        : `Retry failed: ${result.error}`,
+      order: result,
+    });
+  } catch (error) {
+    console.error('[Admin] Error retrying order:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message,
+    });
+  }
+});
+
+/**
+ * Admin API - Get all shops
+ * GET /admin/api/shops
+ */
+router.get('/admin/api/shops', async (req, res) => {
+  try {
+    if (!process.env.SUPABASE_URL) {
+      return res.status(503).json({
+        success: false,
+        error: 'Supabase not configured',
+      });
+    }
+
+    const { supabase } = require('../services/db');
+
+    const { data: shops, error } = await supabase
+      .from('shops')
+      .select('shop')
+      .order('shop', { ascending: true });
+
+    if (error) throw error;
+
+    res.json({
+      success: true,
+      shops: (shops || []).map(s => s.shop),
+    });
+  } catch (error) {
+    console.error('[Admin] Error fetching shops:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message,
+    });
+  }
+});
+
 module.exports = router;

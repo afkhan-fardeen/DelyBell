@@ -133,7 +133,8 @@ class OrderTransformer {
       // Use Shopify long order ID for globally unique customer_input_order_id
       // This prevents Delybell from rejecting orders due to duplicate customer_input_order_id
       // Format: Use shopifyOrder.id (long ID like 10643266011430) instead of order_number (1019, 1020, etc.)
-      customer_input_order_id: shopifyOrder.id?.toString() || shopifyOrder.order_number?.toString(),
+      // For retries, use retryCustomerInputOrderId from mappingConfig
+      customer_input_order_id: mappingConfig.retryCustomerInputOrderId || shopifyOrder.id?.toString() || shopifyOrder.order_number?.toString(),
       
       // Destination (Recipient) Information
       destination_customer_name: shippingAddress?.name || 

@@ -112,6 +112,14 @@ class OrderProcessor {
       // Extract shop domain from session or mappingConfig
       const shop = mappingConfig.shop || session?.shop || shopifyOrder.shop;
       
+      // Extract customer name and phone for logging
+      const shippingAddress = shopifyOrder.shipping_address || shopifyOrder.billing_address;
+      const customerName = shippingAddress?.name || 
+        (shopifyOrder.customer?.first_name && shopifyOrder.customer?.last_name 
+          ? `${shopifyOrder.customer.first_name} ${shopifyOrder.customer.last_name}` 
+          : shopifyOrder.customer?.first_name || shopifyOrder.customer?.last_name || null);
+      const phone = shippingAddress?.phone || shopifyOrder.customer?.phone || null;
+      
       if (!shop) {
         console.warn('Shop domain not found - pickup location may not be fetched correctly');
       }
@@ -242,6 +250,8 @@ class OrderProcessor {
               status: 'processed',
               totalPrice: shopifyOrder.total_price ? parseFloat(shopifyOrder.total_price) : null,
               currency: shopifyOrder.currency || 'USD',
+              customerName: customerName,
+              phone: phone,
             });
             
             return {
@@ -263,6 +273,8 @@ class OrderProcessor {
               errorMessage: 'Order already exists in Delybell but orderId could not be retrieved',
               totalPrice: shopifyOrder.total_price ? parseFloat(shopifyOrder.total_price) : null,
               currency: shopifyOrder.currency || 'USD',
+              customerName: customerName,
+              phone: phone,
             });
             
             return {
@@ -316,7 +328,6 @@ class OrderProcessor {
       
       // 3️⃣ Log successful order and RETURN IMMEDIATELY (CRITICAL)
       // Only log as processed if we have delybellOrderId
-      // Extract total_price and currency from Shopify order
       await this.logOrder({
         shop,
         shopifyOrderId: shopifyOrderId, // Long ID (e.g., 10643266011430)
@@ -325,6 +336,8 @@ class OrderProcessor {
         status: 'processed',
         totalPrice: shopifyOrder.total_price ? parseFloat(shopifyOrder.total_price) : null,
         currency: shopifyOrder.currency || 'USD',
+        customerName: customerName,
+        phone: phone,
       });
       
       console.log(`[OrderProcessor] ✅ Order ${shopifyOrderId} logged to database with status: processed`);
@@ -357,6 +370,14 @@ class OrderProcessor {
       console.log(`[OrderProcessor] Attempting to log failed order ${failedShopifyOrderId} to database...`);
       if (shop) {
         try {
+          // Extract customer name and phone for failed orders
+          const failedShippingAddress = shopifyOrder.shipping_address || shopifyOrder.billing_address;
+          const failedCustomerName = failedShippingAddress?.name || 
+            (shopifyOrder.customer?.first_name && shopifyOrder.customer?.last_name 
+              ? `${shopifyOrder.customer.first_name} ${shopifyOrder.customer.last_name}` 
+              : shopifyOrder.customer?.first_name || shopifyOrder.customer?.last_name || null);
+          const failedPhone = failedShippingAddress?.phone || shopifyOrder.customer?.phone || null;
+          
           await this.logOrder({
             shop,
             shopifyOrderId: failedShopifyOrderId, // Long ID
@@ -365,6 +386,8 @@ class OrderProcessor {
             errorMessage: errorMessage,
             totalPrice: shopifyOrder.total_price ? parseFloat(shopifyOrder.total_price) : null,
             currency: shopifyOrder.currency || 'USD',
+            customerName: failedCustomerName,
+            phone: failedPhone,
           });
           console.log(`[OrderProcessor] ✅ Failed order ${shopifyOrderId} logged to database`);
         } catch (logError) {
@@ -456,8 +479,10 @@ class OrderProcessor {
    * @param {string} params.errorMessage - Error message (optional)
    * @param {number} params.totalPrice - Order total price from Shopify (optional)
    * @param {string} params.currency - Order currency from Shopify (optional, defaults to USD)
+   * @param {string} params.customerName - Customer name (optional)
+   * @param {string} params.phone - Customer phone number (optional)
    */
-  async logOrder({ shop, shopifyOrderId, shopifyOrderNumber = null, delybellOrderId = null, status, errorMessage = null, totalPrice = null, currency = 'USD' }) {
+  async logOrder({ shop, shopifyOrderId, shopifyOrderNumber = null, delybellOrderId = null, status, errorMessage = null, totalPrice = null, currency = 'USD', customerName = null, phone = null }) {
     if (!process.env.SUPABASE_URL) {
       // Supabase not configured - skip logging
       return;
@@ -489,6 +514,8 @@ class OrderProcessor {
         status,
         total_price: totalPrice, // Order total from Shopify
         currency: currency || 'USD', // Order currency from Shopify
+        customer_name: customerName, // Customer name
+        phone: phone, // Customer phone number
       };
       
       // Try to add error_message if provided
