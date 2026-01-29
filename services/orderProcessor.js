@@ -120,6 +120,9 @@ class OrderProcessor {
           : shopifyOrder.customer?.first_name || shopifyOrder.customer?.last_name || null);
       const phone = shippingAddress?.phone || shopifyOrder.customer?.phone || null;
       
+      // Extract Shopify order creation time (when order was placed)
+      const shopifyOrderCreatedAt = shopifyOrder.created_at || null;
+      
       if (!shop) {
         console.warn('Shop domain not found - pickup location may not be fetched correctly');
       }
@@ -252,6 +255,7 @@ class OrderProcessor {
               currency: shopifyOrder.currency || 'USD',
               customerName: customerName,
               phone: phone,
+              shopifyOrderCreatedAt: shopifyOrderCreatedAt,
             });
             
             return {
@@ -275,6 +279,7 @@ class OrderProcessor {
               currency: shopifyOrder.currency || 'USD',
               customerName: customerName,
               phone: phone,
+              shopifyOrderCreatedAt: shopifyOrderCreatedAt,
             });
             
             return {
@@ -338,6 +343,7 @@ class OrderProcessor {
         currency: shopifyOrder.currency || 'USD',
         customerName: customerName,
         phone: phone,
+        shopifyOrderCreatedAt: shopifyOrderCreatedAt,
       });
       
       console.log(`[OrderProcessor] ✅ Order ${shopifyOrderId} logged to database with status: processed`);
@@ -377,6 +383,7 @@ class OrderProcessor {
               ? `${shopifyOrder.customer.first_name} ${shopifyOrder.customer.last_name}` 
               : shopifyOrder.customer?.first_name || shopifyOrder.customer?.last_name || null);
           const failedPhone = failedShippingAddress?.phone || shopifyOrder.customer?.phone || null;
+          const failedShopifyOrderCreatedAt = shopifyOrder.created_at || null;
           
           await this.logOrder({
             shop,
@@ -388,6 +395,7 @@ class OrderProcessor {
             currency: shopifyOrder.currency || 'USD',
             customerName: failedCustomerName,
             phone: failedPhone,
+            shopifyOrderCreatedAt: failedShopifyOrderCreatedAt,
           });
           console.log(`[OrderProcessor] ✅ Failed order ${shopifyOrderId} logged to database`);
         } catch (logError) {
@@ -481,8 +489,9 @@ class OrderProcessor {
    * @param {string} params.currency - Order currency from Shopify (optional, defaults to USD)
    * @param {string} params.customerName - Customer name (optional)
    * @param {string} params.phone - Customer phone number (optional)
+   * @param {string} params.shopifyOrderCreatedAt - Shopify order creation time (when order was placed) (optional)
    */
-  async logOrder({ shop, shopifyOrderId, shopifyOrderNumber = null, delybellOrderId = null, status, errorMessage = null, totalPrice = null, currency = 'USD', customerName = null, phone = null }) {
+  async logOrder({ shop, shopifyOrderId, shopifyOrderNumber = null, delybellOrderId = null, status, errorMessage = null, totalPrice = null, currency = 'USD', customerName = null, phone = null, shopifyOrderCreatedAt = null }) {
     if (!process.env.SUPABASE_URL) {
       // Supabase not configured - skip logging
       return;
@@ -516,6 +525,7 @@ class OrderProcessor {
         currency: currency || 'USD', // Order currency from Shopify
         customer_name: customerName, // Customer name
         phone: phone, // Customer phone number
+        shopify_order_created_at: shopifyOrderCreatedAt, // When order was placed in Shopify
       };
       
       // Try to add error_message if provided

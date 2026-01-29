@@ -1399,7 +1399,8 @@ router.get('/admin/api/orders', async (req, res) => {
       phone: order.phone || 'N/A',
       amount: order.total_price,
       currency: order.currency || 'USD',
-      createdAt: order.created_at,
+      createdAt: order.shopify_order_created_at || order.created_at, // Use Shopify order creation time if available, fallback to sync time
+      syncedAt: order.created_at, // When order was synced
       errorMessage: order.error_message,
     }));
 
@@ -1462,7 +1463,8 @@ router.get('/admin/api/orders/:id', async (req, res) => {
         phone: order.phone || 'N/A',
         amount: order.total_price,
         currency: order.currency || 'USD',
-        createdAt: order.created_at,
+        createdAt: order.shopify_order_created_at || order.created_at, // Use Shopify order creation time if available
+        syncedAt: order.created_at, // When order was synced
         errorMessage: order.error_message,
       },
     });
