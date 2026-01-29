@@ -148,13 +148,13 @@ class AddressMapper {
       }
     }
 
-    // If we found block and road, return the mapping
+    // If we found block, return the mapping (Road and Building are optional)
     // Return numbers, not IDs. IDs must be looked up separately.
-    if (blockId && roadId) {
+    if (blockId) {
       return {
-        block_number: blockId,      // Human-readable block number (e.g., 929)
-        road_number: roadId,         // Human-readable road number (e.g., 3953)
-        building_number: buildingId, // Human-readable building number (e.g., 2733) or null
+        block_number: blockId,      // Human-readable block number (e.g., 929) - MANDATORY
+        road_number: roadId || null, // Human-readable road number (e.g., 3953) - OPTIONAL
+        building_number: buildingId || null, // Human-readable building number (e.g., 2733) - OPTIONAL
         flat_number: flatNumber,     // Flat/office number (string)
       };
     }
@@ -168,8 +168,8 @@ class AddressMapper {
       flatNumber: flatNumber,
     };
     
-    // Final check: If we have Road but no Block, and zip code wasn't used, log warning
-    if (roadId && !blockId) {
+    // Final check: Block is mandatory, Road and Building are optional
+    if (!blockId) {
       console.warn('Could not parse address:', {
         address1,
         address2,
@@ -179,17 +179,10 @@ class AddressMapper {
         parsedComponents,
         note: 'Block is required. If zip code is the block number, ensure zip code is provided.',
       });
-      console.warn(`Found Road ${roadId} but Block is missing. Block is required for Delybell auto-assignment.`);
+      console.warn(`Block is required for Delybell order syncing. Road and Building are optional.`);
     } else if (!roadId) {
-      // If we don't even have Road, log full details
-      console.warn('Could not parse address:', {
-        address1,
-        address2,
-        city,
-        zip,
-        fullAddress: fullAddress.substring(0, 100),
-        parsedComponents,
-      });
+      // Block found but Road missing - this is OK, just log info
+      console.log(`Block ${blockId} found, but Road is missing (Road is optional - order will still sync)`);
     }
     
     return null;
@@ -198,14 +191,13 @@ class AddressMapper {
   /**
    * Validate that address mapping is complete
    * @param {Object} mapping - Address mapping object
-   * @returns {boolean} True if mapping is valid (has block_number and road_number)
+   * @returns {boolean} True if mapping is valid (has block_number - Road is optional)
    */
   isValidMapping(mapping) {
     return mapping && 
            typeof mapping.block_number === 'number' && 
-           typeof mapping.road_number === 'number' &&
-           mapping.block_number > 0 &&
-           mapping.road_number > 0;
+           mapping.block_number > 0;
+    // Road and Building are optional - only Block is mandatory
   }
 
   /**

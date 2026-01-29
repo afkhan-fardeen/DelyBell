@@ -9,17 +9,29 @@ const { supabase } = require('./db');
  */
 class OrderProcessor {
   /**
-   * Validate that block/road IDs exist in Delybell master data
-   * @param {number} blockId - Block ID to validate
-   * @param {number} roadId - Road ID to validate
-   * @param {number} buildingId - Building ID to validate (optional)
+   * Validate that block ID exists in Delybell master data
+   * Block ID is MANDATORY. Road and Building IDs are OPTIONAL.
+   * 
+   * @param {number} blockId - Block ID to validate (MANDATORY)
+   * @param {number|null} roadId - Road ID to validate (OPTIONAL - can be null)
+   * @param {number|null} buildingId - Building ID to validate (OPTIONAL - can be null)
    * @returns {Promise<Object>} Validation result with details
    */
-  async validateAddressIds(blockId, roadId, buildingId = null) {
+  async validateAddressIds(blockId, roadId = null, buildingId = null) {
     const validationErrors = [];
     
     try {
-      // Validate Block ID exists
+      // Validate Block ID exists (MANDATORY)
+      if (!blockId) {
+        validationErrors.push({
+          field: 'block_id',
+          value: blockId,
+          message: `Block ID is required for order syncing`,
+          suggestion: `Please ensure the customer address includes a Block number.`,
+        });
+        return { valid: false, errors: validationErrors };
+      }
+      
       const blocksResponse = await delybellClient.getBlocks();
       const blocks = blocksResponse?.data || [];
       const blockExists = blocks.some(block => block.id === blockId);
@@ -34,30 +46,35 @@ class OrderProcessor {
         return { valid: false, errors: validationErrors };
       }
       
-      // Validate Road ID exists for this Block
-      const roadsResponse = await delybellClient.getRoads(blockId);
-      const roads = roadsResponse?.data || [];
-      const roadExists = roads.some(road => road.id === roadId);
-      
-      if (!roadExists) {
-        validationErrors.push({
-          field: 'road_id',
-          value: roadId,
-          message: `Road ID ${roadId} does not exist for Block ${blockId} in Delybell master data`,
-          suggestion: `Available roads for Block ${blockId}: ${roads.slice(0, 10).map(r => r.id).join(', ')}${roads.length > 10 ? '...' : ''}`,
-        });
-        return { valid: false, errors: validationErrors };
+      // Validate Road ID exists for this Block (OPTIONAL - only validate if provided)
+      if (roadId) {
+        const roadsResponse = await delybellClient.getRoads(blockId);
+        const roads = roadsResponse?.data || [];
+        const roadExists = roads.some(road => road.id === roadId);
+        
+        if (!roadExists) {
+          // Road is optional - log warning but don't fail
+          console.warn(
+            `Road ID ${roadId} not found for Block ${blockId} in Delybell master data. ` +
+            `Road is optional - order will still sync with Block only.`
+          );
+        }
+      } else {
+        console.log(`Road ID not provided - Road is optional, order will sync with Block ${blockId} only`);
       }
       
-      // Optionally validate Building ID
-      if (buildingId) {
+      // Optionally validate Building ID (OPTIONAL - only validate if provided)
+      if (buildingId && roadId) {
         const buildingsResponse = await delybellClient.getBuildings(roadId, blockId);
         const buildings = buildingsResponse?.data || [];
         const buildingExists = buildings.some(building => building.id === buildingId);
         
         if (!buildingExists) {
-          // Building validation is optional - just warn, don't fail
-          console.warn(`Building ID ${buildingId} not found for Road ${roadId} in Block ${blockId}, but continuing...`);
+          // Building is optional - just warn, don't fail
+          console.warn(
+            `Building ID ${buildingId} not found for Road ${roadId} in Block ${blockId}. ` +
+            `Building is optional - order will still sync.`
+          );
         }
       }
       
@@ -105,11 +122,12 @@ class OrderProcessor {
 
       // Step 1.5: Validate destination address IDs exist in Delybell master data
       // Note: IDs are already looked up from numbers in orderTransformer, but we validate as safety check
-      console.log(`Validating destination address IDs: Block ID ${delybellOrderData.destination_block_id}, Road ID ${delybellOrderData.destination_road_id}...`);
+      // Block ID is MANDATORY, Road and Building IDs are OPTIONAL
+      console.log(`Validating destination address IDs: Block ID ${delybellOrderData.destination_block_id}${delybellOrderData.destination_road_id ? `, Road ID ${delybellOrderData.destination_road_id}` : ' (Road: optional)'}${delybellOrderData.destination_building_id ? `, Building ID ${delybellOrderData.destination_building_id}` : ' (Building: optional)'}...`);
       const validationResult = await this.validateAddressIds(
         delybellOrderData.destination_block_id,
-        delybellOrderData.destination_road_id,
-        delybellOrderData.destination_building_id
+        delybellOrderData.destination_road_id || null,
+        delybellOrderData.destination_building_id || null
       );
       
       if (!validationResult.valid) {
@@ -119,13 +137,12 @@ class OrderProcessor {
         throw new Error(
           `Destination address validation failed. ${errorMessages}. ` +
           `${suggestions} ` +
-          `The Delybell IDs (Block ID: ${delybellOrderData.destination_block_id}, Road ID: ${delybellOrderData.destination_road_id}) ` +
-          `do not exist in Delybell's master data. ` +
-          `This should not happen if address lookup worked correctly. Please verify the customer's address is correct.`
+          `Block ID is required for order syncing. Road and Building are optional. ` +
+          `Please verify the customer's address includes a valid Block number.`
         );
       }
       
-      console.log(`Destination address IDs validated successfully`);
+      console.log(`Destination address IDs validated successfully (Block is valid; Road and Building are optional)`);
 
       // Step 2: Calculate shipping charge (optional, non-blocking)
       // 4️⃣ Make Shipping Charge NON-BLOCKING - errors must NEVER fail the order

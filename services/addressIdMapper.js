@@ -242,48 +242,68 @@ class AddressIdMapper {
    * Convert address numbers to Delybell IDs
    * Performs the complete lookup chain: Block Number → Block ID → Road ID → Building ID
    * 
-   * @param {Object} addressNumbers - Object with block_number, road_number, building_number, area_name (optional)
+   * Block is MANDATORY. Road and Building are OPTIONAL.
+   * If Road/Building cannot be found, they will be null and order will still sync.
+   * 
+   * @param {Object} addressNumbers - Object with block_number, road_number (optional), building_number (optional), area_name (optional)
    * @param {string} areaName - Optional area name from shipping_address.city (e.g., "Ras Ruman")
-   * @returns {Promise<Object>} Object with block_id, road_id, building_id
+   * @returns {Promise<Object>} Object with block_id (required), road_id (optional), building_id (optional)
    */
   async convertNumbersToIds(addressNumbers, areaName = null) {
     const { block_number, road_number, building_number } = addressNumbers;
     
-    if (!block_number || !road_number) {
-      throw new Error('block_number and road_number are required');
+    // Block is MANDATORY - fail if missing
+    if (!block_number) {
+      throw new Error('block_number is required. Road and Building are optional.');
     }
     
     // Use areaName from addressNumbers if provided, otherwise use parameter
     const areaNameToUse = addressNumbers.area_name || areaName;
     
-    // Step 1: Find Block ID from Block Number and Area Name
+    // Step 1: Find Block ID from Block Number and Area Name (MANDATORY)
     const blockId = await this.findBlockId(block_number, areaNameToUse);
     if (!blockId) {
       const areaHint = areaNameToUse ? ` in area "${areaNameToUse}"` : '';
       throw new Error(
         `Block Number ${block_number}${areaHint} not found in Delybell master data. ` +
-        `Please verify the block number${areaHint ? ' and area name' : ''} is correct.`
+        `Block number is required for order syncing. Please verify the block number${areaHint ? ' and area name' : ''} is correct.`
       );
     }
     
-    // Step 2: Find Road ID from Road Number within that Block
-    const roadId = await this.findRoadId(blockId, road_number);
-    if (!roadId) {
-      throw new Error(
-        `Road Number ${road_number} not found in Block ${block_number} (Block ID: ${blockId}). ` +
-        `Please verify the road number is correct for this block.`
-      );
+    // Step 2: Find Road ID from Road Number within that Block (OPTIONAL)
+    let roadId = null;
+    if (road_number) {
+      roadId = await this.findRoadId(blockId, road_number);
+      if (!roadId) {
+        // Road not found - log warning but continue (Road is optional)
+        console.warn(
+          `Road Number ${road_number} not found in Block ${block_number} (Block ID: ${blockId}). ` +
+          `Road is optional - order will still sync with Block only.`
+        );
+      }
+    } else {
+      console.log(`Road number not provided - Road is optional, order will sync with Block ${block_number} only`);
     }
     
-    // Step 3: Find Building ID from Building Number (optional)
-    const buildingId = building_number 
-      ? await this.findBuildingId(blockId, roadId, building_number)
-      : null;
+    // Step 3: Find Building ID from Building Number (OPTIONAL)
+    // Only lookup if we have both road_number and roadId (or if road_number wasn't provided)
+    let buildingId = null;
+    if (building_number) {
+      // If we have a roadId, use it. Otherwise, pass null and let the API handle it.
+      buildingId = await this.findBuildingId(blockId, roadId, building_number);
+      if (!buildingId && roadId) {
+        // Building not found - log warning but continue (Building is optional)
+        console.warn(
+          `Building Number ${building_number} not found in Block ${block_number}, Road ${roadId}. ` +
+          `Building is optional - order will still sync.`
+        );
+      }
+    }
     
     return {
       block_id: blockId,
-      road_id: roadId,
-      building_id: buildingId,
+      road_id: roadId, // Can be null if Road not found or not provided
+      building_id: buildingId, // Can be null if Building not found or not provided
     };
   }
 }

@@ -84,8 +84,8 @@ class OrderTransformer {
         // Check what was found vs what's missing
         const parsed = addressMapper.parseShopifyAddress(shippingAddress);
         let missingFields = [];
-        if (!parsed || !parsed.block_number) missingFields.push('Block');
-        if (!parsed || !parsed.road_number) missingFields.push('Road');
+        if (!parsed || !parsed.block_number) missingFields.push('Block (required)');
+        // Road and Building are optional - don't include in error
         
         const missingText = missingFields.length > 0 
           ? `Missing: ${missingFields.join(', ')}. ` 
@@ -93,10 +93,10 @@ class OrderTransformer {
         
         throw new Error(
           `Cannot map destination address to Delybell structured format. ${missingText}` +
-          'The shipping address must contain Block and Road information in a parseable format. ' +
+          'The shipping address must contain Block number in a parseable format. ' +
           `Received address: "${addressPreview}". ` +
-          'Expected format: "Building X, Road Y, Block Z" or "Building: X, Road: Y, Block: Z" or similar. ' +
-          'Please ensure customer addresses include Block and Road numbers.'
+          'Expected format: "Block Z" or "Building X, Road Y, Block Z" or similar. ' +
+          'Block is required. Road and Building are optional - drivers will call customer if clarification is needed.'
         );
       }
       
@@ -106,16 +106,16 @@ class OrderTransformer {
       // This is used to disambiguate blocks with the same code number
       const areaName = shippingAddress.city ? shippingAddress.city.trim() : null;
       
-      console.log(`Parsed address numbers: Block ${addressNumbers.block_number}, Road ${addressNumbers.road_number}, Building ${addressNumbers.building_number || 'N/A'}${areaName ? `, Area: ${areaName}` : ''}`);
+      console.log(`Parsed address numbers: Block ${addressNumbers.block_number}${addressNumbers.road_number ? `, Road ${addressNumbers.road_number}` : ' (Road: not provided)'}${addressNumbers.building_number ? `, Building ${addressNumbers.building_number}` : ' (Building: not provided)'}${areaName ? `, Area: ${areaName}` : ''}`);
       
       // Convert numbers to Delybell IDs
-      // Block Number (929) → Block ID (370) - matched by code AND area name
-      // Road Number (3953) → Road ID (XXXX)
-      // Building Number (2733) → Building ID (YYYY)
+      // Block Number (929) → Block ID (370) - matched by code AND area name (MANDATORY)
+      // Road Number (3953) → Road ID (XXXX) - OPTIONAL, can be null
+      // Building Number (2733) → Building ID (YYYY) - OPTIONAL, can be null
       console.log('Looking up Delybell IDs from address numbers...');
       destinationIds = await addressIdMapper.convertNumbersToIds(addressNumbers, areaName);
       
-      console.log(`Mapped to Delybell IDs: Block ID ${destinationIds.block_id}, Road ID ${destinationIds.road_id}, Building ID ${destinationIds.building_id || 'N/A'}`);
+      console.log(`Mapped to Delybell IDs: Block ID ${destinationIds.block_id}${destinationIds.road_id ? `, Road ID ${destinationIds.road_id}` : ' (Road ID: null - optional)'}${destinationIds.building_id ? `, Building ID ${destinationIds.building_id}` : ' (Building ID: null - optional)'}`);
     }
 
     // Calculate total weight from line items
@@ -144,31 +144,48 @@ class OrderTransformer {
         destination_alternate_number: shippingAddress.phone_alt,
       }),
       
-      // Structured address fields (REQUIRED for auto-assignment)
+      // Structured address fields
+      // Block ID is MANDATORY, Road and Building IDs are OPTIONAL
       // These are Delybell IDs (looked up from human-readable numbers)
-      destination_block_id: destinationIds.block_id,
-      destination_road_id: destinationIds.road_id,
-      destination_building_id: destinationIds.building_id || null,
+      destination_block_id: destinationIds.block_id, // MANDATORY
+      ...(destinationIds.road_id && { destination_road_id: destinationIds.road_id }), // OPTIONAL - only include if found
+      ...(destinationIds.building_id && { destination_building_id: destinationIds.building_id }), // OPTIONAL - only include if found
       
       // Optional: Flat/Office number
       ...(flatNumber && flatNumber !== 'N/A' && {
         destination_flat_or_office_number: flatNumber,
       }),
 
-      // Destination address (formatted display address)
+      // Destination address (formatted display address - free-text, mandatory)
+      // This is the customer's full address as text - drivers will use this if clarification is needed
       destination_address: (() => {
+        // Build address string from available components
+        const parts = [];
+        
         // Parse address again to get numbers for display
         const parsed = addressMapper.parseShopifyAddress(shippingAddress);
-        if (parsed && parsed.block_number && parsed.road_number) {
-          const parts = [];
-          if (flatNumber && flatNumber !== 'N/A') parts.push(flatNumber);
+        
+        if (parsed && parsed.block_number) {
+          // Always include Block (mandatory)
+          if (flatNumber && flatNumber !== 'N/A') parts.push(`Flat ${flatNumber}`);
           if (parsed.building_number) parts.push(`Building ${parsed.building_number}`);
-          parts.push(`Road ${parsed.road_number}`);
+          if (parsed.road_number) parts.push(`Road ${parsed.road_number}`);
           parts.push(`Block ${parsed.block_number}`);
           return parts.join(', ');
         }
-        // Fallback to original address format
-        return this.formatDestinationAddress(shippingAddress, null);
+        
+        // Fallback: Use original address fields as free-text
+        // This ensures we always have a destination_address (mandatory field)
+        const addressParts = [
+          shippingAddress.address1,
+          shippingAddress.address2,
+          shippingAddress.city,
+          shippingAddress.zip,
+        ].filter(Boolean);
+        
+        return addressParts.length > 0 
+          ? addressParts.join(', ')
+          : 'Address not provided';
       })(),
 
       // Delivery instructions
