@@ -15,8 +15,8 @@ services:
     env: node
     plan: starter  # Use 'free' for free tier (spins down when idle)
     region: singapore  # Choose closest to your users
-    buildCommand: pnpm install
-    startCommand: pnpm start
+    buildCommand: npm install
+    startCommand: npm start
     healthCheckPath: /health
     autoDeploy: true  # Auto-deploy on git push
     envVars:
