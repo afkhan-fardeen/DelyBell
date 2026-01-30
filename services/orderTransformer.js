@@ -198,10 +198,12 @@ class OrderTransformer {
       // Building lookup requires valid roadId - only looks up if road is valid
       ...(destinationIds.building_id ? { destination_building_id: destinationIds.building_id } : {}),
       
-      // Optional: Flat/Office number
-      ...(flatNumber && flatNumber !== 'N/A' && {
+      // ✅ Flat/Office number - ALWAYS send if available (even if API complains)
+      // Delybell dev said: "Always pass text fields, ignore validation errors"
+      // This includes flat/office/unit numbers that aren't building IDs
+      ...(flatNumber && flatNumber !== 'N/A' ? {
         destination_flat_or_office_number: flatNumber,
-      }),
+      } : {}),
 
       // ✅ Destination address (full free text, MANDATORY)
       // SYSTEM PHILOSOPHY: Free-text address is the source of truth for delivery
@@ -667,9 +669,9 @@ class OrderTransformer {
 
   /**
    * Get payment fields for Delybell order payload
-   * Returns payment_type and cod_amount based on Shopify order financial status
+   * FINAL RULE: Always include is_cod = true for COD orders (no conditions, no checks)
    * @param {Object} shopifyOrder - Shopify order object
-   * @returns {Object} Payment fields object with payment_type and optionally cod_amount
+   * @returns {Object} Payment fields object with is_cod and optionally cod_amount
    */
   getPaymentFields(shopifyOrder) {
     const financialStatus = shopifyOrder.financial_status || 'pending';
@@ -678,13 +680,13 @@ class OrderTransformer {
     
     // Determine if order is COD or Prepaid
     const isCOD = this.isCOD(shopifyOrder);
-    const paymentType = isCOD ? 'COD' : 'Prepaid';
     
-    console.log(`Payment status: ${financialStatus}, Payment type: ${paymentType}, Total: ${totalPrice}`);
+    console.log(`Payment status: ${financialStatus}, Is COD: ${isCOD}, Total: ${totalPrice}`);
     
     // Build payment fields object
+    // ✅ FINAL RULE: Always include is_cod = true for COD orders (no conditions, no checks)
     const paymentFields = {
-      payment_type: paymentType,
+      is_cod: isCOD, // Always include - true for COD, false for Prepaid
     };
     
     // If COD, include cod_amount (amount to collect on delivery)

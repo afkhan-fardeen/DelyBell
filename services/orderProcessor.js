@@ -141,28 +141,45 @@ class OrderProcessor {
       );
 
       // Step 1.5: Validate destination address IDs exist in Delybell master data
-      // Note: IDs are already looked up from numbers in orderTransformer, but we validate as safety check
-      // Block ID is MANDATORY, Road and Building IDs are OPTIONAL
+      // FINAL RULE: Only Block ID is mandatory - Road/Building validation errors NEVER block order creation
+      // Block ID is MANDATORY - if missing, fail
+      // Road and Building IDs are OPTIONAL - validation errors are ignored
       console.log(`Validating destination address IDs: Block ID ${delybellOrderData.destination_block_id}${delybellOrderData.destination_road_id ? `, Road ID ${delybellOrderData.destination_road_id}` : ' (Road: optional)'}${delybellOrderData.destination_building_id ? `, Building ID ${delybellOrderData.destination_building_id}` : ' (Building: optional)'}...`);
-      const validationResult = await this.validateAddressIds(
-        delybellOrderData.destination_block_id,
-        delybellOrderData.destination_road_id || null,
-        delybellOrderData.destination_building_id || null
-      );
       
-      if (!validationResult.valid) {
-        const errorMessages = validationResult.errors.map(e => e.message).join('; ');
-        const suggestions = validationResult.errors.map(e => e.suggestion).filter(Boolean).join(' ');
-        
+      // Only validate Block ID (mandatory) - Road/Building validation errors are ignored
+      if (!delybellOrderData.destination_block_id) {
         throw new Error(
-          `Destination address validation failed. ${errorMessages}. ` +
-          `${suggestions} ` +
-          `Block ID is required for order syncing. Road and Building are optional. ` +
+          `Block ID is required for order syncing. ` +
           `Please verify the customer's address includes a valid Block number.`
         );
       }
       
-      console.log(`Destination address IDs validated successfully (Block is valid; Road and Building are optional)`);
+      // Validate Block ID exists (only mandatory field)
+      const validationResult = await this.validateAddressIds(
+        delybellOrderData.destination_block_id,
+        null, // Road ID validation errors are ignored
+        null  // Building ID validation errors are ignored
+      );
+      
+      // Only fail if Block ID validation fails
+      if (!validationResult.valid && validationResult.errors.some(e => e.message.includes('Block'))) {
+        const errorMessages = validationResult.errors.filter(e => e.message.includes('Block')).map(e => e.message).join('; ');
+        throw new Error(
+          `Block ID validation failed. ${errorMessages}. ` +
+          `Block ID is required for order syncing.`
+        );
+      }
+      
+      // Road/Building validation errors are logged but ignored (non-blocking)
+      const roadBuildingErrors = validationResult.errors.filter(e => 
+        e.message.includes('Road') || e.message.includes('Building')
+      );
+      if (roadBuildingErrors.length > 0) {
+        console.warn(`[OrderProcessor] ⚠️ Road/Building validation warnings (ignored - non-blocking):`, 
+          roadBuildingErrors.map(e => e.message).join('; '));
+      }
+      
+      console.log(`Destination address IDs validated: Block is valid; Road/Building validation errors ignored (non-blocking)`);
 
       // Step 2: Calculate shipping charge (optional, non-blocking)
       // 4️⃣ Make Shipping Charge NON-BLOCKING - errors must NEVER fail the order
@@ -200,11 +217,16 @@ class OrderProcessor {
       }
 
       // Step 3: Create order in Delybell
+      // FINAL RULE: Prioritize delivery continuity over strict validation
+      // - Ignore non-fatal API errors (validation warnings, address text errors)
+      // - Treat order as SUCCESS if order ID is returned OR order already exists
+      // - Only fail if order ID cannot be retrieved
       let delybellResponse;
       try {
         delybellResponse = await delybellClient.createOrder(delybellOrderData);
       } catch (error) {
-        // 3️⃣ "Order already exists" - MUST fetch existing order and get orderId
+        // ✅ "Order already exists" - MUST fetch existing order and get orderId
+        // Treat as SUCCESS if order exists (even if we can't get ID immediately)
         if (
           error.response?.status === 400 &&
           (error.response?.data?.message?.includes('already exists') ||
@@ -291,15 +313,120 @@ class OrderProcessor {
           }
         }
         
-        // Re-throw if it's not an "already exists" error
+        // ✅ Ignore NON-FATAL API errors (validation warnings, address text errors)
+        // Delybell dev said: "Ignore the response and proceed. We will update this later."
+        // Only fail if it's a truly fatal error (network, auth, etc.)
+        const errorStatus = error.response?.status;
+        const errorMessage = error.response?.data?.message || error.message || '';
+        const errorData = error.response?.data || {};
+        
+        // Check if error is related to address validation or text fields
+        // These are NON-FATAL - order might still be created
+        const isValidationError = 
+          errorStatus === 400 &&
+          (
+            errorMessage.toLowerCase().includes('validation') ||
+            errorMessage.toLowerCase().includes('address') ||
+            errorMessage.toLowerCase().includes('road') ||
+            errorMessage.toLowerCase().includes('building') ||
+            errorMessage.toLowerCase().includes('field') ||
+            errorMessage.toLowerCase().includes('text') ||
+            errorData.validation_errors ||
+            errorData.errors
+          );
+        
+        // Check if order ID might be in error response (sometimes API returns warnings but still creates order)
+        const possibleOrderId = errorData?.orderId || 
+                                errorData?.data?.orderId ||
+                                errorData?.order_id;
+        
+        if (isValidationError && possibleOrderId) {
+          // Validation error but order was created - treat as SUCCESS
+          console.warn(`[OrderProcessor] ⚠️ Validation warnings for order ${shopifyOrderId}, but order ID found: ${possibleOrderId}. Treating as SUCCESS.`);
+          console.warn(`[OrderProcessor] Validation errors (ignored per Delybell dev):`, JSON.stringify(errorData).substring(0, 500));
+          
+          await this.logOrder({
+            shop,
+            shopifyOrderId: shopifyOrderId,
+            shopifyOrderNumber: shopifyOrderNumber,
+            delybellOrderId: possibleOrderId.toString(),
+            status: 'processed',
+            errorMessage: `Validation warnings (ignored): ${errorMessage}`,
+            totalPrice: shopifyOrder.total_price ? parseFloat(shopifyOrder.total_price) : null,
+            currency: shopifyOrder.currency || 'USD',
+            customerName: customerName,
+            phone: phone,
+            shopifyOrderCreatedAt: shopifyOrderCreatedAt,
+          });
+          
+          return {
+            success: true,
+            shopifyOrderId: shopifyOrderId,
+            delybellOrderId: possibleOrderId.toString(),
+            message: 'Order created with validation warnings (ignored)',
+            warnings: errorData,
+          };
+        }
+        
+        // For other validation errors without order ID, try to fetch order
+        if (isValidationError) {
+          console.warn(`[OrderProcessor] ⚠️ Validation errors for order ${shopifyOrderId}, attempting to fetch order...`);
+          console.warn(`[OrderProcessor] Validation errors (may be non-fatal):`, JSON.stringify(errorData).substring(0, 500));
+          
+          // Try to fetch order using customer_input_order_id
+          try {
+            const customerInputOrderId = delybellOrderData.customer_input_order_id;
+            const trackingResponse = await delybellClient.trackOrder(customerInputOrderId);
+            const fetchedOrderId = trackingResponse?.data?.orderId || 
+                                  trackingResponse?.orderId ||
+                                  trackingResponse?.data?.id;
+            
+            if (fetchedOrderId) {
+              // Order exists despite validation errors - SUCCESS
+              console.log(`[OrderProcessor] ✅ Order ${shopifyOrderId} found in Delybell despite validation warnings. Order ID: ${fetchedOrderId}`);
+              
+              await this.logOrder({
+                shop,
+                shopifyOrderId: shopifyOrderId,
+                shopifyOrderNumber: shopifyOrderNumber,
+                delybellOrderId: fetchedOrderId.toString(),
+                status: 'processed',
+                errorMessage: `Validation warnings (ignored): ${errorMessage}`,
+                totalPrice: shopifyOrder.total_price ? parseFloat(shopifyOrder.total_price) : null,
+                currency: shopifyOrder.currency || 'USD',
+                customerName: customerName,
+                phone: phone,
+                shopifyOrderCreatedAt: shopifyOrderCreatedAt,
+              });
+              
+              return {
+                success: true,
+                shopifyOrderId: shopifyOrderId,
+                delybellOrderId: fetchedOrderId.toString(),
+                message: 'Order created despite validation warnings (ignored)',
+                warnings: errorData,
+              };
+            }
+          } catch (fetchError) {
+            console.warn(`[OrderProcessor] Could not fetch order after validation error:`, fetchError.message);
+            // Continue to failure path below
+          }
+        }
+        
+        // Re-throw if it's a fatal error (network, auth, etc.) or validation error without order ID
         throw error;
       }
 
-      // 1️⃣ Fix Order ID Extraction (CRITICAL - EXACT FORMAT)
+      // ✅ Order ID Extraction (CRITICAL - EXACT FORMAT)
       // delybellClient.createOrder() returns response.data (already parsed)
       // So structure is: { status: true, data: { orderId: "..." } }
       // NOT: { data: { data: { orderId: "..." } } }
-      const delybellOrderId = delybellResponse?.data?.orderId;
+      // 
+      // FINAL RULE: If order ID is returned OR order appears in Delybell → mark as SUCCESS
+      // Even if API response contains validation warnings or text-field errors
+      const delybellOrderId = delybellResponse?.data?.orderId ||
+                              delybellResponse?.orderId ||
+                              delybellResponse?.data?.id;
 
       // Debug log to verify extraction
       console.log('[OrderProcessor] DEBUG orderId extraction:', {
@@ -309,13 +436,51 @@ class OrderProcessor {
         responseStructure: JSON.stringify(delybellResponse).substring(0, 300),
       });
 
-      // 2️⃣ Never mark as processed without Delybell orderId
-      if (!delybellOrderId) {
-        const errorMessage = `No orderId returned. Raw response: ${JSON.stringify(delybellResponse).substring(0, 500)}`;
-        console.error(`[OrderProcessor] ❌ Order ${shopifyOrderId} created but no orderId returned - marking as FAILED`);
+      // ✅ If order ID is returned → SUCCESS (even if there are warnings)
+      // Delybell dev said: "If order appears in Delybell dashboard → treat as SUCCESS"
+      if (delybellOrderId) {
+        console.log(`[OrderProcessor] ✅ Order ${shopifyOrderId} created successfully in Delybell. Order ID: ${delybellOrderId}`);
         
-        // Log as FAILED (delybell_order_id must be null for failed status)
+        // Check for warnings in response (but don't fail)
+        const warnings = delybellResponse?.warnings || 
+                        delybellResponse?.data?.warnings ||
+                        (delybellResponse?.data?.validation_errors ? 'Validation warnings present' : null);
+        
+        if (warnings) {
+          console.warn(`[OrderProcessor] ⚠️ Order created with warnings (ignored per Delybell dev):`, JSON.stringify(warnings).substring(0, 500));
+        }
+        
+        // Log as SUCCESS (order ID is present)
         await this.logOrder({
+          shop,
+          shopifyOrderId: shopifyOrderId,
+          shopifyOrderNumber: shopifyOrderNumber,
+          delybellOrderId: delybellOrderId.toString(),
+          status: 'processed',
+          errorMessage: warnings ? `Warnings (ignored): ${JSON.stringify(warnings)}` : null,
+          totalPrice: shopifyOrder.total_price ? parseFloat(shopifyOrder.total_price) : null,
+          currency: shopifyOrder.currency || 'USD',
+          customerName: customerName,
+          phone: phone,
+          shopifyOrderCreatedAt: shopifyOrderCreatedAt,
+        });
+        
+        return {
+          success: true,
+          shopifyOrderId: shopifyOrderId,
+          delybellOrderId: delybellOrderId.toString(),
+          message: 'Order created successfully',
+          warnings: warnings || null,
+        };
+      }
+
+      // 2️⃣ Never mark as processed without Delybell orderId
+      // Only fail if order ID truly cannot be retrieved
+      const errorMessage = `No orderId returned. Raw response: ${JSON.stringify(delybellResponse).substring(0, 500)}`;
+      console.error(`[OrderProcessor] ❌ Order ${shopifyOrderId} created but no orderId returned - marking as FAILED`);
+      
+      // Log as FAILED (delybell_order_id must be null for failed status)
+      await this.logOrder({
           shop,
           shopifyOrderId: shopifyOrderId, // Long ID
           shopifyOrderNumber: shopifyOrderNumber, // Display number
