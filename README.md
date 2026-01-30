@@ -2,7 +2,7 @@
 
 A production-ready Shopify app that automatically syncs orders from Shopify stores to Delybell's delivery management system.
 
-**Status:** ✅ Production Ready - Public App + Custom Distribution
+**Status:** ✅ Production Ready
 
 When a store installs the app, their orders are automatically synced to Delybell using the store's configured address as the pickup location.
 

@@ -1,6 +1,8 @@
 # Dependencies
 node_modules/
 package-lock.json
+pnpm-lock.yaml
+yarn.lock
 
 # Environment variables (NEVER commit these!)
 .env
@@ -17,10 +19,15 @@ yarn-debug.log*
 yarn-error.log*
 server.log
 ngrok.log
+*.log.*
 
 # OS files
 .DS_Store
 Thumbs.db
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
 
 # Build outputs
 dist/
@@ -42,3 +49,12 @@ coverage/
 # Temporary files
 *.tmp
 *.temp
+*.bak
+*.backup
+
+# Debug and temporary documentation
+*_DEBUG.md
+*_FIX.md
+*_SUMMARY.md
+*_CHECKLIST.md
+plan.txt

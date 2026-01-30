@@ -153,14 +153,21 @@ class OrderTransformer {
       }),
       
       // Structured address fields
+      // VALIDATION FLOW (using Delybell Master Data APIs):
+      // 1. ✅ Call /v1/customer/external/master/blocks → Find block_id
+      // 2. ✅ Call /v1/customer/external/master/roads?block_id=X → Validate road
+      // 3. ✅ Call /v1/customer/external/master/buildings?block_id=X&road_id=Y → Validate building
+      // 
       // FINAL LOGIC:
       // ✅ Always send:
-      //   - destination_block_id (MANDATORY)
+      //   - destination_block_id (MANDATORY - from master/blocks API)
       //   - destination_address (full free text, MANDATORY - preserves all original text)
       //   - destination_mobile_number (MANDATORY)
+      //   - delivery_instructions (full raw text, MANDATORY - includes full address + notes)
       // ➖ Conditionally send:
-      //   - destination_road_id → ONLY if valid under block (exists in master data for that block)
-      //   - destination_building_id → ONLY if valid under road (exists in master data for that road)
+      //   - destination_road_id → ONLY if road.code matches customer's road number in master data
+      //   - destination_building_id → ONLY if building.code matches customer's building number in master data
+      //   - destination_flat_or_office_number → For unit/flat/floor numbers (not building IDs)
       // ❌ Never:
       //   - Guess road from a number
       //   - Guess building from "flat"
@@ -171,20 +178,23 @@ class OrderTransformer {
       // Free-text address is the source of truth for delivery.
       // 
       // Example: Customer enters "Block 338, road 2392, near Adliya Post Office, flat 1"
-      // - If road 2392 matches master data → send destination_road_id
-      // - If road 2392 does NOT match → DON'T send destination_road_id
-      // - BUT ALWAYS keep full text in destination_address: "Block 338, road 2392, near Adliya Post Office, flat 1"
+      // - Call /master/roads?block_id=7 → Check if road code "2392" exists
+      // - If road.code === "2392" → send destination_road_id
+      // - If road.code !== "2392" → DON'T send destination_road_id
+      // - BUT ALWAYS keep full text in delivery_instructions: "Block 338, road 2392, near Adliya Post Office, flat 1"
       // Result: Driver sees full address with landmarks, delivery works even if IDs don't match
       // 
-      // If not valid → null (field not included in payload, but text preserved in destination_address)
-      destination_block_id: destinationIds.block_id, // ✅ ALWAYS SENT (MANDATORY)
+      // If not valid → null (field not included in payload, but text preserved in delivery_instructions)
+      destination_block_id: destinationIds.block_id, // ✅ ALWAYS SENT (MANDATORY - validated via /master/blocks)
       
-      // ➖ Road ID: Only include if valid under block (found in master data for this specific block)
-      // If road doesn't exist in master data → null (field not sent, but road text preserved in destination_address)
+      // ➖ Road ID: Only include if road.code matches customer's road number in master data
+      // Validation: GET /master/roads?block_id=X → Check if road.code === roadNumber
+      // If road doesn't exist in master data → null (field not sent, but road text preserved in delivery_instructions)
       ...(destinationIds.road_id ? { destination_road_id: destinationIds.road_id } : {}),
       
-      // ➖ Building ID: Only include if valid under road (found in master data for this specific road)
-      // If building doesn't exist in master data → null (field not sent, but building text preserved in destination_address)
+      // ➖ Building ID: Only include if building.code matches customer's building number in master data
+      // Validation: GET /master/buildings?block_id=X&road_id=Y → Check if building.code === buildingNumber
+      // If building doesn't exist in master data → null (field not sent, but building text preserved in delivery_instructions)
       // Building lookup requires valid roadId - only looks up if road is valid
       ...(destinationIds.building_id ? { destination_building_id: destinationIds.building_id } : {}),
       
@@ -223,8 +233,46 @@ class OrderTransformer {
           : 'Address not provided';
       })(),
 
-      // Delivery instructions
-      delivery_instructions: shopifyOrder.note || shippingAddress?.note || 'Handle with care',
+      // ✅ Delivery instructions (full raw text, MANDATORY)
+      // BEST PRACTICE: Always send delivery_instructions with full raw text
+      // This ensures driver sees what customer typed even if structured fields fail
+      // 
+      // Include:
+      // - Full address text (all fields combined)
+      // - Customer notes (if any)
+      // - Any additional context
+      // 
+      // This is critical because:
+      // - If road/building IDs don't match master data, driver still sees the text
+      // - Landmarks and notes are preserved
+      // - No data loss even when structured validation fails
+      delivery_instructions: (() => {
+        const parts = [];
+        
+        // Always include full address text (raw, as customer entered it)
+        const addressParts = [
+          shippingAddress.address1,
+          shippingAddress.address2,
+          shippingAddress.city,
+          shippingAddress.zip,
+        ].filter(Boolean);
+        
+        if (addressParts.length > 0) {
+          parts.push(addressParts.join(', '));
+        }
+        
+        // Add customer notes if available
+        if (shopifyOrder.note) {
+          parts.push(`Note: ${shopifyOrder.note}`);
+        } else if (shippingAddress?.note) {
+          parts.push(`Note: ${shippingAddress.note}`);
+        }
+        
+        // Return combined text, or default if empty
+        return parts.length > 0 
+          ? parts.join('. ')
+          : 'Handle with care';
+      })(),
 
       // Payment Information
       // Determine payment type based on Shopify order financial status
