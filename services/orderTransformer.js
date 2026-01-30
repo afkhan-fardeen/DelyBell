@@ -144,6 +144,7 @@ class OrderTransformer {
         (shopifyOrder.customer?.first_name && shopifyOrder.customer?.last_name 
           ? `${shopifyOrder.customer.first_name} ${shopifyOrder.customer.last_name}` 
           : shopifyOrder.customer?.first_name || shopifyOrder.customer?.last_name || 'Customer'),
+      // ✅ Always send destination_mobile_number (MANDATORY)
       destination_mobile_number: shippingAddress?.phone || shopifyOrder.customer?.phone || '+97300000000',
       
       // Optional: Alternate number (only include if exists)
@@ -153,17 +154,38 @@ class OrderTransformer {
       
       // Structured address fields
       // FINAL LOGIC:
-      // ✅ Always send destination_block_id (MANDATORY)
-      // ✅ Always send destination_address (full text, MANDATORY)
-      // ➖ Send destination_road_id only if valid (not null/undefined)
-      // ➖ Send destination_building_id only if valid (not null/undefined)
-      // If not valid → null (field not included in payload)
+      // ✅ Always send:
+      //   - destination_block_id (MANDATORY)
+      //   - destination_address (full free text, MANDATORY - preserves all original text)
+      //   - destination_mobile_number (MANDATORY)
+      // ➖ Conditionally send:
+      //   - destination_road_id → ONLY if valid under block (exists in master data for that block)
+      //   - destination_building_id → ONLY if valid under road (exists in master data for that road)
+      // ❌ Never:
+      //   - Guess road from a number
+      //   - Guess building from "flat"
+      //   - Force mapping if master data doesn't match
+      // 
+      // SYSTEM PHILOSOPHY:
+      // Structured IDs are optional helpers for routing.
+      // Free-text address is the source of truth for delivery.
+      // 
+      // Example: Customer enters "Block 338, road 2392, near Adliya Post Office, flat 1"
+      // - If road 2392 matches master data → send destination_road_id
+      // - If road 2392 does NOT match → DON'T send destination_road_id
+      // - BUT ALWAYS keep full text in destination_address: "Block 338, road 2392, near Adliya Post Office, flat 1"
+      // Result: Driver sees full address with landmarks, delivery works even if IDs don't match
+      // 
+      // If not valid → null (field not included in payload, but text preserved in destination_address)
       destination_block_id: destinationIds.block_id, // ✅ ALWAYS SENT (MANDATORY)
       
-      // ➖ Road ID: Only include if valid (not null/undefined/0)
+      // ➖ Road ID: Only include if valid under block (found in master data for this specific block)
+      // If road doesn't exist in master data → null (field not sent, but road text preserved in destination_address)
       ...(destinationIds.road_id ? { destination_road_id: destinationIds.road_id } : {}),
       
-      // ➖ Building ID: Only include if valid (not null/undefined/0)
+      // ➖ Building ID: Only include if valid under road (found in master data for this specific road)
+      // If building doesn't exist in master data → null (field not sent, but building text preserved in destination_address)
+      // Building lookup requires valid roadId - only looks up if road is valid
       ...(destinationIds.building_id ? { destination_building_id: destinationIds.building_id } : {}),
       
       // Optional: Flat/Office number
@@ -171,27 +193,22 @@ class OrderTransformer {
         destination_flat_or_office_number: flatNumber,
       }),
 
-      // ✅ Destination address (formatted display address - full text, MANDATORY)
-      // This is the customer's full address as text - drivers will use this if clarification is needed
-      // ALWAYS SENT - required field
+      // ✅ Destination address (full free text, MANDATORY)
+      // SYSTEM PHILOSOPHY: Free-text address is the source of truth for delivery
+      // Structured IDs are optional helpers - they help with routing but are not required
+      // 
+      // ALWAYS preserve the FULL original address text from Shopify, including:
+      // - Landmarks ("near Adliya Post Office")
+      // - Notes and additional context
+      // - All text exactly as customer entered it
+      // 
+      // This ensures:
+      // - No data loss (even if road/building IDs aren't found)
+      // - Drivers see full context (landmarks > road numbers in real life)
+      // - Works with messy real-world data
+      // - Avoids sync failures due to missing master data
       destination_address: (() => {
-        // Build address string from available components
-        const parts = [];
-        
-        // Parse address again to get numbers for display
-        const parsed = addressMapper.parseShopifyAddress(shippingAddress);
-        
-        if (parsed && parsed.block_number) {
-          // Always include Block (mandatory)
-          if (flatNumber && flatNumber !== 'N/A') parts.push(`Flat ${flatNumber}`);
-          if (parsed.building_number) parts.push(`Building ${parsed.building_number}`);
-          if (parsed.road_number) parts.push(`Road ${parsed.road_number}`);
-          parts.push(`Block ${parsed.block_number}`);
-          return parts.join(', ');
-        }
-        
-        // Fallback: Use original address fields as free-text
-        // This ensures we always have a destination_address (mandatory field)
+        // Build full address from original Shopify fields (preserve everything)
         const addressParts = [
           shippingAddress.address1,
           shippingAddress.address2,
@@ -199,6 +216,8 @@ class OrderTransformer {
           shippingAddress.zip,
         ].filter(Boolean);
         
+        // Always return the full original address text
+        // This is the source of truth - drivers will use this for delivery
         return addressParts.length > 0 
           ? addressParts.join(', ')
           : 'Address not provided';

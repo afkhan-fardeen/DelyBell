@@ -98,6 +98,7 @@ class AddressMapper {
     }
 
     // Try to extract flat/office number
+    // ❌ Never guess building from "flat" - only extract if explicitly stated
     const flatPatterns = [
       /\bflat\s*:?\s*(\w+)\b/i,            // "Flat 12" or "Flat: 12"
       /\bapt\s*:?\s*(\w+)\b/i,              // "Apt 12" or "Apt: 12"
@@ -114,10 +115,8 @@ class AddressMapper {
       }
     }
     
-    // If flat number not found but address2 is just a number, it might be flat number
-    if (flatNumber === 'N/A' && address2 && /^\d+$/.test(address2.trim())) {
-      flatNumber = address2.trim();
-    }
+    // ❌ Never guess building from flat number - removed guessing logic
+    // Only use flat number if explicitly stated in address text
 
     // If Block is missing but we have Road and Building, try to extract Block from city/zip
     // Sometimes Block is in city field or zip code

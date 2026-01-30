@@ -271,31 +271,50 @@ class AddressIdMapper {
     }
     
     // Step 2: Find Road ID from Road Number within that Block (OPTIONAL)
+    // ➖ Only send if valid under block (exists in master data for this specific block)
+    // ❌ Never guess road from a number - only use if found in master data
     let roadId = null;
     if (road_number) {
       roadId = await this.findRoadId(blockId, road_number);
       if (!roadId) {
-        // Road not found - log warning but continue (Road is optional)
+        // Road not found in master data for this block - return null (don't send)
+        // ❌ Never force mapping if master data doesn't match
         console.warn(
           `Road Number ${road_number} not found in Block ${block_number} (Block ID: ${blockId}). ` +
-          `Road is optional - order will still sync with Block only.`
+          `Road will not be sent - order will sync with Block only.`
         );
+      } else {
+        console.log(`Road Number ${road_number} validated under Block ${block_number} (Road ID: ${roadId})`);
       }
     } else {
-      console.log(`Road number not provided - Road is optional, order will sync with Block ${block_number} only`);
+      console.log(`Road number not provided - Road will not be sent, order will sync with Block ${block_number} only`);
     }
     
     // Step 3: Find Building ID from Building Number (OPTIONAL)
-    // Only lookup if we have both road_number and roadId (or if road_number wasn't provided)
+    // ➖ Only send if valid under road (exists in master data for this specific road)
+    // ❌ Never guess building from "flat" - only use if found in master data
+    // ❌ Building lookup requires valid roadId - only looks up if road is valid
     let buildingId = null;
     if (building_number) {
-      // If we have a roadId, use it. Otherwise, pass null and let the API handle it.
-      buildingId = await this.findBuildingId(blockId, roadId, building_number);
-      if (!buildingId && roadId) {
-        // Building not found - log warning but continue (Building is optional)
-        console.warn(
-          `Building Number ${building_number} not found in Block ${block_number}, Road ${roadId}. ` +
-          `Building is optional - order will still sync.`
+      // Only lookup building if we have a valid roadId
+      // Building must exist under the specific road in master data
+      if (roadId) {
+        buildingId = await this.findBuildingId(blockId, roadId, building_number);
+        if (!buildingId) {
+          // Building not found in master data for this road - return null (don't send)
+          // ❌ Never force mapping if master data doesn't match
+          console.warn(
+            `Building Number ${building_number} not found in Block ${block_number}, Road ${roadId}. ` +
+            `Building will not be sent - order will sync without building ID.`
+          );
+        } else {
+          console.log(`Building Number ${building_number} validated under Road ${roadId} (Building ID: ${buildingId})`);
+        }
+      } else {
+        // No valid roadId - cannot lookup building (building must be under a valid road)
+        console.log(
+          `Building Number ${building_number} provided but Road is invalid. ` +
+          `Building requires valid Road ID - building will not be sent.`
         );
       }
     }
