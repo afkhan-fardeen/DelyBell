@@ -152,20 +152,28 @@ class OrderTransformer {
       }),
       
       // Structured address fields
-      // Block ID is MANDATORY, Road and Building IDs are OPTIONAL
-      // These are Delybell IDs (looked up from human-readable numbers)
-      destination_block_id: destinationIds.block_id, // MANDATORY
-      // Always include road_id if it was found (even if optional, send it when available)
-      ...(destinationIds.road_id && { destination_road_id: destinationIds.road_id }), // OPTIONAL - include if found
-      ...(destinationIds.building_id && { destination_building_id: destinationIds.building_id }), // OPTIONAL - only include if found
+      // FINAL LOGIC:
+      // ✅ Always send destination_block_id (MANDATORY)
+      // ✅ Always send destination_address (full text, MANDATORY)
+      // ➖ Send destination_road_id only if valid (not null/undefined)
+      // ➖ Send destination_building_id only if valid (not null/undefined)
+      // If not valid → null (field not included in payload)
+      destination_block_id: destinationIds.block_id, // ✅ ALWAYS SENT (MANDATORY)
+      
+      // ➖ Road ID: Only include if valid (not null/undefined/0)
+      ...(destinationIds.road_id ? { destination_road_id: destinationIds.road_id } : {}),
+      
+      // ➖ Building ID: Only include if valid (not null/undefined/0)
+      ...(destinationIds.building_id ? { destination_building_id: destinationIds.building_id } : {}),
       
       // Optional: Flat/Office number
       ...(flatNumber && flatNumber !== 'N/A' && {
         destination_flat_or_office_number: flatNumber,
       }),
 
-      // Destination address (formatted display address - free-text, mandatory)
+      // ✅ Destination address (formatted display address - full text, MANDATORY)
       // This is the customer's full address as text - drivers will use this if clarification is needed
+      // ALWAYS SENT - required field
       destination_address: (() => {
         // Build address string from available components
         const parts = [];
