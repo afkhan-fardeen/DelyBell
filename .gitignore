@@ -1,6 +1,7 @@
 # Dependencies
 node_modules/
-package-lock.json
+# Keep package-lock.json for reproducible builds (needed for production)
+# package-lock.json
 pnpm-lock.yaml
 yarn.lock
 
