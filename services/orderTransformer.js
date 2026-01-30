@@ -110,12 +110,15 @@ class OrderTransformer {
       
       // Convert numbers to Delybell IDs
       // Block Number (929) → Block ID (370) - matched by code AND area name (MANDATORY)
-      // Road Number (3953) → Road ID (XXXX) - OPTIONAL, can be null
+      // Road Number (3953) → Road ID (XXXX) - OPTIONAL but will be sent if found
       // Building Number (2733) → Building ID (YYYY) - OPTIONAL, can be null
       console.log('Looking up Delybell IDs from address numbers...');
+      if (addressNumbers.road_number) {
+        console.log(`Attempting to lookup Road ID for Road Number ${addressNumbers.road_number}...`);
+      }
       destinationIds = await addressIdMapper.convertNumbersToIds(addressNumbers, areaName);
       
-      console.log(`Mapped to Delybell IDs: Block ID ${destinationIds.block_id}${destinationIds.road_id ? `, Road ID ${destinationIds.road_id}` : ' (Road ID: null - optional)'}${destinationIds.building_id ? `, Building ID ${destinationIds.building_id}` : ' (Building ID: null - optional)'}`);
+      console.log(`Mapped to Delybell IDs: Block ID ${destinationIds.block_id}${destinationIds.road_id ? `, Road ID ${destinationIds.road_id} (will be sent to Delybell)` : ' (Road ID: null - not found or not provided)'}${destinationIds.building_id ? `, Building ID ${destinationIds.building_id}` : ' (Building ID: null - optional)'}`);
     }
 
     // Calculate total weight from line items
@@ -152,7 +155,8 @@ class OrderTransformer {
       // Block ID is MANDATORY, Road and Building IDs are OPTIONAL
       // These are Delybell IDs (looked up from human-readable numbers)
       destination_block_id: destinationIds.block_id, // MANDATORY
-      ...(destinationIds.road_id && { destination_road_id: destinationIds.road_id }), // OPTIONAL - only include if found
+      // Always include road_id if it was found (even if optional, send it when available)
+      ...(destinationIds.road_id && { destination_road_id: destinationIds.road_id }), // OPTIONAL - include if found
       ...(destinationIds.building_id && { destination_building_id: destinationIds.building_id }), // OPTIONAL - only include if found
       
       // Optional: Flat/Office number
@@ -194,6 +198,10 @@ class OrderTransformer {
 
       // Delivery instructions
       delivery_instructions: shopifyOrder.note || shippingAddress?.note || 'Handle with care',
+
+      // Payment Information
+      // Determine payment type based on Shopify order financial status
+      ...(this.getPaymentFields(shopifyOrder)),
 
       // Package Details (mandatory)
       package_details: this.formatPackageDetails(packageDetails),
@@ -580,6 +588,36 @@ class OrderTransformer {
     
     // Default to Prepaid
     return 'Prepaid';
+  }
+
+  /**
+   * Get payment fields for Delybell order payload
+   * Returns payment_type and cod_amount based on Shopify order financial status
+   * @param {Object} shopifyOrder - Shopify order object
+   * @returns {Object} Payment fields object with payment_type and optionally cod_amount
+   */
+  getPaymentFields(shopifyOrder) {
+    const financialStatus = shopifyOrder.financial_status || 'pending';
+    const paymentGateways = shopifyOrder.payment_gateway_names || [];
+    const totalPrice = parseFloat(shopifyOrder.total_price) || 0;
+    
+    // Determine if order is COD or Prepaid
+    const isCOD = this.isCOD(shopifyOrder);
+    const paymentType = isCOD ? 'COD' : 'Prepaid';
+    
+    console.log(`Payment status: ${financialStatus}, Payment type: ${paymentType}, Total: ${totalPrice}`);
+    
+    // Build payment fields object
+    const paymentFields = {
+      payment_type: paymentType,
+    };
+    
+    // If COD, include cod_amount (amount to collect on delivery)
+    if (isCOD && totalPrice > 0) {
+      paymentFields.cod_amount = totalPrice;
+    }
+    
+    return paymentFields;
   }
 }
 

@@ -491,6 +491,35 @@
       border: 1px solid rgba(245, 158, 11, 0.2);
     }
     
+    .payment-badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 3px 8px;
+      border-radius: var(--radius-sm);
+      font-size: 10px;
+      font-weight: 500;
+      letter-spacing: 0.05em;
+    }
+    
+    .payment-paid {
+      background: rgba(34, 197, 94, 0.15);
+      color: #4ade80;
+      border: 1px solid rgba(34, 197, 94, 0.2);
+    }
+    
+    .payment-cod {
+      background: rgba(251, 191, 36, 0.15);
+      color: #fbbf24;
+      border: 1px solid rgba(251, 191, 36, 0.2);
+    }
+    
+    .payment-unknown,
+    .payment-other {
+      background: rgba(107, 114, 128, 0.15);
+      color: #9ca3af;
+      border: 1px solid rgba(107, 114, 128, 0.2);
+    }
+    
     .time-ago {
       color: var(--color-text-secondary);
       font-size: 11px;
@@ -965,6 +994,7 @@
               <th>Order</th>
               <th>Shop</th>
               <th>Amount</th>
+              <th>Payment</th>
               <th>Delybell</th>
               <th>Status</th>
               <th>Time</th>
@@ -973,7 +1003,7 @@
           </thead>
           <tbody id="ordersTableBody">
             <tr>
-              <td colspan="7" class="loading">
+              <td colspan="8" class="loading">
                 <div class="loading-spinner"></div>
                 <div>Loading orders...</div>
               </td>
@@ -1120,6 +1150,9 @@
                     <a href="#" class="shop-link" onclick="filterByShop('${order.shop}'); return false;">${order.shop}</a>
                   </td>
                   <td>${formatCurrency(order.amount, order.currency)}</td>
+                  <td>
+                    <span class="payment-badge ${getPaymentClass(order.financialStatus)}">${formatPaymentStatus(order.financialStatus)}</span>
+                  </td>
                   <td>${order.delybellOrderId ? `<span style="font-family: monospace; font-size: 11px;">${order.delybellOrderId}</span>` : '<span style="color: var(--color-error);">Not Created</span>'}</td>
                   <td>
                     <span class="status-badge ${getStatusClass(order.status)}">${getStatusText(order.status)}</span>
@@ -1173,6 +1206,10 @@
             <div class="detail-row">
               <div class="detail-label">Amount</div>
               <div class="detail-value"><strong>${formatCurrency(order.amount, order.currency)}</strong></div>
+            </div>
+            <div class="detail-row">
+              <div class="detail-label">Payment</div>
+              <div class="detail-value"><span class="payment-badge ${getPaymentClass(order.financialStatus)}">${formatPaymentStatus(order.financialStatus)}</span></div>
             </div>
             <div class="detail-row">
               <div class="detail-label">Status</div>
@@ -1326,6 +1363,25 @@ ${order.errorMessage ? `Error: ${order.errorMessage}` : ''}
       if (status === 'processed') return 'Synced';
       if (status === 'failed') return 'Failed';
       return 'Pending';
+    }
+    
+    function formatPaymentStatus(financialStatus) {
+      if (!financialStatus) return 'Unknown';
+      const status = financialStatus.toLowerCase();
+      if (status === 'paid') return 'Paid';
+      if (status === 'pending' || status === 'authorized') return 'Cash on Delivery';
+      if (status === 'partially_paid') return 'Partially Paid';
+      if (status === 'refunded') return 'Refunded';
+      if (status === 'voided') return 'Voided';
+      return financialStatus.charAt(0).toUpperCase() + financialStatus.slice(1);
+    }
+    
+    function getPaymentClass(financialStatus) {
+      if (!financialStatus) return 'payment-unknown';
+      const status = financialStatus.toLowerCase();
+      if (status === 'paid') return 'payment-paid';
+      if (status === 'pending' || status === 'authorized') return 'payment-cod';
+      return 'payment-other';
     }
     
     function formatErrorMessage(error) {
