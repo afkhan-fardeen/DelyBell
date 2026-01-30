@@ -481,48 +481,17 @@ class OrderProcessor {
       
       // Log as FAILED (delybell_order_id must be null for failed status)
       await this.logOrder({
-          shop,
-          shopifyOrderId: shopifyOrderId, // Long ID
-          shopifyOrderNumber: shopifyOrderNumber, // Display number
-          delybellOrderId: null, // Must be null for failed status
-          status: 'failed',
-          errorMessage: errorMessage,
-          totalPrice: shopifyOrder.total_price ? parseFloat(shopifyOrder.total_price) : null,
-          currency: shopifyOrder.currency || 'USD',
-        });
-        
-        throw new Error(errorMessage);
-      }
-
-      console.log(`Order created successfully in Delybell: ${delybellOrderId}`);
-      
-      // 3️⃣ Log successful order and RETURN IMMEDIATELY (CRITICAL)
-      // Only log as processed if we have delybellOrderId
-      await this.logOrder({
         shop,
-        shopifyOrderId: shopifyOrderId, // Long ID (e.g., 10643266011430)
-        shopifyOrderNumber: shopifyOrderNumber, // Display number (e.g., 1022)
-        delybellOrderId: delybellOrderId.toString(), // Required for processed status
-        status: 'processed',
-        totalPrice: shopifyOrder.total_price ? parseFloat(shopifyOrder.total_price) : null,
-        currency: shopifyOrder.currency || 'USD',
-        customerName: customerName,
-        phone: phone,
-        shopifyOrderCreatedAt: shopifyOrderCreatedAt,
-      });
-      
-      console.log(`[OrderProcessor] ✅ Order ${shopifyOrderId} logged to database with status: processed`);
-      
-      // RETURN IMMEDIATELY - no code after this should run
-      return {
-        success: true,
         shopifyOrderId: shopifyOrderId, // Long ID
         shopifyOrderNumber: shopifyOrderNumber, // Display number
-        delybellOrderId: delybellOrderId.toString(),
-        shippingCharge,
-        trackingUrl: delybellResponse?.data?.tracking_url,
-        message: 'Order processed successfully',
-      };
+        delybellOrderId: null, // Must be null for failed status
+        status: 'failed',
+        errorMessage: errorMessage,
+        totalPrice: shopifyOrder.total_price ? parseFloat(shopifyOrder.total_price) : null,
+        currency: shopifyOrder.currency || 'USD',
+      });
+      
+      throw new Error(errorMessage);
     } catch (error) {
       console.error('[OrderProcessor] ❌ Error processing order:', error);
       console.error('[OrderProcessor] Error stack:', error.stack);
