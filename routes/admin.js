@@ -1275,20 +1275,31 @@ router.get('/admin/api/stats', async (req, res) => {
       });
     }
 
+    const { shop } = req.query;
     const { supabase } = require('../services/db');
     const now = new Date();
     const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     
-    // Get today's orders
-    const { data: todayOrders, error: todayError } = await supabase
+    // Build query for today's orders
+    let query = supabase
       .from('order_logs')
       .select('status, delybell_order_id')
       .gte('created_at', todayStart.toISOString());
+    
+    // Filter by shop if provided
+    if (shop) {
+      const { normalizeShop } = require('../utils/normalizeShop');
+      const normalizedShop = normalizeShop(shop);
+      query = query.eq('shop', normalizedShop);
+    }
+
+    const { data: todayOrders, error: todayError } = await query;
 
     if (todayError) throw todayError;
 
     const totalToday = todayOrders?.length || 0;
     const syncedToday = todayOrders?.filter(o => o.status === 'processed' && o.delybell_order_id).length || 0;
+    const pendingSync = todayOrders?.filter(o => o.status === 'pending_sync').length || 0;
     const failedToday = todayOrders?.filter(o => o.status === 'failed').length || 0;
     const needsAttention = failedToday; // Orders that failed and need retry
 
@@ -1297,6 +1308,7 @@ router.get('/admin/api/stats', async (req, res) => {
       stats: {
         totalOrdersToday: totalToday,
         successfullySynced: syncedToday,
+        pendingSync: pendingSync,
         failed: failedToday,
         needsAttention: needsAttention,
       },

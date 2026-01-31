@@ -23,9 +23,10 @@
     
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-      background: #ffffff;
-      color: #1a1a1a;
+      background: #f6f6f7;
+      color: #202223;
       line-height: 1.5;
+      font-size: 14px;
     }
     
     .container {
@@ -34,281 +35,445 @@
       padding: 0;
     }
     
-    .header {
-      border-bottom: 1px solid #e5e5e5;
-      padding: 24px 32px;
-      background: #fafafa;
+    .page-header {
+      background: #ffffff;
+      border-bottom: 1px solid #e1e3e5;
+      padding: 20px 24px;
     }
     
-    .header h1 {
+    .page-title {
       font-size: 20px;
       font-weight: 600;
-      color: #1a1a1a;
+      color: #202223;
       margin-bottom: 4px;
-      letter-spacing: -0.02em;
+      letter-spacing: -0.01em;
     }
     
-    .header p {
-      color: #666666;
-      font-size: 13px;
+    .page-subtitle {
+      color: #6d7175;
+      font-size: 14px;
       font-weight: 400;
     }
     
     .content {
-      padding: 32px;
+      padding: 24px;
     }
     
-    .section {
-      border: 1px solid #e5e5e5;
-      margin-bottom: 24px;
+    .card {
       background: #ffffff;
+      border: 1px solid #e1e3e5;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      box-shadow: 0 1px 0 rgba(0, 0, 0, 0.05);
     }
     
-    .section-header {
-      border-bottom: 1px solid #e5e5e5;
-      padding: 16px 24px;
-      background: #fafafa;
+    .card-header {
+      padding: 16px 20px;
+      border-bottom: 1px solid #e1e3e5;
       display: flex;
       justify-content: space-between;
       align-items: center;
     }
     
-    .section-title {
-      font-size: 13px;
+    .card-title {
+      font-size: 15px;
       font-weight: 600;
-      color: #1a1a1a;
+      color: #202223;
+    }
+    
+    .card-body {
+      padding: 20px;
+    }
+    
+    /* Sync Mode Toggle */
+    .sync-mode-section {
+      background: linear-gradient(135deg, #f6f6f7 0%, #ffffff 100%);
+      border-left: 4px solid #008060;
+    }
+    
+    .sync-mode-toggle {
+      display: flex;
+      gap: 12px;
+      margin-top: 16px;
+    }
+    
+    .toggle-option {
+      flex: 1;
+      position: relative;
+    }
+    
+    .toggle-option input[type="radio"] {
+      position: absolute;
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+    
+    .toggle-option label {
+      display: block;
+      padding: 16px;
+      border: 2px solid #e1e3e5;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      background: #ffffff;
+      text-align: center;
+    }
+    
+    .toggle-option input[type="radio"]:checked + label {
+      border-color: #008060;
+      background: #f0fdf4;
+      box-shadow: 0 0 0 3px rgba(0, 128, 96, 0.1);
+    }
+    
+    .toggle-option label .toggle-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: #202223;
+      margin-bottom: 4px;
+    }
+    
+    .toggle-option input[type="radio"]:checked + label .toggle-title {
+      color: #008060;
+    }
+    
+    .toggle-option label .toggle-description {
+      font-size: 12px;
+      color: #6d7175;
+      margin-top: 4px;
+    }
+    
+    .toggle-badge {
+      display: inline-block;
+      padding: 2px 8px;
+      background: #008060;
+      color: #ffffff;
+      font-size: 10px;
+      font-weight: 600;
       text-transform: uppercase;
       letter-spacing: 0.5px;
+      border-radius: 3px;
+      margin-left: 8px;
     }
     
-    .section-body {
-      padding: 24px;
+    .sync-mode-help {
+      margin-top: 16px;
+      padding: 12px 16px;
+      background: #f6f6f7;
+      border-radius: 6px;
+      font-size: 13px;
+      color: #6d7175;
+      display: flex;
+      align-items: start;
+      gap: 12px;
     }
     
-    .status-grid {
+    .sync-mode-help svg {
+      width: 20px;
+      height: 20px;
+      flex-shrink: 0;
+      margin-top: 2px;
+      color: #6d7175;
+    }
+    
+    .manual-sync-controls {
+      margin-top: 20px;
+      padding-top: 20px;
+      border-top: 1px solid #e1e3e5;
+      display: none;
+    }
+    
+    .manual-sync-controls.active {
+      display: block;
+    }
+    
+    .manual-sync-buttons {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    
+    .button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 10px 16px;
+      font-size: 14px;
+      font-weight: 500;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      border: 1px solid;
+      text-decoration: none;
+      white-space: nowrap;
+    }
+    
+    .button-primary {
+      background: #008060;
+      color: #ffffff;
+      border-color: #008060;
+    }
+    
+    .button-primary:hover:not(:disabled) {
+      background: #006e52;
+      border-color: #006e52;
+    }
+    
+    .button-secondary {
+      background: #ffffff;
+      color: #202223;
+      border-color: #e1e3e5;
+    }
+    
+    .button-secondary:hover:not(:disabled) {
+      background: #f6f6f7;
+      border-color: #202223;
+    }
+    
+    .button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    
+    .button svg {
+      width: 16px;
+      height: 16px;
+    }
+    
+    /* Stats Grid */
+    .stats-grid {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-      gap: 24px;
+      gap: 16px;
+      margin-bottom: 20px;
     }
     
-    .status-item {
-      padding: 16px 0;
-      border-bottom: 1px solid #e5e5e5;
+    .stat-card {
+      background: #ffffff;
+      border: 1px solid #e1e3e5;
+      border-radius: 8px;
+      padding: 16px;
+      position: relative;
+      overflow: hidden;
     }
     
-    .status-item:last-child {
-      border-bottom: none;
+    .stat-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 4px;
+      height: 100%;
+      background: #008060;
     }
     
-    .status-label {
-      font-size: 11px;
-      font-weight: 600;
-      color: #666666;
+    .stat-card.success::before {
+      background: #008060;
+    }
+    
+    .stat-card.warning::before {
+      background: #f59e0b;
+    }
+    
+    .stat-card.error::before {
+      background: #d72c0d;
+    }
+    
+    .stat-label {
+      font-size: 12px;
+      font-weight: 500;
+      color: #6d7175;
       text-transform: uppercase;
       letter-spacing: 0.5px;
       margin-bottom: 8px;
     }
     
-    .status-value {
-      font-size: 15px;
-      font-weight: 400;
-      color: #1a1a1a;
-    }
-    
-    .badge {
-      display: inline-block;
-      padding: 4px 10px;
-      font-size: 11px;
+    .stat-value {
+      font-size: 24px;
       font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-      border: 1px solid;
+      color: #202223;
+      line-height: 1.2;
     }
     
-    .badge-success {
-      background: #ffffff;
-      color: #1a1a1a;
-      border-color: #1a1a1a;
-    }
-    
-    .badge-warning {
-      background: #ffffff;
-      color: #666666;
-      border-color: #d1d1d1;
-    }
-    
-    .button {
-      display: inline-block;
-      padding: 10px 20px;
-      background: #1a1a1a;
-      color: #ffffff;
-      border: 1px solid #1a1a1a;
-      font-size: 12px;
-      font-weight: 500;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-      cursor: pointer;
-      text-decoration: none;
-      transition: background-color 0.15s ease, color 0.15s ease;
-    }
-    
-    .button:hover {
-      background: #333333;
-      border-color: #333333;
-    }
-    
-    .button:active {
-      background: #000000;
-      border-color: #000000;
-    }
-    
-    .button:disabled {
-      background: #cccccc;
-      border-color: #cccccc;
-      cursor: not-allowed;
-    }
-    
-    .button-secondary {
-      background: #ffffff;
-      color: #1a1a1a;
-      border-color: #d1d1d1;
-    }
-    
-    .button-secondary:hover {
-      background: #fafafa;
-      border-color: #1a1a1a;
-    }
-    
-    .loading {
-      text-align: center;
-      padding: 60px 20px;
-      color: #666666;
-      font-size: 13px;
-    }
-    
-    .error-message {
-      background: #ffffff;
-      border: 1px solid #d1d1d1;
-      border-left: 3px solid #1a1a1a;
-      padding: 16px 20px;
-      margin-bottom: 24px;
-      color: #1a1a1a;
-      font-size: 13px;
-    }
-    
-    .error-message strong {
-      display: block;
-      margin-bottom: 4px;
-      font-size: 11px;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-    }
-    
+    /* Table */
     .table-container {
       overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
     }
     
     .table {
       width: 100%;
       border-collapse: collapse;
+      font-size: 14px;
     }
     
     .table thead {
-      background: #fafafa;
-      border-bottom: 2px solid #e5e5e5;
+      background: #f6f6f7;
     }
     
     .table th {
       text-align: left;
       padding: 12px 16px;
-      font-size: 11px;
+      font-size: 12px;
       font-weight: 600;
-      color: #666666;
+      color: #6d7175;
       text-transform: uppercase;
       letter-spacing: 0.5px;
+      border-bottom: 1px solid #e1e3e5;
     }
     
     .table td {
-      padding: 16px;
-      border-bottom: 1px solid #e5e5e5;
-      font-size: 13px;
-      color: #1a1a1a;
+      padding: 12px 16px;
+      border-bottom: 1px solid #e1e3e5;
+      color: #202223;
     }
     
     .table tbody tr:hover {
-      background: #fafafa;
+      background: #f6f6f7;
     }
     
     .table tbody tr:last-child td {
       border-bottom: none;
     }
     
+    .order-checkbox {
+      width: 18px;
+      height: 18px;
+      cursor: pointer;
+    }
+    
     .order-number {
       font-weight: 600;
-      color: #1a1a1a;
+      color: #202223;
     }
     
-    .order-name {
-      font-size: 11px;
-      color: #666666;
+    .order-meta {
+      font-size: 12px;
+      color: #6d7175;
       margin-top: 4px;
-      font-family: 'Monaco', 'Menlo', 'Courier New', monospace;
     }
     
-    .order-status {
+    .badge {
       display: inline-block;
-      padding: 4px 8px;
-      font-size: 11px;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-      border: 1px solid #1a1a1a;
-      background: #ffffff;
-      color: #1a1a1a;
+      padding: 4px 10px;
+      font-size: 12px;
+      font-weight: 500;
+      border-radius: 4px;
+      text-transform: capitalize;
+    }
+    
+    .badge-success {
+      background: #d1fae5;
+      color: #065f46;
+    }
+    
+    .badge-warning {
+      background: #fef3c7;
+      color: #92400e;
+    }
+    
+    .badge-error {
+      background: #fee2e2;
+      color: #991b1b;
+    }
+    
+    .badge-info {
+      background: #dbeafe;
+      color: #1e40af;
     }
     
     .delybell-id {
       font-family: 'Monaco', 'Menlo', 'Courier New', monospace;
       font-size: 12px;
-      color: #666666;
+      color: #6d7175;
+      background: #f6f6f7;
+      padding: 4px 8px;
+      border-radius: 4px;
     }
     
     .link {
-      color: #1a1a1a;
-      text-decoration: underline;
-      font-size: 13px;
+      color: #008060;
+      text-decoration: none;
+      font-weight: 500;
     }
     
     .link:hover {
-      color: #333333;
+      text-decoration: underline;
     }
     
-    .no-data {
+    .loading {
       text-align: center;
       padding: 60px 20px;
-      color: #666666;
-      font-size: 13px;
+      color: #6d7175;
+      font-size: 14px;
     }
     
-    .count {
-      color: #666666;
-      font-size: 11px;
-      font-weight: 400;
-      text-transform: none;
-      letter-spacing: 0;
-      margin-left: 8px;
+    .loading-spinner {
+      display: inline-block;
+      width: 20px;
+      height: 20px;
+      border: 2px solid #e1e3e5;
+      border-top-color: #008060;
+      border-radius: 50%;
+      animation: spin 0.6s linear infinite;
+      margin-right: 8px;
+      vertical-align: middle;
+    }
+    
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    
+    .empty-state {
+      text-align: center;
+      padding: 60px 20px;
+      color: #6d7175;
+    }
+    
+    .empty-state-icon {
+      width: 48px;
+      height: 48px;
+      margin: 0 auto 16px;
+      color: #c9cccf;
+    }
+    
+    .empty-state-title {
+      font-size: 16px;
+      font-weight: 600;
+      color: #202223;
+      margin-bottom: 8px;
+    }
+    
+    .error-message {
+      background: #fee2e2;
+      border: 1px solid #fecaca;
+      border-left: 4px solid #d72c0d;
+      padding: 16px 20px;
+      margin-bottom: 20px;
+      border-radius: 6px;
+      color: #991b1b;
+      font-size: 14px;
+    }
+    
+    .info-section {
+      background: #f6f6f7;
+      border-radius: 6px;
+      padding: 16px;
+      margin-top: 20px;
     }
     
     .info-list {
       list-style: none;
       padding: 0;
+      margin: 0;
     }
     
     .info-list li {
       padding: 8px 0;
       font-size: 13px;
-      color: #666666;
-      border-bottom: 1px solid #e5e5e5;
+      color: #6d7175;
+      border-bottom: 1px solid #e1e3e5;
     }
     
     .info-list li:last-child {
@@ -316,22 +481,46 @@
     }
     
     .info-list li:before {
-      content: "—";
+      content: "•";
+      color: #008060;
       margin-right: 12px;
-      color: #999999;
+      font-weight: bold;
+    }
+    
+    .count {
+      color: #6d7175;
+      font-size: 12px;
+      font-weight: 400;
+      margin-left: 8px;
     }
     
     @media (max-width: 768px) {
       .content {
-        padding: 20px;
-      }
-      
-      .header {
-        padding: 20px;
-      }
-      
-      .section-body {
         padding: 16px;
+      }
+      
+      .page-header {
+        padding: 16px;
+      }
+      
+      .card-body {
+        padding: 16px;
+      }
+      
+      .stats-grid {
+        grid-template-columns: 1fr;
+      }
+      
+      .sync-mode-toggle {
+        flex-direction: column;
+      }
+      
+      .manual-sync-buttons {
+        flex-direction: column;
+      }
+      
+      .manual-sync-buttons .button {
+        width: 100%;
       }
       
       .table {
@@ -340,16 +529,16 @@
       
       .table th,
       .table td {
-        padding: 10px 8px;
+        padding: 8px;
       }
     }
   </style>
 </head>
 <body>
   <div class="container">
-    <div class="header">
-      <h1>Delybell Order Sync</h1>
-      <p>Automatically sync your Shopify orders to Delybell delivery management system</p>
+    <div class="page-header">
+      <h1 class="page-title">Delybell Order Sync</h1>
+      <p class="page-subtitle">Automatically sync your Shopify orders to Delybell delivery management system</p>
     </div>
     
     <div class="content">
@@ -357,8 +546,9 @@
       
       <div id="app-content">
         <div class="loading">
-          <div style="margin-bottom: 8px;">Loading app status...</div>
-          <div style="font-size: 11px; color: #999999; margin-top: 8px;" id="loading-details">Initializing...</div>
+          <div class="loading-spinner"></div>
+          <div style="margin-top: 12px;">Loading app status...</div>
+          <div style="font-size: 12px; color: #6d7175; margin-top: 8px;" id="loading-details">Initializing...</div>
         </div>
       </div>
     </div>
@@ -368,6 +558,7 @@
     let app;
     let shop = window.SHOPIFY_SHOP || '<%= shop %>';
     const apiKey = window.SHOPIFY_API_KEY;
+    let currentSyncMode = 'auto';
     
     // Initialize App Bridge
     if (apiKey && apiKey !== 'SHOPIFY_API_KEY_NOT_SET' && apiKey !== '<%= SHOPIFY_API_KEY %>') {
@@ -386,7 +577,6 @@
           
           window.app = createApp(appConfig);
           
-          // Try to get shop from App Bridge if not already set
           if (!shop && window.app && window.app.getState) {
             try {
               const state = window.app.getState();
@@ -399,7 +589,6 @@
             }
           }
           
-          // Set up title bar
           if (AppBridge.actions) {
             const TitleBar = AppBridge.actions.TitleBar;
             TitleBar.create(window.app, {
@@ -412,7 +601,6 @@
       }
     }
     
-    // Final fallback: Get shop from URL params
     if (!shop) {
       const urlParams = new URLSearchParams(window.location.search);
       shop = urlParams.get('shop') || urlParams.get('shopOrigin');
@@ -423,17 +611,152 @@
     
     console.log('[App] Final shop value:', shop || 'NOT DETECTED');
     
+    // Load sync mode
+    async function loadSyncMode() {
+      if (!shop) return;
+      
+      try {
+        const response = await fetch(`/admin/api/shops/${encodeURIComponent(shop)}/sync-mode`);
+        const data = await response.json();
+        if (data.success) {
+          currentSyncMode = data.sync_mode || 'auto';
+          updateSyncModeUI();
+        }
+      } catch (error) {
+        console.error('Error loading sync mode:', error);
+      }
+    }
+    
+    function updateSyncModeUI() {
+      const autoRadio = document.getElementById('syncModeAuto');
+      const manualRadio = document.getElementById('syncModeManual');
+      const manualControls = document.getElementById('manualSyncControls');
+      
+      if (autoRadio) autoRadio.checked = currentSyncMode === 'auto';
+      if (manualRadio) manualRadio.checked = currentSyncMode === 'manual';
+      if (manualControls) {
+        manualControls.classList.toggle('active', currentSyncMode === 'manual');
+      }
+      
+      loadOrders();
+    }
+    
+    async function updateSyncMode(mode) {
+      if (!shop) {
+        alert('Shop not detected');
+        return;
+      }
+      
+      try {
+        const response = await fetch(`/admin/api/shops/${encodeURIComponent(shop)}/sync-mode`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ sync_mode: mode }),
+        });
+        
+        const data = await response.json();
+        if (data.success) {
+          currentSyncMode = mode;
+          updateSyncModeUI();
+        } else {
+          alert('Failed to update sync mode: ' + (data.error || 'Unknown error'));
+        }
+      } catch (error) {
+        console.error('Error updating sync mode:', error);
+        alert('Error updating sync mode: ' + error.message);
+      }
+    }
+    
+    async function syncSelectedOrders() {
+      const checked = Array.from(document.querySelectorAll('.order-checkbox:checked')).map(cb => cb.value);
+      if (checked.length === 0) {
+        alert('Please select at least one order');
+        return;
+      }
+      
+      if (!confirm(`Sync ${checked.length} selected order(s)?`)) return;
+      
+      const btn = document.getElementById('syncSelectedBtn');
+      const originalText = btn.innerHTML;
+      btn.disabled = true;
+      btn.innerHTML = '<div class="loading-spinner"></div> Syncing...';
+      
+      try {
+        const response = await fetch('/admin/api/orders/sync-selected', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ orderIds: checked }),
+        });
+        
+        const data = await response.json();
+        if (data.success) {
+          alert(`Synced ${data.synced} order(s) successfully. ${data.failed > 0 ? `${data.failed} failed.` : ''}`);
+          loadOrders();
+          loadStats();
+        } else {
+          alert('Sync failed: ' + (data.error || 'Unknown error'));
+        }
+      } catch (error) {
+        console.error('Error syncing orders:', error);
+        alert('Error syncing orders: ' + error.message);
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = originalText;
+      }
+    }
+    
+    async function syncAllPendingOrders() {
+      if (!confirm('Sync all pending orders?')) return;
+      
+      const btn = document.getElementById('syncAllBtn');
+      const originalText = btn.innerHTML;
+      btn.disabled = true;
+      btn.innerHTML = '<div class="loading-spinner"></div> Syncing...';
+      
+      try {
+        const url = `/admin/api/orders/sync-all?shop=${encodeURIComponent(shop)}`;
+        const response = await fetch(url, { method: 'POST' });
+        
+        const data = await response.json();
+        if (data.success) {
+          alert(`Synced ${data.synced} order(s) successfully. ${data.failed > 0 ? `${data.failed} failed.` : ''}`);
+          loadOrders();
+          loadStats();
+        } else {
+          alert('Sync failed: ' + (data.error || 'Unknown error'));
+        }
+      } catch (error) {
+        console.error('Error syncing all orders:', error);
+        alert('Error syncing orders: ' + error.message);
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = originalText;
+      }
+    }
+    
+    function updateSyncButtons() {
+      const checked = document.querySelectorAll('.order-checkbox:checked').length;
+      const btn = document.getElementById('syncSelectedBtn');
+      if (btn) btn.disabled = checked === 0;
+    }
+    
+    function toggleSelectAll() {
+      const selectAll = document.getElementById('selectAllCheckbox').checked;
+      document.querySelectorAll('.order-checkbox:not(:disabled)').forEach(cb => {
+        cb.checked = selectAll;
+      });
+      updateSyncButtons();
+    }
+    
     // Load app status
     async function loadAppStatus() {
       const loadingDetails = document.getElementById('loading-details');
       
       try {
-        // Wait a bit for App Bridge to fully initialize if shop not detected
         if (!shop && window.app) {
           console.log('[App] Waiting for App Bridge to initialize...');
           await new Promise(resolve => setTimeout(resolve, 500));
           
-          // Try to get shop from App Bridge state
           if (window.app && window.app.getState) {
             try {
               const state = window.app.getState();
@@ -494,104 +817,136 @@
         if (authData.authenticated) {
           if (loadingDetails) loadingDetails.textContent = '';
           
+          // Load sync mode first
+          await loadSyncMode();
+          
           appContent.innerHTML = `
-            <div class="section">
-              <div class="section-header">
-                <div class="section-title">App Status</div>
+            <!-- Stats -->
+            <div class="stats-grid" id="statsGrid">
+              <div class="stat-card success">
+                <div class="stat-label">Total Orders</div>
+                <div class="stat-value" id="totalOrders">-</div>
               </div>
-              <div class="section-body">
-                <div class="status-grid">
-                  <div class="status-item">
-                    <div class="status-label">Installation Status</div>
-                    <div class="status-value">
-                      <span class="badge badge-success">Installed</span>
-                    </div>
+              <div class="stat-card success">
+                <div class="stat-label">Synced</div>
+                <div class="stat-value" id="syncedOrders">-</div>
+              </div>
+              <div class="stat-card warning">
+                <div class="stat-label">Pending</div>
+                <div class="stat-value" id="pendingOrders">-</div>
+              </div>
+              <div class="stat-card error">
+                <div class="stat-label">Failed</div>
+                <div class="stat-value" id="failedOrders">-</div>
+              </div>
+            </div>
+            
+            <!-- Sync Mode -->
+            <div class="card sync-mode-section">
+              <div class="card-header">
+                <div class="card-title">Order Sync Mode</div>
+              </div>
+              <div class="card-body">
+                <div class="sync-mode-toggle">
+                  <div class="toggle-option">
+                    <input type="radio" name="syncMode" value="auto" id="syncModeAuto" onchange="updateSyncMode('auto')">
+                    <label for="syncModeAuto">
+                      <div class="toggle-title">Live Sync <span class="toggle-badge">Recommended</span></div>
+                      <div class="toggle-description">Orders sync automatically when created</div>
+                    </label>
                   </div>
-                  <div class="status-item">
-                    <div class="status-label">Shop</div>
-                    <div class="status-value">${authData.shop}</div>
+                  <div class="toggle-option">
+                    <input type="radio" name="syncMode" value="manual" id="syncModeManual" onchange="updateSyncMode('manual')">
+                    <label for="syncModeManual">
+                      <div class="toggle-title">Manual Sync</div>
+                      <div class="toggle-description">Choose which orders to sync and when</div>
+                    </label>
                   </div>
-                  <div class="status-item">
-                    <div class="status-label">Session Status</div>
-                    <div class="status-value">
-                      <span class="badge badge-success">Active</span>
-                    </div>
+                </div>
+                
+                <div class="sync-mode-help">
+                  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                  </svg>
+                  <div>
+                    <strong>Manual Sync Mode:</strong> Orders will be saved but not automatically synced to Delybell. Use the controls below to sync orders manually when ready.
+                  </div>
+                </div>
+                
+                <div class="manual-sync-controls" id="manualSyncControls">
+                  <div class="manual-sync-buttons">
+                    <button class="button button-primary" id="syncSelectedBtn" onclick="syncSelectedOrders()" disabled>
+                      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                      </svg>
+                      Sync Selected
+                    </button>
+                    <button class="button button-secondary" id="syncAllBtn" onclick="syncAllPendingOrders()">
+                      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                      </svg>
+                      Sync All Pending
+                    </button>
                   </div>
                 </div>
               </div>
             </div>
             
-            <div class="section">
-              <div class="section-header">
-                <div class="section-title">Synced Orders <span class="count" id="orders-count"></span></div>
-                <button class="button button-secondary" id="refresh-orders" onclick="loadSyncedOrders()">Refresh</button>
+            <!-- Orders -->
+            <div class="card">
+              <div class="card-header">
+                <div class="card-title">Orders <span class="count" id="orders-count"></span></div>
+                <button class="button button-secondary" id="refresh-orders" onclick="loadOrders()">
+                  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                  </svg>
+                  Refresh
+                </button>
               </div>
-              <div class="section-body">
+              <div class="card-body">
                 <div id="orders-container">
-                  <div class="loading">Loading synced orders...</div>
+                  <div class="loading">Loading orders...</div>
                 </div>
               </div>
             </div>
             
-            <div class="section">
-              <div class="section-header">
-                <div class="section-title">How It Works</div>
+            <!-- Info -->
+            <div class="card">
+              <div class="card-header">
+                <div class="card-title">How It Works</div>
               </div>
-              <div class="section-body">
+              <div class="card-body">
                 <ul class="info-list">
-                  <li>Orders are automatically synced to Delybell when created in Shopify</li>
-                  <li>Webhooks are registered and active - no manual action required</li>
+                  <li>Orders are automatically synced to Delybell based on your sync mode setting</li>
+                  <li>Webhooks are registered and active - no manual action required for Live Sync mode</li>
                   <li>Synced orders appear in the table above with Delybell order IDs</li>
                   <li>Tracking information is automatically updated when available</li>
                   <li>All order processing is handled automatically in the background</li>
                 </ul>
               </div>
             </div>
-            
-            <div class="section">
-              <div class="section-header">
-                <div class="section-title">Legal & Support</div>
-              </div>
-              <div class="section-body">
-                <ul class="info-list">
-                  <li><a href="/privacy-policy.html" target="_blank" class="link">Privacy Policy</a></li>
-                  <li><a href="/terms-of-service.html" target="_blank" class="link">Terms of Service</a></li>
-                  <li>Support: <a href="mailto:support@delybell.com" class="link">support@delybell.com</a></li>
-                </ul>
-              </div>
-            </div>
           `;
           
-          loadSyncedOrders();
+          loadStats();
+          loadOrders();
         } else {
           if (loadingDetails) loadingDetails.textContent = '';
           
           appContent.innerHTML = `
-            <div class="section">
-              <div class="section-header">
-                <div class="section-title">Installation Required</div>
+            <div class="card">
+              <div class="card-header">
+                <div class="card-title">Installation Required</div>
               </div>
-              <div class="section-body">
-                <div class="status-item">
-                  <div class="status-label">Installation Status</div>
-                  <div class="status-value">
-                    <span class="badge badge-warning">Not Installed</span>
-                  </div>
+              <div class="card-body">
+                <div style="margin-bottom: 24px;">
+                  <div style="font-size: 12px; color: #6d7175; margin-bottom: 8px;">Installation Status</div>
+                  <span class="badge badge-warning">Not Installed</span>
                 </div>
-                <div class="status-item">
-                  <div class="status-label">Shop</div>
-                  <div class="status-value">${shop}</div>
+                <div style="margin-bottom: 24px;">
+                  <div style="font-size: 12px; color: #6d7175; margin-bottom: 8px;">Shop</div>
+                  <div style="font-size: 14px; color: #202223;">${shop}</div>
                 </div>
-              </div>
-            </div>
-            
-            <div class="section">
-              <div class="section-header">
-                <div class="section-title">Install the App</div>
-              </div>
-              <div class="section-body">
-                <p style="margin-bottom: 24px; color: #666666; font-size: 13px;">Click the button below to install. You'll be redirected to Shopify to authorize the app.</p>
-                <a href="/auth/install?shop=${shop}" class="button" style="width: 100%; text-align: center; display: block;">Install App</a>
+                <a href="/auth/install?shop=${shop}" class="button button-primary" style="width: 100%; text-align: center; display: block;">Install App</a>
               </div>
             </div>
           `;
@@ -605,7 +960,7 @@
         if (errorContainer) {
           errorContainer.innerHTML = `
             <div class="error-message">
-              <strong>Error Loading App Status</strong>
+              <strong>Error Loading App Status</strong><br>
               ${error.message}
             </div>
           `;
@@ -613,13 +968,13 @@
         
         if (appContent) {
           appContent.innerHTML = `
-            <div class="section">
-              <div class="section-header">
-                <div class="section-title">Error</div>
+            <div class="card">
+              <div class="card-header">
+                <div class="card-title">Error</div>
               </div>
-              <div class="section-body">
-                <p style="color: #666666; font-size: 13px;">Unable to load app status. Error: ${error.message}</p>
-                <button onclick="loadAppStatus()" class="button" style="margin-top: 16px;">Retry</button>
+              <div class="card-body">
+                <p style="color: #6d7175; margin-bottom: 16px;">Unable to load app status. Error: ${error.message}</p>
+                <button onclick="loadAppStatus()" class="button button-primary">Retry</button>
               </div>
             </div>
           `;
@@ -627,18 +982,40 @@
       }
     }
     
-    async function loadSyncedOrders() {
+    async function loadStats() {
+      if (!shop) return;
+      
       try {
-        if (!shop) return;
-        
+        const response = await fetch(`/admin/api/stats?shop=${encodeURIComponent(shop)}`);
+        const data = await response.json();
+        if (data.success) {
+          document.getElementById('totalOrders').textContent = data.stats.totalOrdersToday || 0;
+          document.getElementById('syncedOrders').textContent = data.stats.successfullySynced || 0;
+          document.getElementById('pendingOrders').textContent = data.stats.pendingSync || 0;
+          document.getElementById('failedOrders').textContent = data.stats.failed || 0;
+        }
+      } catch (error) {
+        console.error('Error loading stats:', error);
+      }
+    }
+    
+    async function loadOrders() {
+      if (!shop) return;
+      
+      try {
         const refreshButton = document.getElementById('refresh-orders');
         const ordersContainer = document.getElementById('orders-container');
         const ordersCount = document.getElementById('orders-count');
         
         if (refreshButton) refreshButton.disabled = true;
-        if (ordersContainer) ordersContainer.innerHTML = '<div class="loading">Loading synced orders...</div>';
+        if (ordersContainer) ordersContainer.innerHTML = '<div class="loading"><div class="loading-spinner"></div> Loading orders...</div>';
         
-        const response = await fetch(`/admin/api/synced-orders?shop=${encodeURIComponent(shop)}&limit=50`);
+        // Load orders for this shop
+        const params = new URLSearchParams();
+        params.append('shop', shop);
+        params.append('limit', '50');
+        
+        const response = await fetch(`/admin/api/orders?${params}`);
         const data = await response.json();
         
         if (refreshButton) refreshButton.disabled = false;
@@ -656,9 +1033,14 @@
         if (orders.length === 0) {
           if (ordersContainer) {
             ordersContainer.innerHTML = `
-              <div class="no-data">
-                <p>No synced orders yet.</p>
-                <p style="margin-top: 8px; font-size: 12px; color: #999999;">Orders will appear here once they are synced to Delybell.</p>
+              <div class="empty-state">
+                <div class="empty-state-icon">
+                  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"></path>
+                  </svg>
+                </div>
+                <div class="empty-state-title">No orders yet</div>
+                <div style="margin-top: 8px; font-size: 13px; color: #6d7175;">Orders will appear here once they are synced to Delybell.</div>
               </div>
             `;
           }
@@ -666,6 +1048,7 @@
         }
         
         function formatDate(dateString) {
+          if (!dateString) return 'N/A';
           const date = new Date(dateString);
           return date.toLocaleDateString('en-US', { 
             year: 'numeric', 
@@ -677,10 +1060,7 @@
         }
         
         function formatCurrency(amount, currency) {
-          // 6️⃣ Fix dashboard rendering - Never hardcode $, always render {currency} {amount}
-          if (!amount && amount !== 0) {
-            return 'N/A';
-          }
+          if (!amount && amount !== 0) return 'N/A';
           const currencyCode = currency || 'USD';
           return new Intl.NumberFormat('en-US', {
             style: 'currency',
@@ -688,42 +1068,52 @@
           }).format(parseFloat(amount));
         }
         
+        function getStatusBadge(status) {
+          if (status === 'processed') return '<span class="badge badge-success">Synced</span>';
+          if (status === 'pending_sync') return '<span class="badge badge-warning">Pending Sync</span>';
+          if (status === 'failed') return '<span class="badge badge-error">Failed</span>';
+          return '<span class="badge badge-info">' + status + '</span>';
+        }
+        
+        const showCheckboxes = currentSyncMode === 'manual';
+        const canSelect = (status) => status === 'pending_sync' || status === 'failed';
+        
         if (ordersContainer) {
           ordersContainer.innerHTML = `
             <div class="table-container">
               <table class="table">
                 <thead>
                   <tr>
+                    ${showCheckboxes ? '<th><input type="checkbox" id="selectAllCheckbox" onchange="toggleSelectAll()"></th>' : ''}
                     <th>Order #</th>
-                    <th>Customer</th>
-                    <th>Total</th>
+                    <th>Amount</th>
+                    <th>Payment</th>
                     <th>Delybell Order ID</th>
-                    <th>Tracking</th>
-                    <th>Synced Date</th>
                     <th>Status</th>
+                    <th>Synced At</th>
+                    <th>Action</th>
                   </tr>
                 </thead>
                 <tbody>
                   ${orders.map(order => `
                     <tr>
+                      ${showCheckboxes ? `<td><input type="checkbox" class="order-checkbox" value="${order.id}" ${canSelect(order.status) ? '' : 'disabled'} onchange="updateSyncButtons()"></td>` : ''}
                       <td>
-                        <div class="order-number">#${order.shopifyOrderNumber}</div>
-                        <div class="order-name">${order.shopifyOrderName}</div>
+                        <div class="order-number">#${order.shopifyOrderNumber || 'N/A'}</div>
+                        <div class="order-meta">${order.shop || ''}</div>
                       </td>
+                      <td>${formatCurrency(order.amount, order.currency)}</td>
                       <td>
-                        <div>${order.customerName || 'Guest'}</div>
-                        ${order.customerEmail ? `<div style="font-size: 11px; color: #666666; margin-top: 4px;">${order.customerEmail}</div>` : ''}
+                        ${order.financialStatus === 'paid' ? '<span class="badge badge-success">Paid</span>' : '<span class="badge badge-warning">COD</span>'}
                       </td>
-                      <td>${formatCurrency(order.totalPrice, order.currency)}</td>
                       <td>
                         ${order.delybellOrderId ? `<span class="delybell-id">${order.delybellOrderId}</span>` : '<span style="color: #999999;">-</span>'}
                       </td>
+                      <td>${getStatusBadge(order.status)}</td>
+                      <td style="font-size: 12px; color: #6d7175;">${formatDate(order.syncedAt || order.createdAt)}</td>
                       <td>
-                        ${order.trackingUrl ? `<a href="${order.trackingUrl}" target="_blank" class="link">Track</a>` : '<span style="color: #999999;">-</span>'}
-                      </td>
-                      <td style="font-size: 12px; color: #666666;">${formatDate(order.syncedAt || order.createdAt)}</td>
-                      <td>
-                        <span class="order-status">Synced</span>
+                        ${order.status === 'failed' ? `<button class="button button-secondary" style="padding: 6px 12px; font-size: 12px;" onclick="retryOrder('${order.id}')">Retry</button>` : ''}
+                        ${order.status === 'pending_sync' && currentSyncMode === 'manual' ? `<button class="button button-primary" style="padding: 6px 12px; font-size: 12px;" onclick="syncSingleOrder('${order.id}')">Sync Now</button>` : ''}
                       </td>
                     </tr>
                   `).join('')}
@@ -733,7 +1123,7 @@
           `;
         }
       } catch (error) {
-        console.error('[App] Error loading synced orders:', error);
+        console.error('[App] Error loading orders:', error);
         const ordersContainer = document.getElementById('orders-container');
         const refreshButton = document.getElementById('refresh-orders');
         
@@ -742,7 +1132,7 @@
         if (ordersContainer) {
           ordersContainer.innerHTML = `
             <div class="error-message">
-              <strong>Error loading orders</strong>
+              <strong>Error loading orders</strong><br>
               ${error.message}
             </div>
           `;
@@ -750,9 +1140,63 @@
       }
     }
     
+    async function syncSingleOrder(orderId) {
+      if (!confirm('Sync this order now?')) return;
+      
+      try {
+        const response = await fetch('/admin/api/orders/sync-selected', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ orderIds: [orderId] }),
+        });
+        
+        const data = await response.json();
+        if (data.success) {
+          alert(`Order synced successfully!`);
+          loadOrders();
+          loadStats();
+        } else {
+          alert('Sync failed: ' + (data.error || 'Unknown error'));
+        }
+      } catch (error) {
+        console.error('Error syncing order:', error);
+        alert('Error syncing order: ' + error.message);
+      }
+    }
+    
+    async function retryOrder(orderId) {
+      if (!confirm('Retry syncing this order?')) return;
+      
+      try {
+        const response = await fetch(`/admin/api/orders/${orderId}/retry`, {
+          method: 'POST',
+        });
+        
+        const data = await response.json();
+        if (data.success) {
+          alert('Order retried successfully!');
+          loadOrders();
+          loadStats();
+        } else {
+          alert('Retry failed: ' + (data.error || 'Unknown error'));
+        }
+      } catch (error) {
+        console.error('Error retrying order:', error);
+        alert('Error retrying order: ' + error.message);
+      }
+    }
+    
     // Load status on page load
     console.log('[App] Page loaded, shop:', shop);
     loadAppStatus();
+    
+    // Refresh stats every 30 seconds
+    setInterval(() => {
+      if (shop) {
+        loadStats();
+        loadOrders();
+      }
+    }, 30000);
   </script>
 </body>
 </html>
