@@ -766,7 +766,12 @@
                   </button>
                 ` : ''}
                 ${order.status === 'processed' ? `
-                  <button class="inline-flex items-center px-3 py-1.5 bg-white dark:bg-surface-dark border border-border-light dark:border-border-dark rounded-md text-xs font-semibold text-slate-400 cursor-not-allowed opacity-50">
+                  <button class="inline-flex items-center px-3 py-1.5 bg-white dark:bg-surface-dark border border-border-light dark:border-border-dark rounded-md text-xs font-semibold hover:border-primary hover:text-primary dark:hover:text-primary transition-all shadow-sm" onclick="viewOrderDetails('${order.id}')">
+                    <span class="material-icons-outlined text-sm mr-1">visibility</span> View
+                  </button>
+                ` : ''}
+                ${order.status === 'pending_sync' && currentSyncMode === 'auto' ? `
+                  <button class="inline-flex items-center px-3 py-1.5 bg-white dark:bg-surface-dark border border-border-light dark:border-border-dark rounded-md text-xs font-semibold hover:border-primary hover:text-primary dark:hover:text-primary transition-all shadow-sm" onclick="viewOrderDetails('${order.id}')">
                     <span class="material-icons-outlined text-sm mr-1">visibility</span> View
                   </button>
                 ` : ''}
@@ -972,10 +977,98 @@
               showToast('error', 'Could Not Send Order', 'This order could not be sent. Please check the error details or contact support.');
             }
           } catch (error) {
-            showToast('error', 'Error', error.message);
+            showToast('error', 'Something Went Wrong', 'Please try again. If this continues, contact support.');
           }
         }
       );
+    }
+    
+    async function viewOrderDetails(orderId) {
+      try {
+        const response = await fetch(`/admin/api/orders/${orderId}`);
+        const data = await response.json();
+        
+        if (data.success && data.order) {
+          const order = data.order;
+          const modalTitle = document.getElementById('modalTitle');
+          const modalBody = document.getElementById('modalBody');
+          const modalConfirmBtn = document.getElementById('modalConfirmBtn');
+          
+          if (modalTitle && modalBody && modalConfirmBtn) {
+            modalTitle.textContent = `Order #${order.shopifyOrderNumber || 'N/A'}`;
+            
+            const orderDetails = `
+              <div class="space-y-4 text-sm">
+                <div class="grid grid-cols-2 gap-4">
+                  <div>
+                    <p class="text-slate-500 dark:text-slate-400 mb-1">Order Number</p>
+                    <p class="font-semibold">#${order.shopifyOrderNumber || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <p class="text-slate-500 dark:text-slate-400 mb-1">Status</p>
+                    <p class="font-semibold">${order.status === 'processed' ? 'Synced' : order.status === 'pending_sync' ? 'Pending' : order.status === 'failed' ? 'Failed' : order.status}</p>
+                  </div>
+                  <div>
+                    <p class="text-slate-500 dark:text-slate-400 mb-1">Payment</p>
+                    <p class="font-semibold">${order.financialStatus === 'paid' ? 'Paid' : 'Cash on Delivery'}</p>
+                  </div>
+                  <div>
+                    <p class="text-slate-500 dark:text-slate-400 mb-1">Amount</p>
+                    <p class="font-semibold">${order.currency || 'USD'} ${order.amount || '0.00'}</p>
+                  </div>
+                </div>
+                ${order.delybellOrderId ? `
+                  <div>
+                    <p class="text-slate-500 dark:text-slate-400 mb-1">Delybell Order ID</p>
+                    <p class="font-mono text-xs font-semibold">${order.delybellOrderId}</p>
+                  </div>
+                ` : ''}
+                ${order.customerName ? `
+                  <div>
+                    <p class="text-slate-500 dark:text-slate-400 mb-1">Customer</p>
+                    <p class="font-semibold">${order.customerName}</p>
+                  </div>
+                ` : ''}
+                ${order.phone ? `
+                  <div>
+                    <p class="text-slate-500 dark:text-slate-400 mb-1">Phone</p>
+                    <p class="font-semibold">${order.phone}</p>
+                  </div>
+                ` : ''}
+                ${order.createdAt ? `
+                  <div>
+                    <p class="text-slate-500 dark:text-slate-400 mb-1">Order Placed</p>
+                    <p class="font-semibold">${new Date(order.createdAt).toLocaleString()}</p>
+                  </div>
+                ` : ''}
+                ${order.syncedAt ? `
+                  <div>
+                    <p class="text-slate-500 dark:text-slate-400 mb-1">Synced At</p>
+                    <p class="font-semibold">${new Date(order.syncedAt).toLocaleString()}</p>
+                  </div>
+                ` : ''}
+                ${order.errorMessage ? `
+                  <div class="mt-4 p-3 bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-900/30 rounded">
+                    <p class="text-red-700 dark:text-red-400 text-xs font-semibold mb-1">Error Message</p>
+                    <p class="text-red-600 dark:text-red-500 text-xs">${getFriendlyError(order.errorMessage)}</p>
+                  </div>
+                ` : ''}
+              </div>
+            `;
+            
+            modalBody.innerHTML = orderDetails;
+            modalConfirmBtn.textContent = 'Close';
+            modalConfirmBtn.onclick = () => closeModal();
+            
+            document.getElementById('confirmModal').classList.add('active');
+          }
+        } else {
+          showToast('error', 'Could Not Load Order', 'Unable to fetch order details. Please try again.');
+        }
+      } catch (error) {
+        console.error('Error loading order details:', error);
+        showToast('error', 'Something Went Wrong', 'Please try again. If this continues, contact support.');
+      }
     }
     
     // Load app status
@@ -1149,7 +1242,7 @@
               </div>
               
               <!-- Order Tabs -->
-              <div class="flex items-center space-x-6 px-6 mt-6 border-b border-border-light dark:border-border-dark -mb-6">
+              <div class="flex items-center space-x-6 px-6 pt-6 pb-4 border-b border-border-light dark:border-border-dark">
                 <button class="order-tab pb-3 border-b-2 border-primary text-primary font-semibold text-sm flex items-center space-x-2" id="tab-all" onclick="switchTab('all')">
                   <span>All Orders</span>
                   <span class="bg-primary/10 text-primary px-2 py-0.5 rounded-full text-[10px]" id="allBadge">0</span>
@@ -1180,7 +1273,7 @@
               </div>
               
               <!-- Orders Table -->
-              <div class="overflow-x-auto">
+              <div class="overflow-x-auto mt-6">
                 <table class="orders-table">
                   <thead>
                     <tr class="bg-slate-50 dark:bg-slate-800/50 text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
