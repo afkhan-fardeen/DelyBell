@@ -893,6 +893,9 @@
         // Load connection health
         const health = await loadConnectionHealth();
         
+        // Calculate showCheckboxes based on current sync mode
+        const showCheckboxes = currentSyncMode === 'manual';
+        
         // Render main app
         if (appContent) {
           appContent.innerHTML = `
