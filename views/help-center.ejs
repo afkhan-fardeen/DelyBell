@@ -65,7 +65,7 @@
         <p class="text-slate-500 dark:text-slate-400 mt-1">Get help with Delybell Order Sync</p>
       </div>
       <div class="flex gap-3">
-        <a href="/app" class="px-4 py-2 bg-white dark:bg-surface-dark border border-border-light dark:border-border-dark rounded font-medium text-sm hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors inline-flex items-center gap-2">
+        <a href="/app<%= shop ? '?shop=' + encodeURIComponent(shop) : '' %>" class="px-4 py-2 bg-white dark:bg-surface-dark border border-border-light dark:border-border-dark rounded font-medium text-sm hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors inline-flex items-center gap-2" id="backToDashboard">
           <span class="material-icons-outlined text-sm">arrow_back</span>
           Back to Dashboard
         </a>
@@ -258,5 +258,48 @@
       <span class="material-icons-outlined hidden dark:block text-yellow-400">light_mode</span>
     </button>
   </div>
+  
+  <script>
+    // Ensure shop parameter is preserved in navigation
+    (function() {
+      const shop = window.SHOPIFY_SHOP || '<%= shop %>';
+      if (shop) {
+        sessionStorage.setItem('shopDomain', shop);
+        
+        // Update back link to include shop parameter
+        const backLink = document.getElementById('backToDashboard');
+        if (backLink) {
+          const currentUrl = new URL(backLink.href, window.location.origin);
+          if (!currentUrl.searchParams.has('shop')) {
+            currentUrl.searchParams.set('shop', shop);
+            backLink.href = currentUrl.pathname + currentUrl.search;
+          }
+        }
+      } else {
+        // Try to get from URL or sessionStorage
+        const urlParams = new URLSearchParams(window.location.search);
+        const shopFromUrl = urlParams.get('shop');
+        const shopFromStorage = sessionStorage.getItem('shopDomain');
+        
+        if (shopFromUrl) {
+          sessionStorage.setItem('shopDomain', shopFromUrl);
+          const backLink = document.getElementById('backToDashboard');
+          if (backLink) {
+            const currentUrl = new URL(backLink.href, window.location.origin);
+            currentUrl.searchParams.set('shop', shopFromUrl);
+            backLink.href = currentUrl.pathname + currentUrl.search;
+          }
+        } else if (shopFromStorage) {
+          // Update back link with shop from storage
+          const backLink = document.getElementById('backToDashboard');
+          if (backLink) {
+            const currentUrl = new URL(backLink.href, window.location.origin);
+            currentUrl.searchParams.set('shop', shopFromStorage);
+            backLink.href = currentUrl.pathname + currentUrl.search;
+          }
+        }
+      }
+    })();
+  </script>
 </body>
 </html>

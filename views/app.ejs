@@ -56,6 +56,78 @@
     ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
     .dark ::-webkit-scrollbar-thumb { background: #4b5563; }
     
+    /* Orders Table Fixes */
+    .orders-table {
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 0;
+      table-layout: auto;
+    }
+    
+    .orders-table th,
+    .orders-table td {
+      padding: 12px 16px;
+      text-align: left;
+      vertical-align: middle;
+      white-space: nowrap;
+    }
+    
+    .orders-table th {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      background: #f8fafc;
+    }
+    
+    .dark .orders-table th {
+      background: #1e293b;
+    }
+    
+    .orders-table td {
+      white-space: normal;
+    }
+    
+    .orders-table td:first-child,
+    .orders-table th:first-child {
+      padding-left: 24px;
+    }
+    
+    .orders-table td:last-child,
+    .orders-table th:last-child {
+      padding-right: 24px;
+    }
+    
+    .orders-table .col-order-number {
+      min-width: 100px;
+      white-space: nowrap;
+    }
+    
+    .orders-table .col-date {
+      min-width: 140px;
+      white-space: nowrap;
+    }
+    
+    .orders-table .col-payment {
+      min-width: 100px;
+      text-align: center;
+    }
+    
+    .orders-table .col-status {
+      min-width: 120px;
+    }
+    
+    .orders-table .col-delybell-id {
+      min-width: 150px;
+      font-family: monospace;
+      font-size: 11px;
+    }
+    
+    .orders-table .col-action {
+      min-width: 120px;
+      text-align: right;
+      white-space: nowrap;
+    }
+    
     /* Toast Notifications */
     .toast-container {
       position: fixed;
@@ -276,6 +348,32 @@
     if (!shop) {
       const urlParams = new URLSearchParams(window.location.search);
       shop = urlParams.get('shop') || urlParams.get('shopOrigin');
+      
+      // Also try to get from sessionStorage (persisted from previous visit)
+      if (!shop) {
+        shop = sessionStorage.getItem('shopDomain');
+      }
+      
+      // Also check if we're in an embedded app (Shopify admin)
+      if (!shop && window.location !== window.parent.location) {
+        try {
+          // Try to extract from parent URL if embedded
+          const parentUrl = document.referrer;
+          if (parentUrl) {
+            const match = parentUrl.match(/admin\.shopify\.com\/store\/([^\/\?]+)/);
+            if (match) {
+              shop = match[1] + '.myshopify.com';
+            }
+          }
+        } catch (e) {
+          console.warn('Could not extract shop from referrer:', e);
+        }
+      }
+    }
+    
+    // Persist shop to sessionStorage for navigation
+    if (shop) {
+      sessionStorage.setItem('shopDomain', shop);
     }
     
     // Human-readable error messages
@@ -650,13 +748,13 @@
           const hasError = order.status === 'failed' && order.errorMessage;
           return `
             <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors group">
-              ${showCheckboxes ? `<td class="px-6 py-4"><input type="checkbox" class="order-checkbox" value="${order.id}" ${(order.status === 'pending_sync' || order.status === 'failed') ? '' : 'disabled'} onchange="updateBulkActions()"></td>` : ''}
-              <td class="px-6 py-4 font-semibold text-sm">#${order.shopifyOrderNumber || 'N/A'}</td>
-              <td class="px-6 py-4 text-slate-600 dark:text-slate-400 text-sm whitespace-nowrap">${formatDate(order.createdAt)}</td>
-              <td class="px-6 py-4 text-center">${getPaymentBadge(order.financialStatus)}</td>
-              <td class="px-6 py-4">${getStatusBadge(order.status, order.errorMessage)}</td>
-              <td class="px-6 py-4 font-mono text-xs text-slate-600 dark:text-slate-400">${order.delybellOrderId || '—'}</td>
-              <td class="px-6 py-4 text-right">
+              ${showCheckboxes ? `<td class="text-left" style="width: 50px;"><input type="checkbox" class="order-checkbox" value="${order.id}" ${(order.status === 'pending_sync' || order.status === 'failed') ? '' : 'disabled'} onchange="updateBulkActions()"></td>` : ''}
+              <td class="col-order-number font-semibold text-sm">#${order.shopifyOrderNumber || 'N/A'}</td>
+              <td class="col-date text-slate-600 dark:text-slate-400 text-sm">${formatDate(order.createdAt)}</td>
+              <td class="col-payment text-center">${getPaymentBadge(order.financialStatus)}</td>
+              <td class="col-status">${getStatusBadge(order.status, order.errorMessage)}</td>
+              <td class="col-delybell-id font-mono text-xs text-slate-600 dark:text-slate-400">${order.delybellOrderId || '—'}</td>
+              <td class="col-action text-right">
                 ${order.status === 'failed' ? `
                   <button class="inline-flex items-center px-3 py-1.5 bg-white dark:bg-surface-dark border border-border-light dark:border-border-dark rounded-md text-xs font-semibold hover:border-primary hover:text-primary dark:hover:text-primary transition-all shadow-sm" onclick="retryOrder('${order.id}')">
                     <span class="material-icons-outlined text-sm mr-1">refresh</span> Retry
@@ -676,7 +774,7 @@
             </tr>
             ${hasError ? `
               <tr id="error-${index}" class="hidden">
-                <td colspan="6" class="px-6 py-3 bg-red-50 dark:bg-red-900/10 border-l-4 border-red-500">
+                <td colspan="${showCheckboxes ? '7' : '6'}" class="py-3 px-4 bg-red-50 dark:bg-red-900/10 border-l-4 border-red-500">
                   <div class="text-sm text-red-700 dark:text-red-400">${getFriendlyError(order.errorMessage)}</div>
                 </td>
               </tr>
@@ -885,15 +983,59 @@
       const appContent = document.getElementById('app-content');
       
       try {
+        // Ensure shop is set (re-check if needed)
         if (!shop) {
           const urlParams = new URLSearchParams(window.location.search);
           shop = urlParams.get('shop') || urlParams.get('shopOrigin');
+          
+          // Try sessionStorage
+          if (!shop) {
+            shop = sessionStorage.getItem('shopDomain');
+          }
+          
+          // Try to extract from referrer if embedded
+          if (!shop && document.referrer) {
+            const match = document.referrer.match(/admin\.shopify\.com\/store\/([^\/\?]+)/);
+            if (match) {
+              shop = match[1] + '.myshopify.com';
+              sessionStorage.setItem('shopDomain', shop);
+            }
+          }
+        }
+        
+        // If still no shop, try to wait a bit for App Bridge to initialize
+        if (!shop) {
+          // Wait for App Bridge to potentially set shop
+          await new Promise(resolve => setTimeout(resolve, 500));
+          shop = window.SHOPIFY_SHOP || sessionStorage.getItem('shopDomain');
         }
         
         if (!shop) {
-          window.location.href = '/';
+          // Show loading state instead of redirecting immediately
+          if (appContent) {
+            appContent.innerHTML = `
+              <div class="flex items-center justify-center py-20">
+                <div class="text-center">
+                  <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-primary mb-4"></div>
+                  <p class="text-slate-500 dark:text-slate-400">Detecting store...</p>
+                </div>
+              </div>
+            `;
+          }
+          // Try one more time after a delay
+          setTimeout(() => {
+            shop = window.SHOPIFY_SHOP || sessionStorage.getItem('shopDomain') || new URLSearchParams(window.location.search).get('shop');
+            if (shop) {
+              loadAppStatus();
+            } else {
+              window.location.href = '/';
+            }
+          }, 1000);
           return;
         }
+        
+        // Persist shop for navigation
+        sessionStorage.setItem('shopDomain', shop);
         
         const authResponse = await fetch(`/auth/check?shop=${encodeURIComponent(shop)}`);
         const authData = await authResponse.json();
@@ -1039,21 +1181,21 @@
               
               <!-- Orders Table -->
               <div class="overflow-x-auto">
-                <table class="w-full border-collapse">
+                <table class="orders-table">
                   <thead>
                     <tr class="bg-slate-50 dark:bg-slate-800/50 text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                      ${showCheckboxes ? '<th class="px-6 py-4 text-left"><input type="checkbox" id="selectAllCheckbox" onchange="toggleSelectAll()"></th>' : ''}
-                      <th class="px-6 py-4 text-left">Order #</th>
-                      <th class="px-6 py-4 text-left">Date</th>
-                      <th class="px-6 py-4 text-center">Payment</th>
-                      <th class="px-6 py-4 text-left">Sync Status</th>
-                      <th class="px-6 py-4 text-left">Delybell Order ID</th>
-                      <th class="px-6 py-4 text-right">Action</th>
+                      ${showCheckboxes ? '<th class="text-left" style="width: 50px;"><input type="checkbox" id="selectAllCheckbox" onchange="toggleSelectAll()"></th>' : ''}
+                      <th class="text-left col-order-number">Order #</th>
+                      <th class="text-left col-date">Date</th>
+                      <th class="text-center col-payment">Payment</th>
+                      <th class="text-left col-status">Sync Status</th>
+                      <th class="text-left col-delybell-id">Delybell Order ID</th>
+                      <th class="text-right col-action">Action</th>
                     </tr>
                   </thead>
                   <tbody class="divide-y divide-border-light dark:divide-border-dark" id="ordersContainer">
                     <tr>
-                      <td colspan="${showCheckboxes ? '7' : '6'}" class="px-6 py-8 text-center text-slate-500 dark:text-slate-400">
+                      <td colspan="${showCheckboxes ? '7' : '6'}" class="text-center text-slate-500 dark:text-slate-400 py-8">
                         <div class="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-primary mb-2"></div>
                         <div>Loading orders...</div>
                       </td>
