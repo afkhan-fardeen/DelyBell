@@ -6,6 +6,10 @@
   "scripts": {
     "start": "node server.js",
     "dev": "nodemon server.js",
+    "dev:ui": "cd app-ui && npm run dev",
+    "dev:all": "concurrently \"npm run dev\" \"npm run dev:ui\"",
+    "build:ui": "cd app-ui && npm run build",
+    "start:ui": "cd app-ui && npm start",
     "tunnel": "cloudflared tunnel --url http://localhost:3000",
     "tunnel:lt": "lt --port 3000"
   },
