@@ -137,7 +137,7 @@
   </style>
 </head>
 <body class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 min-h-screen transition-colors duration-200">
-  <div class="max-w-[1200px] mx-auto px-6 py-8">
+  <div class="max-w-[1600px] mx-auto px-6 py-8">
     <!-- Toast Container -->
     <div class="toast-container" id="toastContainer"></div>
     
@@ -148,8 +148,14 @@
         <p class="text-slate-500 dark:text-slate-400 mt-1">Simple delivery automation for your Shopify store</p>
       </div>
       <div class="flex gap-3">
-        <button class="px-4 py-2 bg-white dark:bg-surface-dark border border-border-light dark:border-border-dark rounded font-medium text-sm hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">Help Center</button>
-        <button class="px-4 py-2 bg-primary text-white rounded font-medium text-sm hover:opacity-90 transition-opacity" onclick="loadOrders(currentPage)">Sync Now</button>
+        <a href="/app/help-center" class="px-4 py-2 bg-white dark:bg-surface-dark border border-border-light dark:border-border-dark rounded font-medium text-sm hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors inline-flex items-center gap-2">
+          <span class="material-icons-outlined text-sm">help_outline</span>
+          Help Center
+        </a>
+        <button class="px-4 py-2 bg-primary text-white rounded font-medium text-sm hover:opacity-90 transition-opacity inline-flex items-center gap-2" onclick="loadOrders(currentPage)">
+          <span class="material-icons-outlined text-sm">refresh</span>
+          Refresh Orders
+        </button>
       </div>
     </header>
     
@@ -194,7 +200,7 @@
     let totalOrders = 0;
     let currentTab = 'all';
     
-    // Toast Notification System
+    // Toast Notification System - User-friendly messages
     function showToast(type, title, message, duration = 5000) {
       const container = document.getElementById('toastContainer');
       if (!container) return;
@@ -202,17 +208,36 @@
       const toast = document.createElement('div');
       toast.className = `toast ${type}`;
       
+      // User-friendly icons and messages
       const icons = {
         success: '<span class="material-icons-outlined text-green-600 dark:text-green-400">check_circle</span>',
         error: '<span class="material-icons-outlined text-red-600 dark:text-red-400">error</span>',
         warning: '<span class="material-icons-outlined text-yellow-600 dark:text-yellow-400">warning</span>'
       };
       
+      // Convert technical messages to user-friendly ones
+      let friendlyMessage = message;
+      if (message) {
+        const msgLower = message.toLowerCase();
+        if (msgLower.includes('synced') || msgLower.includes('successfully')) {
+          friendlyMessage = message.replace(/synced|successfully/gi, 'sent to Delybell');
+        }
+        if (msgLower.includes('failed')) {
+          friendlyMessage = message.replace(/failed/gi, 'could not be sent');
+        }
+        if (msgLower.includes('error') || msgLower.includes('unknown error')) {
+          friendlyMessage = 'Something went wrong. Please try again or contact support if the problem continues.';
+        }
+        if (msgLower.includes('network') || msgLower.includes('timeout')) {
+          friendlyMessage = 'Connection problem. Please check your internet and try again.';
+        }
+      }
+      
       toast.innerHTML = `
         ${icons[type] || icons.success}
         <div style="flex: 1;">
-          <div style="font-weight: 600; margin-bottom: 4px;">${title}</div>
-          ${message ? `<div style="font-size: 13px; color: #6d7175;">${message}</div>` : ''}
+          <div style="font-weight: 600; margin-bottom: 4px; color: #202223;">${title}</div>
+          ${friendlyMessage ? `<div style="font-size: 13px; color: #6d7175; line-height: 1.5;">${friendlyMessage}</div>` : ''}
         </div>
         <span class="material-icons-outlined cursor-pointer text-slate-400 hover:text-slate-600 dark:hover:text-slate-300" onclick="this.parentElement.remove()" style="font-size: 20px;">close</span>
       `;
@@ -295,16 +320,6 @@
     
     function closeModal() {
       document.getElementById('confirmModal').classList.remove('active');
-    }
-    
-    // Toggle settings
-    function toggleSettings() {
-      const content = document.getElementById('settingsContent');
-      const icon = document.getElementById('settingsIcon');
-      if (content && icon) {
-        content.classList.toggle('hidden');
-        icon.textContent = content.classList.contains('hidden') ? 'expand_more' : 'expand_less';
-      }
     }
     
     // Load connection health
@@ -424,7 +439,7 @@
     
     async function updateSyncMode(mode) {
       if (!shop) {
-        showToast('error', 'Error', 'Shop not detected');
+        showToast('error', 'Store Not Found', 'Could not detect your store. Please refresh the page or contact support.');
         return;
       }
       
@@ -439,13 +454,13 @@
         if (data.success) {
           currentSyncMode = mode;
           updateSyncModeUI();
-          showToast('success', 'Sync Mode Updated', `Switched to ${mode === 'auto' ? 'Auto Sync' : 'Manual Sync'} mode`);
+          showToast('success', 'Sync Mode Changed', `Your orders will now ${mode === 'auto' ? 'sync automatically when customers place orders' : 'be saved for you to sync manually'}.`);
         } else {
-          showToast('error', 'Update Failed', data.error || 'Failed to update sync mode');
+          showToast('error', 'Could Not Change Mode', 'Please try again. If this continues, contact support.');
         }
       } catch (error) {
         console.error('Error updating sync mode:', error);
-        showToast('error', 'Error', 'Failed to update sync mode');
+        showToast('error', 'Something Went Wrong', 'Could not change sync mode. Please try again.');
       }
     }
     
@@ -735,7 +750,7 @@
     async function syncSelectedOrders() {
       const checked = Array.from(document.querySelectorAll('.order-checkbox:checked')).map(cb => cb.value);
       if (checked.length === 0) {
-        showToast('warning', 'No Selection', 'Please select at least one order');
+        showToast('warning', 'No Orders Selected', 'Please check the boxes next to the orders you want to sync.');
         return;
       }
       
@@ -752,15 +767,21 @@
             
             const data = await response.json();
             if (data.success) {
-              showToast('success', 'Orders Synced', `Successfully synced ${data.synced} order(s). ${data.failed > 0 ? `${data.failed} failed.` : ''}`);
+              const successMsg = data.synced > 0 
+                ? `${data.synced} order${data.synced > 1 ? 's' : ''} sent to Delybell successfully!`
+                : 'No orders were sent.';
+              const failMsg = data.failed > 0 
+                ? ` ${data.failed} order${data.failed > 1 ? 's' : ''} could not be sent.`
+                : '';
+              showToast('success', 'Orders Sent', successMsg + failMsg);
               loadOrders(currentPage);
               loadConnectionHealth();
               updateOrderTabs();
             } else {
-              showToast('error', 'Sync Failed', data.error || 'Unknown error');
+              showToast('error', 'Could Not Send Orders', 'Some orders could not be sent to Delybell. Please try again or contact support.');
             }
           } catch (error) {
-            showToast('error', 'Error', error.message);
+            showToast('error', 'Something Went Wrong', 'Please try again. If this continues, contact support.');
           }
         }
       );
@@ -769,7 +790,7 @@
     async function retryFailedOrders() {
       const checked = Array.from(document.querySelectorAll('.order-checkbox:checked')).map(cb => cb.value);
       if (checked.length === 0) {
-        showToast('warning', 'No Selection', 'Please select at least one failed order');
+        showToast('warning', 'No Orders Selected', 'Please check the boxes next to the failed orders you want to retry.');
         return;
       }
       
@@ -791,7 +812,13 @@
               else failed++;
             }
             
-            showToast('success', 'Orders Retried', `Successfully retried ${success} order(s). ${failed > 0 ? `${failed} failed.` : ''}`);
+            const retrySuccessMsg = success > 0 
+              ? `${success} order${success > 1 ? 's' : ''} sent successfully!`
+              : 'No orders were sent.';
+            const retryFailMsg = failed > 0 
+              ? ` ${failed} order${failed > 1 ? 's' : ''} still could not be sent.`
+              : '';
+            showToast('success', 'Orders Retried', retrySuccessMsg + retryFailMsg);
             loadOrders(currentPage);
             loadConnectionHealth();
             updateOrderTabs();
@@ -816,7 +843,7 @@
             
             const data = await response.json();
             if (data.success) {
-              showToast('success', 'Order Synced', 'Order synced successfully!');
+              showToast('success', 'Order Sent', 'This order has been sent to Delybell successfully!');
               loadOrders(currentPage);
               loadConnectionHealth();
               updateOrderTabs();
@@ -839,12 +866,12 @@
             const response = await fetch(`/admin/api/orders/${orderId}/retry`, { method: 'POST' });
             const data = await response.json();
             if (data.success) {
-              showToast('success', 'Order Retried', 'Order retried successfully!');
+              showToast('success', 'Order Sent', 'This order has been sent to Delybell successfully!');
               loadOrders(currentPage);
               loadConnectionHealth();
               updateOrderTabs();
             } else {
-              showToast('error', 'Retry Failed', data.error || 'Unknown error');
+              showToast('error', 'Could Not Send Order', 'This order could not be sent. Please check the error details or contact support.');
             }
           } catch (error) {
             showToast('error', 'Error', error.message);
@@ -965,23 +992,6 @@
               </div>
             </div>
             
-            <!-- Settings Card -->
-            <div class="bg-surface-light dark:bg-surface-dark rounded-xl border border-border-light dark:border-border-dark mb-8">
-              <button class="w-full px-6 py-4 flex justify-between items-center hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors group" onclick="toggleSettings()">
-                <div class="flex items-center space-x-3">
-                  <span class="material-icons-outlined text-slate-400 group-hover:text-primary transition-colors">settings</span>
-                  <span class="font-semibold">Sync Settings</span>
-                </div>
-                <span class="material-icons-outlined text-slate-400" id="settingsIcon">expand_more</span>
-              </button>
-              <div id="settingsContent" class="hidden px-6 pb-6">
-                <div class="text-slate-600 dark:text-slate-400 text-sm leading-relaxed space-y-2">
-                  <p>Service type and payment settings are automatically configured based on your Shopify store settings.</p>
-                  <p>Orders with pending payment are automatically marked as Cash on Delivery (COD) in Delybell.</p>
-                </div>
-              </div>
-            </div>
-            
             <!-- Orders Card -->
             <div class="bg-surface-light dark:bg-surface-dark rounded-xl border border-border-light dark:border-border-dark overflow-hidden shadow-sm">
               <div class="p-6 border-b border-border-light dark:border-border-dark">
@@ -1029,15 +1039,15 @@
               
               <!-- Orders Table -->
               <div class="overflow-x-auto">
-                <table class="w-full text-left border-collapse">
+                <table class="w-full border-collapse">
                   <thead>
                     <tr class="bg-slate-50 dark:bg-slate-800/50 text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                      ${showCheckboxes ? '<th class="px-6 py-4"><input type="checkbox" id="selectAllCheckbox" onchange="toggleSelectAll()"></th>' : ''}
-                      <th class="px-6 py-4">Order #</th>
-                      <th class="px-6 py-4">Date</th>
+                      ${showCheckboxes ? '<th class="px-6 py-4 text-left"><input type="checkbox" id="selectAllCheckbox" onchange="toggleSelectAll()"></th>' : ''}
+                      <th class="px-6 py-4 text-left">Order #</th>
+                      <th class="px-6 py-4 text-left">Date</th>
                       <th class="px-6 py-4 text-center">Payment</th>
-                      <th class="px-6 py-4">Sync Status</th>
-                      <th class="px-6 py-4">Delybell Order ID</th>
+                      <th class="px-6 py-4 text-left">Sync Status</th>
+                      <th class="px-6 py-4 text-left">Delybell Order ID</th>
                       <th class="px-6 py-4 text-right">Action</th>
                     </tr>
                   </thead>

@@ -20,6 +20,26 @@ router.get('/', (req, res) => {
  * Purpose: Actual app UI inside Shopify Admin
  * GET /app?shop=your-shop.myshopify.com
  */
+router.get('/app/help-center', async (req, res) => {
+  try {
+    let shop = req.query.shop;
+    
+    if (!shop) {
+      shop = req.headers['x-shopify-shop-domain'] || 
+             req.headers['x-shopify-shop'] ||
+             req.headers['shop'];
+    }
+    
+    res.render('help-center', {
+      SHOPIFY_API_KEY: config.shopify.apiKey || '',
+      shop: shop || '',
+    });
+  } catch (error) {
+    console.error('[Help Center] Error:', error);
+    res.status(500).send(`Error loading help center: ${error.message}`);
+  }
+});
+
 router.get('/app', async (req, res) => {
   try {
     console.log(`[App] GET /app - Query params:`, req.query);
@@ -1251,6 +1271,14 @@ router.get('/admin/api/test-order', async (req, res) => {
 router.get('/admin/login', (req, res) => {
   res.render('login', {
     title: 'Delybell Admin - Login',
+  });
+});
+
+router.get('/admin/help-center', (req, res) => {
+  res.render('help-center', {
+    title: 'Help Center - Delybell Order Sync',
+    SHOPIFY_API_KEY: config.shopify.apiKey || '',
+    shop: '',
   });
 });
 

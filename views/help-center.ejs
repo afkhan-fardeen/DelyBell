@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html class="light" lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="shopify-api-key" content="<%= SHOPIFY_API_KEY %>">
+  <title>Help Center - Delybell Order Sync</title>
+  
+  <!-- Shopify App Bridge -->
+  <script src="https://cdn.shopify.com/shopifycloud/app-bridge.js"></script>
+  <script src="https://cdn.shopify.com/shopifycloud/app-bridge-utils.js"></script>
+  <script>
+    window.SHOPIFY_API_KEY = '<%= SHOPIFY_API_KEY %>';
+    window.SHOPIFY_SHOP = '<%= shop %>';
+  </script>
+  
+  <!-- Fonts -->
+  <link href="https://fonts.googleapis.com" rel="preconnect"/>
+  <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet"/>
+  
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com?plugins=forms,typography"></script>
+  <script>
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          colors: {
+            primary: "#008060",
+            "background-light": "#f6f6f7",
+            "background-dark": "#1a1a1a",
+            "surface-light": "#ffffff",
+            "surface-dark": "#2a2a2a",
+            "border-light": "#e1e3e5",
+            "border-dark": "#3e3e3e",
+          },
+          fontFamily: {
+            display: ["Inter", "sans-serif"],
+            sans: ["Inter", "sans-serif"],
+          },
+          borderRadius: {
+            DEFAULT: "8px",
+          },
+        },
+      },
+    };
+  </script>
+  
+  <style>
+    body { font-family: 'Inter', sans-serif; }
+    ::-webkit-scrollbar { width: 8px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+    .dark ::-webkit-scrollbar-thumb { background: #4b5563; }
+  </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 min-h-screen transition-colors duration-200">
+  <div class="max-w-[1600px] mx-auto px-6 py-8">
+    <!-- Header -->
+    <header class="mb-8 flex justify-between items-end">
+      <div>
+        <h1 class="text-2xl font-bold text-slate-900 dark:text-white">Help Center</h1>
+        <p class="text-slate-500 dark:text-slate-400 mt-1">Get help with Delybell Order Sync</p>
+      </div>
+      <div class="flex gap-3">
+        <a href="/app" class="px-4 py-2 bg-white dark:bg-surface-dark border border-border-light dark:border-border-dark rounded font-medium text-sm hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors inline-flex items-center gap-2">
+          <span class="material-icons-outlined text-sm">arrow_back</span>
+          Back to Dashboard
+        </a>
+      </div>
+    </header>
+    
+    <!-- Help Content -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <!-- Main Content -->
+      <div class="lg:col-span-2 space-y-6">
+        <!-- Getting Started -->
+        <div class="bg-surface-light dark:bg-surface-dark rounded-xl border border-border-light dark:border-border-dark p-6">
+          <div class="flex items-center gap-3 mb-4">
+            <span class="material-icons-outlined text-primary text-2xl">rocket_launch</span>
+            <h2 class="text-xl font-bold">Getting Started</h2>
+          </div>
+          <div class="space-y-4 text-slate-600 dark:text-slate-400">
+            <div>
+              <h3 class="font-semibold text-slate-900 dark:text-white mb-2">1. Install the App</h3>
+              <p>Install Delybell Order Sync from the Shopify App Store. Once installed, your store will be connected automatically.</p>
+            </div>
+            <div>
+              <h3 class="font-semibold text-slate-900 dark:text-white mb-2">2. Choose Your Sync Mode</h3>
+              <p><strong>Auto Sync:</strong> Orders sync automatically when customers place orders. No action needed from you.</p>
+              <p class="mt-2"><strong>Manual Sync:</strong> Orders are saved but not synced automatically. You choose which orders to sync and when.</p>
+            </div>
+            <div>
+              <h3 class="font-semibold text-slate-900 dark:text-white mb-2">3. Monitor Your Orders</h3>
+              <p>View all your orders in the Orders table. Check sync status, payment information, and Delybell order IDs.</p>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Sync Modes Explained -->
+        <div class="bg-surface-light dark:bg-surface-dark rounded-xl border border-border-light dark:border-border-dark p-6">
+          <div class="flex items-center gap-3 mb-4">
+            <span class="material-icons-outlined text-primary text-2xl">sync</span>
+            <h2 class="text-xl font-bold">Understanding Sync Modes</h2>
+          </div>
+          <div class="space-y-4">
+            <div class="bg-blue-50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-900/30 rounded-lg p-4">
+              <h3 class="font-semibold text-blue-900 dark:text-blue-300 mb-2 flex items-center gap-2">
+                <span class="material-icons-outlined text-sm">auto_awesome</span>
+                Auto Sync Mode
+              </h3>
+              <p class="text-blue-800 dark:text-blue-400/80 text-sm">
+                When enabled, orders sync automatically to Delybell within seconds of being placed. This is the recommended mode for most stores.
+              </p>
+              <ul class="mt-3 space-y-1 text-sm text-blue-800 dark:text-blue-400/80 ml-6 list-disc">
+                <li>Orders appear in Delybell immediately</li>
+                <li>No manual action required</li>
+                <li>Best for high-volume stores</li>
+              </ul>
+            </div>
+            <div class="bg-yellow-50 dark:bg-yellow-900/10 border border-yellow-100 dark:border-yellow-900/30 rounded-lg p-4">
+              <h3 class="font-semibold text-yellow-900 dark:text-yellow-300 mb-2 flex items-center gap-2">
+                <span class="material-icons-outlined text-sm">handyman</span>
+                Manual Sync Mode
+              </h3>
+              <p class="text-yellow-800 dark:text-yellow-400/80 text-sm">
+                Orders are saved but not synced automatically. You review and choose which orders to send to Delybell.
+              </p>
+              <ul class="mt-3 space-y-1 text-sm text-yellow-800 dark:text-yellow-400/80 ml-6 list-disc">
+                <li>Review orders before syncing</li>
+                <li>Select specific orders to sync</li>
+                <li>Use checkboxes to select multiple orders</li>
+                <li>Click "Sync Selected" when ready</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Common Questions -->
+        <div class="bg-surface-light dark:bg-surface-dark rounded-xl border border-border-light dark:border-border-dark p-6">
+          <div class="flex items-center gap-3 mb-4">
+            <span class="material-icons-outlined text-primary text-2xl">help_outline</span>
+            <h2 class="text-xl font-bold">Frequently Asked Questions</h2>
+          </div>
+          <div class="space-y-4">
+            <div>
+              <h3 class="font-semibold text-slate-900 dark:text-white mb-2">How do I sync orders manually?</h3>
+              <p class="text-slate-600 dark:text-slate-400 text-sm">
+                Switch to Manual Sync mode, then use the checkboxes in the orders table to select orders. Click "Sync Selected" to send them to Delybell.
+              </p>
+            </div>
+            <div>
+              <h3 class="font-semibold text-slate-900 dark:text-white mb-2">What does "Failed" status mean?</h3>
+              <p class="text-slate-600 dark:text-slate-400 text-sm">
+                A failed order couldn't be sent to Delybell. Common reasons include address issues or connection problems. Click "Retry" to try again.
+              </p>
+            </div>
+            <div>
+              <h3 class="font-semibold text-slate-900 dark:text-white mb-2">What is a Delybell Order ID?</h3>
+              <p class="text-slate-600 dark:text-slate-400 text-sm">
+                This is the unique ID assigned by Delybell when an order is successfully synced. Use it to track orders in the Delybell system.
+              </p>
+            </div>
+            <div>
+              <h3 class="font-semibold text-slate-900 dark:text-white mb-2">How do I know if my store is connected?</h3>
+              <p class="text-slate-600 dark:text-slate-400 text-sm">
+                Check the connection status cards at the top of the dashboard. Green checkmarks mean everything is connected properly.
+              </p>
+            </div>
+            <div>
+              <h3 class="font-semibold text-slate-900 dark:text-white mb-2">What payment types are supported?</h3>
+              <p class="text-slate-600 dark:text-slate-400 text-sm">
+                The app automatically detects if an order is Paid or Cash on Delivery (COD) based on your Shopify payment settings.
+              </p>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Troubleshooting -->
+        <div class="bg-surface-light dark:bg-surface-dark rounded-xl border border-border-light dark:border-border-dark p-6">
+          <div class="flex items-center gap-3 mb-4">
+            <span class="material-icons-outlined text-primary text-2xl">build</span>
+            <h2 class="text-xl font-bold">Troubleshooting</h2>
+          </div>
+          <div class="space-y-4">
+            <div>
+              <h3 class="font-semibold text-slate-900 dark:text-white mb-2">Orders not syncing</h3>
+              <ul class="text-slate-600 dark:text-slate-400 text-sm space-y-1 ml-6 list-disc">
+                <li>Check that your store is connected (green checkmark)</li>
+                <li>Verify Delybell connection status</li>
+                <li>Make sure you're in Auto Sync mode if you want automatic syncing</li>
+                <li>Try refreshing the page</li>
+              </ul>
+            </div>
+            <div>
+              <h3 class="font-semibold text-slate-900 dark:text-white mb-2">Failed orders</h3>
+              <ul class="text-slate-600 dark:text-slate-400 text-sm space-y-1 ml-6 list-disc">
+                <li>Click "Retry" to try sending again</li>
+                <li>Check the error message for details</li>
+                <li>Common issues: address problems, connection errors</li>
+                <li>Contact support if retrying doesn't work</li>
+              </ul>
+            </div>
+            <div>
+              <h3 class="font-semibold text-slate-900 dark:text-white mb-2">Can't see orders</h3>
+              <ul class="text-slate-600 dark:text-slate-400 text-sm space-y-1 ml-6 list-disc">
+                <li>Make sure orders have been placed in your Shopify store</li>
+                <li>Check the filter tabs (All, Synced, Pending, Failed)</li>
+                <li>Click "Refresh Orders" button</li>
+                <li>Orders appear after they're created in Shopify</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Sidebar -->
+      <div class="space-y-6">
+        <!-- Quick Links -->
+        <div class="bg-surface-light dark:bg-surface-dark rounded-xl border border-border-light dark:border-border-dark p-6">
+          <h3 class="font-semibold text-slate-900 dark:text-white mb-4">Quick Links</h3>
+          <div class="space-y-2">
+            <a href="/app" class="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400 hover:text-primary transition-colors">
+              <span class="material-icons-outlined text-sm">dashboard</span>
+              Dashboard
+            </a>
+            <a href="/app" class="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400 hover:text-primary transition-colors">
+              <span class="material-icons-outlined text-sm">sync</span>
+              Sync Mode Settings
+            </a>
+            <a href="/app" class="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400 hover:text-primary transition-colors">
+              <span class="material-icons-outlined text-sm">receipt_long</span>
+              View Orders
+            </a>
+          </div>
+        </div>
+        
+        <!-- Need More Help -->
+        <div class="bg-primary/5 dark:bg-primary/10 rounded-xl border border-primary/20 dark:border-primary/30 p-6">
+          <h3 class="font-semibold text-slate-900 dark:text-white mb-2">Need More Help?</h3>
+          <p class="text-slate-600 dark:text-slate-400 text-sm mb-4">
+            If you can't find what you're looking for, contact our support team.
+          </p>
+          <button class="w-full px-4 py-2 bg-primary text-white rounded font-medium text-sm hover:opacity-90 transition-opacity">
+            Contact Support
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Dark Mode Toggle -->
+  <div class="fixed bottom-6 right-6">
+    <button class="p-3 bg-white dark:bg-surface-dark border border-border-light dark:border-border-dark rounded-full shadow-lg hover:scale-110 transition-transform" onclick="document.documentElement.classList.toggle('dark')">
+      <span class="material-icons-outlined dark:hidden">dark_mode</span>
+      <span class="material-icons-outlined hidden dark:block text-yellow-400">light_mode</span>
+    </button>
+  </div>
+</body>
+</html>

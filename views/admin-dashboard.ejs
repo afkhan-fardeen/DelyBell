@@ -94,6 +94,11 @@
       gap: 8px;
     }
     
+    .top-bar-title a {
+      text-decoration: none;
+      color: inherit;
+    }
+    
     .brand-name {
       font-weight: 600;
       color: var(--color-text-primary);
@@ -1124,6 +1129,9 @@
       <span class="brand-tag">Order Sync</span>
     </div>
     <div class="top-bar-actions">
+      <a href="/admin/help-center" class="top-bar-meta" style="text-decoration: none; color: inherit; cursor: pointer; padding: 6px 12px; border-radius: var(--radius-sm); transition: background 0.15s ease;" onmouseover="this.style.background='var(--color-surface-hover)'" onmouseout="this.style.background='transparent'">
+        Help Center
+      </a>
       <div class="top-bar-meta">Last updated: <span id="lastUpdated">-</span></div>
       <div class="profile-menu">
         <button class="profile-button" onclick="toggleProfileMenu(event)">
