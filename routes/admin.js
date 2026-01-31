@@ -1323,6 +1323,31 @@ router.get('/admin/api/stats', async (req, res) => {
 });
 
 /**
+ * Admin API - Delybell Health Check
+ * GET /admin/api/delybell-health
+ */
+router.get('/admin/api/delybell-health', async (req, res) => {
+  try {
+    const delybellClient = require('../services/delybellClient');
+    
+    // Try to fetch blocks (simple API call to test connection)
+    await delybellClient.getBlocks();
+    
+    res.json({
+      success: true,
+      message: 'Delybell API is accessible',
+    });
+  } catch (error) {
+    console.error('[Admin] Delybell health check failed:', error.message);
+    res.json({
+      success: false,
+      message: 'Delybell API connection failed',
+      error: error.message,
+    });
+  }
+});
+
+/**
  * Admin API - Get all orders with filters
  * GET /admin/api/orders?shop=...&status=...&search=...&dateFrom=...&dateTo=...&limit=...&offset=...
  */
@@ -1346,28 +1371,39 @@ router.get('/admin/api/orders', async (req, res) => {
       offset = 0,
     } = req.query;
 
-    // Build query
+    // Build base query for counting
+    let countQuery = supabase
+      .from('order_logs')
+      .select('*', { count: 'exact', head: true });
+
+    // Build query for fetching data
     let query = supabase
       .from('order_logs')
       .select('*')
       .order('created_at', { ascending: false })
       .range(parseInt(offset), parseInt(offset) + parseInt(limit) - 1);
 
-    // Apply filters
+    // Apply filters to both queries
     if (shop) {
-      query = query.eq('shop', shop);
+      const { normalizeShop } = require('../utils/normalizeShop');
+      const normalizedShop = normalizeShop(shop);
+      query = query.eq('shop', normalizedShop);
+      countQuery = countQuery.eq('shop', normalizedShop);
     }
 
     if (status) {
       query = query.eq('status', status);
+      countQuery = countQuery.eq('status', status);
     }
 
     if (dateFrom) {
       query = query.gte('created_at', dateFrom);
+      countQuery = countQuery.gte('created_at', dateFrom);
     }
 
     if (dateTo) {
       query = query.lte('created_at', dateTo);
+      countQuery = countQuery.lte('created_at', dateTo);
     }
 
     // Search by order number, phone, or Delybell order ID
@@ -1376,19 +1412,24 @@ router.get('/admin/api/orders', async (req, res) => {
       if (!isNaN(searchNum)) {
         // Search by order number
         query = query.eq('shopify_order_number', searchNum);
+        countQuery = countQuery.eq('shopify_order_number', searchNum);
       } else {
-        // Search by phone or Delybell order ID (use OR with multiple queries)
-        // Since Supabase doesn't support OR easily, we'll fetch and filter
-        // For now, prioritize Delybell order ID search
+        // Search by phone or Delybell order ID
         query = query.ilike('delybell_order_id', `%${search}%`);
+        countQuery = countQuery.ilike('delybell_order_id', `%${search}%`);
       }
     }
     
-    const { data: orders, error } = await query;
+    // Get total count and orders
+    const [{ count: totalCount, error: countError }, { data: orders, error: ordersError }] = await Promise.all([
+      countQuery,
+      query
+    ]);
     
-    if (error) throw error;
+    if (countError) throw countError;
+    if (ordersError) throw ordersError;
     
-    // Filter by phone if search is text and not a number
+    // Filter by phone/customer name if search is text and not a number
     let filteredOrders = orders || [];
     if (search && isNaN(parseInt(search))) {
       const searchLower = search.toLowerCase();
@@ -1411,16 +1452,18 @@ router.get('/admin/api/orders', async (req, res) => {
       phone: order.phone || 'N/A',
       amount: order.total_price,
       currency: order.currency || 'USD',
-      createdAt: order.shopify_order_created_at || order.created_at, // Use Shopify order creation time if available, fallback to sync time
-      syncedAt: order.created_at, // When order was synced
+      financialStatus: order.financial_status || (order.status === 'processed' ? 'paid' : 'pending'),
+      createdAt: order.shopify_order_created_at || order.created_at,
+      syncedAt: order.synced_at || order.created_at,
       errorMessage: order.error_message,
     }));
 
     res.json({
       success: true,
       orders: formattedOrders,
+      total: totalCount || 0,
       count: formattedOrders.length,
-      hasMore: formattedOrders.length === parseInt(limit),
+      hasMore: (parseInt(offset) + parseInt(limit)) < (totalCount || 0),
     });
   } catch (error) {
     console.error('[Admin] Error fetching orders:', error);
