@@ -59,42 +59,159 @@
       padding: 24px;
     }
     
-    /* Connection & Health Section */
-    .health-card {
-      background: #ffffff;
-      border: 1px solid #e1e3e5;
-      border-radius: 8px;
-      margin-bottom: 20px;
-      padding: 20px;
+    /* Toast Notifications */
+    .toast-container {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      z-index: 10000;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
     }
     
-    .health-grid {
+    .toast {
+      background: #ffffff;
+      border: 1px solid #e1e3e5;
+      border-left: 4px solid #008060;
+      border-radius: 6px;
+      padding: 14px 18px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+      min-width: 300px;
+      max-width: 400px;
+      display: flex;
+      align-items: start;
+      gap: 12px;
+      animation: slideIn 0.3s ease;
+    }
+    
+    .toast.success {
+      border-left-color: #008060;
+    }
+    
+    .toast.error {
+      border-left-color: #d72c0d;
+    }
+    
+    .toast.warning {
+      border-left-color: #f59e0b;
+    }
+    
+    .toast-icon {
+      width: 20px;
+      height: 20px;
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+    
+    .toast-content {
+      flex: 1;
+    }
+    
+    .toast-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: #202223;
+      margin-bottom: 4px;
+    }
+    
+    .toast-message {
+      font-size: 13px;
+      color: #6d7175;
+    }
+    
+    .toast-close {
+      width: 20px;
+      height: 20px;
+      cursor: pointer;
+      color: #6d7175;
+      flex-shrink: 0;
+    }
+    
+    @keyframes slideIn {
+      from {
+        transform: translateX(100%);
+        opacity: 0;
+      }
+      to {
+        transform: translateX(0);
+        opacity: 1;
+      }
+    }
+    
+    /* Tooltip */
+    .tooltip-wrapper {
+      position: relative;
+      display: inline-block;
+    }
+    
+    .tooltip-icon {
+      width: 16px;
+      height: 16px;
+      color: #6d7175;
+      cursor: help;
+      vertical-align: middle;
+      margin-left: 6px;
+    }
+    
+    .tooltip {
+      position: absolute;
+      bottom: 100%;
+      left: 50%;
+      transform: translateX(-50%);
+      margin-bottom: 8px;
+      background: #202223;
+      color: #ffffff;
+      padding: 8px 12px;
+      border-radius: 6px;
+      font-size: 12px;
+      white-space: nowrap;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s;
+      z-index: 1000;
+    }
+    
+    .tooltip-wrapper:hover .tooltip {
+      opacity: 1;
+    }
+    
+    .tooltip::after {
+      content: '';
+      position: absolute;
+      top: 100%;
+      left: 50%;
+      transform: translateX(-50%);
+      border: 6px solid transparent;
+      border-top-color: #202223;
+    }
+    
+    /* Connection & Health - Compact */
+    .health-section {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-      gap: 20px;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 12px;
+      margin-bottom: 20px;
     }
     
     .health-item {
+      background: #f6f6f7;
+      border: 1px solid #e1e3e5;
+      border-radius: 6px;
+      padding: 12px 16px;
       display: flex;
       align-items: center;
       gap: 12px;
-      padding: 12px;
-      background: #f6f6f7;
-      border-radius: 6px;
     }
     
     .health-icon {
-      width: 24px;
-      height: 24px;
+      width: 20px;
+      height: 20px;
       flex-shrink: 0;
     }
     
     .health-icon.success {
       color: #008060;
-    }
-    
-    .health-icon.warning {
-      color: #f59e0b;
     }
     
     .health-icon.error {
@@ -103,59 +220,27 @@
     
     .health-info {
       flex: 1;
+      min-width: 0;
     }
     
     .health-label {
-      font-size: 12px;
+      font-size: 11px;
       color: #6d7175;
-      margin-bottom: 4px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 2px;
     }
     
     .health-value {
-      font-size: 14px;
+      font-size: 13px;
       font-weight: 500;
       color: #202223;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
     
-    .health-meta {
-      font-size: 12px;
-      color: #6d7175;
-      margin-top: 4px;
-    }
-    
-    .warning-banner {
-      background: #fef3c7;
-      border: 1px solid #f59e0b;
-      border-left: 4px solid #f59e0b;
-      border-radius: 6px;
-      padding: 12px 16px;
-      margin-top: 16px;
-      display: none;
-    }
-    
-    .warning-banner.active {
-      display: block;
-    }
-    
-    .warning-banner.error {
-      background: #fee2e2;
-      border-color: #d72c0d;
-    }
-    
-    .warning-banner-content {
-      display: flex;
-      align-items: start;
-      gap: 12px;
-    }
-    
-    .warning-icon {
-      width: 20px;
-      height: 20px;
-      flex-shrink: 0;
-      margin-top: 2px;
-    }
-    
-    /* Sync Mode Control */
+    /* Sync Mode - Enhanced with Explanation */
     .sync-mode-card {
       background: #ffffff;
       border: 1px solid #e1e3e5;
@@ -171,10 +256,45 @@
       margin-bottom: 16px;
     }
     
+    .sync-mode-title-wrapper {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    
     .sync-mode-title {
       font-size: 15px;
       font-weight: 600;
       color: #202223;
+    }
+    
+    .sync-mode-explanation {
+      background: #f6f6f7;
+      border-radius: 6px;
+      padding: 16px;
+      margin-top: 16px;
+      border-left: 3px solid #008060;
+    }
+    
+    .sync-mode-explanation-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: #202223;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    
+    .sync-mode-explanation-text {
+      font-size: 13px;
+      color: #6d7175;
+      line-height: 1.6;
+    }
+    
+    .sync-mode-explanation-text strong {
+      color: #202223;
+      font-weight: 600;
     }
     
     .toggle-switch {
@@ -222,15 +342,89 @@
       transform: translateX(24px);
     }
     
-    .sync-mode-description {
-      font-size: 13px;
+    .toggle-labels {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 8px;
+      font-size: 12px;
       color: #6d7175;
-      margin-top: 12px;
-      padding-top: 12px;
-      border-top: 1px solid #e1e3e5;
     }
     
-    /* Orders Table */
+    .toggle-label {
+      font-weight: 500;
+    }
+    
+    .toggle-label.active {
+      color: #008060;
+      font-weight: 600;
+    }
+    
+    /* Settings - Moved Up */
+    .settings-card {
+      background: #ffffff;
+      border: 1px solid #e1e3e5;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      padding: 20px;
+    }
+    
+    .settings-title {
+      font-size: 15px;
+      font-weight: 600;
+      color: #202223;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    
+    .settings-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 20px;
+    }
+    
+    .settings-item {
+      padding: 16px;
+      background: #f6f6f7;
+      border-radius: 6px;
+      border: 1px solid #e1e3e5;
+    }
+    
+    .settings-item-label {
+      font-size: 13px;
+      font-weight: 500;
+      color: #202223;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    
+    .settings-item-description {
+      font-size: 12px;
+      color: #6d7175;
+      margin-bottom: 12px;
+      line-height: 1.5;
+    }
+    
+    .settings-input {
+      width: 100%;
+      padding: 8px 12px;
+      border: 1px solid #e1e3e5;
+      border-radius: 6px;
+      font-size: 14px;
+      color: #202223;
+      background: #ffffff;
+    }
+    
+    .settings-input:focus {
+      outline: none;
+      border-color: #008060;
+      box-shadow: 0 0 0 3px rgba(0, 128, 96, 0.1);
+    }
+    
+    /* Orders Table - Compact */
     .orders-card {
       background: #ffffff;
       border: 1px solid #e1e3e5;
@@ -263,7 +457,7 @@
     .table {
       width: 100%;
       border-collapse: collapse;
-      font-size: 14px;
+      font-size: 13px;
     }
     
     .table thead {
@@ -272,8 +466,8 @@
     
     .table th {
       text-align: left;
-      padding: 12px 16px;
-      font-size: 12px;
+      padding: 10px 12px;
+      font-size: 11px;
       font-weight: 600;
       color: #6d7175;
       text-transform: uppercase;
@@ -282,7 +476,7 @@
     }
     
     .table td {
-      padding: 12px 16px;
+      padding: 10px 12px;
       border-bottom: 1px solid #e1e3e5;
       color: #202223;
     }
@@ -307,12 +501,14 @@
     }
     
     .order-date {
-      font-size: 13px;
+      font-size: 12px;
       color: #6d7175;
     }
     
     .badge {
-      display: inline-block;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
       padding: 4px 10px;
       font-size: 12px;
       font-weight: 500;
@@ -339,9 +535,14 @@
       color: #1e40af;
     }
     
+    .badge-icon {
+      width: 14px;
+      height: 14px;
+    }
+    
     .delybell-id {
       font-family: 'Monaco', 'Menlo', 'Courier New', monospace;
-      font-size: 12px;
+      font-size: 11px;
       color: #6d7175;
       background: #f6f6f7;
       padding: 4px 8px;
@@ -353,7 +554,7 @@
       align-items: center;
       justify-content: center;
       gap: 6px;
-      padding: 8px 12px;
+      padding: 7px 12px;
       font-size: 13px;
       font-weight: 500;
       border-radius: 6px;
@@ -391,7 +592,7 @@
       cursor: not-allowed;
     }
     
-    .button svg {
+    .button-icon {
       width: 16px;
       height: 16px;
     }
@@ -404,6 +605,7 @@
       display: none;
       align-items: center;
       gap: 12px;
+      flex-wrap: wrap;
     }
     
     .bulk-actions.active {
@@ -418,15 +620,16 @@
     
     /* Pagination */
     .pagination {
-      padding: 16px 20px;
+      padding: 12px 20px;
       border-top: 1px solid #e1e3e5;
       display: flex;
       justify-content: space-between;
       align-items: center;
+      background: #f6f6f7;
     }
     
     .pagination-info {
-      font-size: 13px;
+      font-size: 12px;
       color: #6d7175;
     }
     
@@ -481,56 +684,10 @@
       color: #006e52;
     }
     
-    /* Settings */
-    .settings-card {
-      background: #ffffff;
-      border: 1px solid #e1e3e5;
-      border-radius: 8px;
-      margin-bottom: 20px;
-      padding: 20px;
-    }
-    
-    .settings-item {
-      padding: 16px 0;
-      border-bottom: 1px solid #e1e3e5;
-    }
-    
-    .settings-item:last-child {
-      border-bottom: none;
-    }
-    
-    .settings-label {
-      font-size: 14px;
-      font-weight: 500;
-      color: #202223;
-      margin-bottom: 8px;
-    }
-    
-    .settings-description {
-      font-size: 13px;
-      color: #6d7175;
-      margin-bottom: 12px;
-    }
-    
-    .settings-input {
-      width: 100%;
-      padding: 8px 12px;
-      border: 1px solid #e1e3e5;
-      border-radius: 6px;
-      font-size: 14px;
-      color: #202223;
-    }
-    
-    .settings-input:focus {
-      outline: none;
-      border-color: #008060;
-      box-shadow: 0 0 0 3px rgba(0, 128, 96, 0.1);
-    }
-    
     /* Loading & Empty States */
     .loading {
       text-align: center;
-      padding: 60px 20px;
+      padding: 40px 20px;
       color: #6d7175;
       font-size: 14px;
     }
@@ -553,80 +710,52 @@
     
     .empty-state {
       text-align: center;
-      padding: 60px 20px;
+      padding: 40px 20px;
       color: #6d7175;
     }
     
     .empty-state-icon {
-      width: 48px;
-      height: 48px;
-      margin: 0 auto 16px;
+      width: 40px;
+      height: 40px;
+      margin: 0 auto 12px;
       color: #c9cccf;
     }
     
     .empty-state-title {
-      font-size: 16px;
+      font-size: 15px;
       font-weight: 600;
       color: #202223;
-      margin-bottom: 8px;
+      margin-bottom: 6px;
     }
     
     .error-message {
       background: #fee2e2;
       border: 1px solid #fecaca;
       border-left: 4px solid #d72c0d;
-      padding: 16px 20px;
+      padding: 14px 18px;
       margin-bottom: 20px;
       border-radius: 6px;
       color: #991b1b;
       font-size: 14px;
     }
     
-    /* Modal */
-    .modal {
+    .warning-banner {
+      background: #fef3c7;
+      border: 1px solid #f59e0b;
+      border-left: 4px solid #f59e0b;
+      border-radius: 6px;
+      padding: 12px 16px;
+      margin-top: 16px;
       display: none;
-      position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background: rgba(0, 0, 0, 0.5);
-      z-index: 1000;
-      align-items: center;
-      justify-content: center;
     }
     
-    .modal.active {
-      display: flex;
+    .warning-banner.active {
+      display: block;
     }
     
-    .modal-content {
-      background: #ffffff;
-      border-radius: 8px;
-      padding: 24px;
-      max-width: 500px;
-      width: 90%;
-      max-height: 90vh;
-      overflow-y: auto;
-    }
-    
-    .modal-header {
-      font-size: 18px;
-      font-weight: 600;
-      color: #202223;
-      margin-bottom: 16px;
-    }
-    
-    .modal-body {
-      font-size: 14px;
-      color: #6d7175;
-      margin-bottom: 24px;
-    }
-    
-    .modal-actions {
-      display: flex;
-      gap: 12px;
-      justify-content: flex-end;
+    .warning-banner.error {
+      background: #fee2e2;
+      border-color: #d72c0d;
     }
     
     @media (max-width: 768px) {
@@ -638,12 +767,21 @@
         padding: 16px;
       }
       
-      .health-grid {
+      .health-section {
+        grid-template-columns: 1fr;
+      }
+      
+      .settings-grid {
         grid-template-columns: 1fr;
       }
       
       .bulk-actions {
-        flex-wrap: wrap;
+        flex-direction: column;
+        align-items: stretch;
+      }
+      
+      .bulk-actions .button {
+        width: 100%;
       }
       
       .table {
@@ -653,6 +791,17 @@
       .table th,
       .table td {
         padding: 8px;
+      }
+      
+      .toast-container {
+        left: 16px;
+        right: 16px;
+        top: 16px;
+      }
+      
+      .toast {
+        min-width: auto;
+        max-width: 100%;
       }
     }
   </style>
@@ -667,6 +816,9 @@
     <div class="content">
       <div id="error-container"></div>
       
+      <!-- Toast Container -->
+      <div class="toast-container" id="toastContainer"></div>
+      
       <div id="app-content">
         <div class="loading">
           <div class="loading-spinner"></div>
@@ -677,11 +829,11 @@
   </div>
   
   <!-- Confirmation Modal -->
-  <div class="modal" id="confirmModal">
-    <div class="modal-content">
-      <div class="modal-header" id="modalTitle">Confirm Action</div>
-      <div class="modal-body" id="modalBody">Are you sure?</div>
-      <div class="modal-actions">
+  <div class="modal" id="confirmModal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0, 0, 0, 0.5); z-index: 1000; align-items: center; justify-content: center;">
+    <div class="modal-content" style="background: #ffffff; border-radius: 8px; padding: 24px; max-width: 500px; width: 90%;">
+      <div class="modal-header" id="modalTitle" style="font-size: 18px; font-weight: 600; color: #202223; margin-bottom: 16px;">Confirm Action</div>
+      <div class="modal-body" id="modalBody" style="font-size: 14px; color: #6d7175; margin-bottom: 24px;">Are you sure?</div>
+      <div class="modal-actions" style="display: flex; gap: 12px; justify-content: flex-end;">
         <button class="button button-secondary" onclick="closeModal()">Cancel</button>
         <button class="button button-primary" id="modalConfirmBtn">Confirm</button>
       </div>
@@ -692,10 +844,44 @@
     let app;
     let shop = window.SHOPIFY_SHOP || '<%= shop %>';
     const apiKey = window.SHOPIFY_API_KEY;
-    let currentSyncMode = 'auto';
+    let currentSyncMode = 'manual'; // Default to manual
     let currentPage = 1;
     let pageSize = 20;
     let totalOrders = 0;
+    
+    // Toast Notification System
+    function showToast(type, title, message, duration = 5000) {
+      const container = document.getElementById('toastContainer');
+      if (!container) return;
+      
+      const toast = document.createElement('div');
+      toast.className = `toast ${type}`;
+      
+      const icons = {
+        success: '<svg class="toast-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>',
+        error: '<svg class="toast-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>',
+        warning: '<svg class="toast-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>'
+      };
+      
+      toast.innerHTML = `
+        ${icons[type] || icons.success}
+        <div class="toast-content">
+          <div class="toast-title">${title}</div>
+          ${message ? `<div class="toast-message">${message}</div>` : ''}
+        </div>
+        <svg class="toast-close" fill="none" stroke="currentColor" viewBox="0 0 24 24" onclick="this.parentElement.remove()">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+        </svg>
+      `;
+      
+      container.appendChild(toast);
+      
+      setTimeout(() => {
+        toast.style.opacity = '0';
+        toast.style.transform = 'translateX(100%)';
+        setTimeout(() => toast.remove(), 300);
+      }, duration);
+    }
     
     // Initialize App Bridge
     if (apiKey && apiKey !== 'SHOPIFY_API_KEY_NOT_SET' && apiKey !== '<%= SHOPIFY_API_KEY %>') {
@@ -761,11 +947,11 @@
         onConfirm();
         closeModal();
       };
-      document.getElementById('confirmModal').classList.add('active');
+      document.getElementById('confirmModal').style.display = 'flex';
     }
     
     function closeModal() {
-      document.getElementById('confirmModal').classList.remove('active');
+      document.getElementById('confirmModal').style.display = 'none';
     }
     
     // Load connection health
@@ -773,12 +959,10 @@
       if (!shop) return { shopify: false, delybell: false, lastSync: null };
       
       try {
-        // Check Shopify connection
         const authResponse = await fetch(`/auth/check?shop=${encodeURIComponent(shop)}`);
         const authData = await authResponse.json();
         const shopifyConnected = authData.authenticated || false;
         
-        // Check Delybell connection (try to get blocks)
         let delybellConnected = false;
         try {
           const blocksResponse = await fetch('/admin/api/delybell-health');
@@ -790,7 +974,6 @@
           console.warn('Delybell health check failed:', e);
         }
         
-        // Get last successful sync
         const statsResponse = await fetch(`/admin/api/stats?shop=${encodeURIComponent(shop)}`);
         const statsData = await statsResponse.json();
         const lastSync = statsData.success && statsData.stats.successfullySynced > 0 
@@ -817,11 +1000,14 @@
         const response = await fetch(`/admin/api/shops/${encodeURIComponent(shop)}/sync-mode`);
         const data = await response.json();
         if (data.success) {
-          currentSyncMode = data.sync_mode || 'auto';
+          currentSyncMode = data.sync_mode || 'manual'; // Default to manual
           updateSyncModeUI();
         }
       } catch (error) {
         console.error('Error loading sync mode:', error);
+        // Default to manual if error
+        currentSyncMode = 'manual';
+        updateSyncModeUI();
       }
     }
     
@@ -829,23 +1015,51 @@
       const toggle = document.getElementById('syncModeToggle');
       const description = document.getElementById('syncModeDescription');
       const manualControls = document.getElementById('manualSyncControls');
+      const autoLabel = document.getElementById('autoLabel');
+      const manualLabel = document.getElementById('manualLabel');
       
       if (toggle) toggle.checked = currentSyncMode === 'manual';
       if (description) {
-        description.textContent = currentSyncMode === 'auto' 
-          ? 'Orders sync automatically when created in Shopify.'
-          : 'Orders are saved but not synced. Use bulk actions to sync manually.';
+        if (currentSyncMode === 'auto') {
+          description.innerHTML = `
+            <div class="sync-mode-explanation-title">
+              <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+              </svg>
+              How Auto Sync Works
+            </div>
+            <div class="sync-mode-explanation-text">
+              When a customer places an order in your Shopify store, it will <strong>automatically sync to Delybell</strong> within seconds. 
+              No action needed from you - orders appear in Delybell immediately.
+            </div>
+          `;
+        } else {
+          description.innerHTML = `
+            <div class="sync-mode-explanation-title">
+              <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+              </svg>
+              How Manual Sync Works
+            </div>
+            <div class="sync-mode-explanation-text">
+              Orders are <strong>saved but not synced automatically</strong>. You can review orders and choose which ones to sync to Delybell. 
+              Use the checkboxes in the orders table below to select orders, then click "Sync Selected" when ready.
+            </div>
+          `;
+        }
       }
       if (manualControls) {
         manualControls.classList.toggle('active', currentSyncMode === 'manual');
       }
+      if (autoLabel) autoLabel.classList.toggle('active', currentSyncMode === 'auto');
+      if (manualLabel) manualLabel.classList.toggle('active', currentSyncMode === 'manual');
       
       loadOrders();
     }
     
     async function updateSyncMode(mode) {
       if (!shop) {
-        alert('Shop not detected');
+        showToast('error', 'Error', 'Shop not detected');
         return;
       }
       
@@ -860,12 +1074,13 @@
         if (data.success) {
           currentSyncMode = mode;
           updateSyncModeUI();
+          showToast('success', 'Sync Mode Updated', `Switched to ${mode === 'auto' ? 'Auto Sync' : 'Manual Sync'} mode`);
         } else {
-          alert('Failed to update sync mode');
+          showToast('error', 'Update Failed', data.error || 'Failed to update sync mode');
         }
       } catch (error) {
         console.error('Error updating sync mode:', error);
-        alert('Error updating sync mode');
+        showToast('error', 'Error', 'Failed to update sync mode');
       }
     }
     
@@ -893,7 +1108,7 @@
         }
         
         const orders = data.orders || [];
-        totalOrders = data.total || 0;
+        totalOrders = data.total !== undefined ? data.total : orders.length;
         
         if (orders.length === 0) {
           if (ordersContainer) {
@@ -954,16 +1169,24 @@
       }
       
       function getStatusBadge(status) {
-        if (status === 'processed') return '<span class="badge badge-success">✅ Synced</span>';
-        if (status === 'pending_sync') return '<span class="badge badge-warning">⏳ Pending</span>';
-        if (status === 'failed') return '<span class="badge badge-error">❌ Failed</span>';
+        if (status === 'processed') {
+          return '<span class="badge badge-success"><svg class="badge-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>Synced</span>';
+        }
+        if (status === 'pending_sync') {
+          return '<span class="badge badge-warning"><svg class="badge-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>Pending</span>';
+        }
+        if (status === 'failed') {
+          return '<span class="badge badge-error"><svg class="badge-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>Failed</span>';
+        }
         return '<span class="badge badge-info">' + status + '</span>';
       }
       
       function getPaymentBadge(financialStatus) {
         if (!financialStatus) return '<span class="badge badge-info">-</span>';
-        if (financialStatus === 'paid') return '<span class="badge badge-success">Paid</span>';
-        return '<span class="badge badge-warning">COD</span>';
+        if (financialStatus === 'paid') {
+          return '<span class="badge badge-success"><svg class="badge-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>Paid</span>';
+        }
+        return '<span class="badge badge-warning"><svg class="badge-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v2a2 2 0 002 2zm7-2V9a2 2 0 00-2-2h-2m-4 0H9m5 0V7a2 2 0 012-2h2a2 2 0 012 2v2m-6 0V9a2 2 0 012-2h2a2 2 0 012 2v2"></path></svg>COD</span>';
       }
       
       const canSelect = (status) => status === 'pending_sync' || status === 'failed';
@@ -1010,18 +1233,21 @@
                       </td>
                       <td>
                         ${order.status === 'failed' ? `
-                          <button class="button button-secondary" onclick="retryOrder('${order.id}')" title="Retry">
-                            🔁 Retry
+                          <button class="button button-secondary" onclick="retryOrder('${order.id}')" title="Retry syncing this order">
+                            <svg class="button-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+                            Retry
                           </button>
                         ` : ''}
                         ${order.status === 'pending_sync' && currentSyncMode === 'manual' ? `
-                          <button class="button button-primary" onclick="syncSingleOrder('${order.id}')" title="Sync now">
-                            ✅ Sync
+                          <button class="button button-primary" onclick="syncSingleOrder('${order.id}')" title="Sync this order now">
+                            <svg class="button-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                            Sync
                           </button>
                         ` : ''}
                         ${order.status === 'processed' ? `
-                          <button class="button button-secondary" onclick="viewOrderDetails('${order.id}')" title="View details">
-                            👁️ View
+                          <button class="button button-secondary" onclick="viewOrderDetails('${order.id}')" title="View order details">
+                            <svg class="button-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
+                            View
                           </button>
                         ` : ''}
                       </td>
@@ -1088,7 +1314,10 @@
     
     async function syncSelectedOrders() {
       const checked = Array.from(document.querySelectorAll('.order-checkbox:checked')).map(cb => cb.value);
-      if (checked.length === 0) return;
+      if (checked.length === 0) {
+        showToast('warning', 'No Selection', 'Please select at least one order');
+        return;
+      }
       
       showModal(
         'Sync Selected Orders',
@@ -1103,14 +1332,14 @@
             
             const data = await response.json();
             if (data.success) {
-              alert(`✅ Synced ${data.synced} order(s) successfully. ${data.failed > 0 ? `${data.failed} failed.` : ''}`);
+              showToast('success', 'Orders Synced', `Successfully synced ${data.synced} order(s). ${data.failed > 0 ? `${data.failed} failed.` : ''}`);
               loadOrders(currentPage);
               loadConnectionHealth();
             } else {
-              alert('❌ Sync failed: ' + (data.error || 'Unknown error'));
+              showToast('error', 'Sync Failed', data.error || 'Unknown error');
             }
           } catch (error) {
-            alert('❌ Error: ' + error.message);
+            showToast('error', 'Error', error.message);
           }
         }
       );
@@ -1118,7 +1347,10 @@
     
     async function retryFailedOrders() {
       const checked = Array.from(document.querySelectorAll('.order-checkbox:checked')).map(cb => cb.value);
-      if (checked.length === 0) return;
+      if (checked.length === 0) {
+        showToast('warning', 'No Selection', 'Please select at least one failed order');
+        return;
+      }
       
       showModal(
         'Retry Failed Orders',
@@ -1138,11 +1370,11 @@
               else failed++;
             }
             
-            alert(`✅ Retried ${success} order(s) successfully. ${failed > 0 ? `${failed} failed.` : ''}`);
+            showToast('success', 'Orders Retried', `Successfully retried ${success} order(s). ${failed > 0 ? `${failed} failed.` : ''}`);
             loadOrders(currentPage);
             loadConnectionHealth();
           } catch (error) {
-            alert('❌ Error: ' + error.message);
+            showToast('error', 'Error', error.message);
           }
         }
       );
@@ -1162,14 +1394,14 @@
             
             const data = await response.json();
             if (data.success) {
-              alert('✅ Order synced successfully!');
+              showToast('success', 'Order Synced', 'Order synced successfully!');
               loadOrders(currentPage);
               loadConnectionHealth();
             } else {
-              alert('❌ Sync failed: ' + (data.error || 'Unknown error'));
+              showToast('error', 'Sync Failed', data.error || 'Unknown error');
             }
           } catch (error) {
-            alert('❌ Error: ' + error.message);
+            showToast('error', 'Error', error.message);
           }
         }
       );
@@ -1184,14 +1416,14 @@
             const response = await fetch(`/admin/api/orders/${orderId}/retry`, { method: 'POST' });
             const data = await response.json();
             if (data.success) {
-              alert('✅ Order retried successfully!');
+              showToast('success', 'Order Retried', 'Order retried successfully!');
               loadOrders(currentPage);
               loadConnectionHealth();
             } else {
-              alert('❌ Retry failed: ' + (data.error || 'Unknown error'));
+              showToast('error', 'Retry Failed', data.error || 'Unknown error');
             }
           } catch (error) {
-            alert('❌ Error: ' + error.message);
+            showToast('error', 'Error', error.message);
           }
         }
       );
@@ -1214,7 +1446,7 @@ ${order.errorMessage ? `Error: ${getFriendlyError(order.errorMessage)}` : ''}
           showModal('Order Details', details, () => {});
         }
       } catch (error) {
-        alert('Error loading order details: ' + error.message);
+        showToast('error', 'Error', 'Failed to load order details');
       }
     }
     
@@ -1239,11 +1471,13 @@ ${order.errorMessage ? `Error: ${getFriendlyError(order.errorMessage)}` : ''}
         if (!authData.authenticated) {
           if (appContent) {
             appContent.innerHTML = `
-              <div class="health-card">
-                <div style="text-align: center; padding: 40px 20px;">
-                  <div style="font-size: 16px; font-weight: 600; margin-bottom: 8px;">Installation Required</div>
-                  <div style="font-size: 14px; color: #6d7175; margin-bottom: 24px;">Please install the app to continue.</div>
-                  <a href="/auth/install?shop=${shop}" class="button button-primary">Install App</a>
+              <div class="health-section">
+                <div class="health-item">
+                  <div style="text-align: center; padding: 40px 20px; width: 100%;">
+                    <div style="font-size: 16px; font-weight: 600; margin-bottom: 8px;">Installation Required</div>
+                    <div style="font-size: 14px; color: #6d7175; margin-bottom: 24px;">Please install the app to continue.</div>
+                    <a href="/auth/install?shop=${shop}" class="button button-primary">Install App</a>
+                  </div>
                 </div>
               </div>
             `;
@@ -1251,7 +1485,7 @@ ${order.errorMessage ? `Error: ${getFriendlyError(order.errorMessage)}` : ''}
           return;
         }
         
-        // Load sync mode first
+        // Load sync mode first (defaults to manual)
         await loadSyncMode();
         
         // Load connection health
@@ -1260,60 +1494,120 @@ ${order.errorMessage ? `Error: ${getFriendlyError(order.errorMessage)}` : ''}
         // Render main app
         if (appContent) {
           appContent.innerHTML = `
-            <!-- Connection & Health -->
-            <div class="health-card">
-              <div class="health-grid">
-                <div class="health-item">
-                  <svg class="health-icon ${health.shopify ? 'success' : 'error'}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                  </svg>
-                  <div class="health-info">
-                    <div class="health-label">Shopify</div>
-                    <div class="health-value">${health.shopify ? '✅ Connected' : '❌ Not Connected'}</div>
-                  </div>
-                </div>
-                <div class="health-item">
-                  <svg class="health-icon ${health.delybell ? 'success' : 'error'}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                  </svg>
-                  <div class="health-info">
-                    <div class="health-label">Delybell</div>
-                    <div class="health-value">${health.delybell ? '✅ Connected' : '❌ Not Connected'}</div>
-                  </div>
-                </div>
-                <div class="health-item">
-                  <svg class="health-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path>
-                  </svg>
-                  <div class="health-info">
-                    <div class="health-label">Store Domain</div>
-                    <div class="health-value">${health.storeDomain || shop}</div>
-                  </div>
-                </div>
-                <div class="health-item">
-                  <svg class="health-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                  </svg>
-                  <div class="health-info">
-                    <div class="health-label">Last Sync</div>
-                    <div class="health-value">${health.lastSync || 'No syncs yet'}</div>
-                  </div>
+            <!-- Connection & Health - Compact -->
+            <div class="health-section">
+              <div class="health-item">
+                <svg class="health-icon ${health.shopify ? 'success' : 'error'}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+                <div class="health-info">
+                  <div class="health-label">Shopify</div>
+                  <div class="health-value">${health.shopify ? 'Connected' : 'Not Connected'}</div>
                 </div>
               </div>
-              <div class="warning-banner" id="warningBanner"></div>
+              <div class="health-item">
+                <svg class="health-icon ${health.delybell ? 'success' : 'error'}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+                <div class="health-info">
+                  <div class="health-label">Delybell</div>
+                  <div class="health-value">${health.delybell ? 'Connected' : 'Not Connected'}</div>
+                </div>
+              </div>
+              <div class="health-item">
+                <svg class="health-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path>
+                </svg>
+                <div class="health-info">
+                  <div class="health-label">Store</div>
+                  <div class="health-value">${health.storeDomain || shop}</div>
+                </div>
+              </div>
+              <div class="health-item">
+                <svg class="health-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+                <div class="health-info">
+                  <div class="health-label">Last Sync</div>
+                  <div class="health-value">${health.lastSync || 'No syncs yet'}</div>
+                </div>
+              </div>
             </div>
             
-            <!-- Sync Mode Control -->
+            <!-- Settings - Moved Up -->
+            <div class="settings-card">
+              <div class="settings-title">
+                <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                </svg>
+                Settings
+              </div>
+              <div class="settings-grid">
+                <div class="settings-item">
+                  <div class="settings-item-label">
+                    Default Service Type
+                    <div class="tooltip-wrapper">
+                      <svg class="tooltip-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                      </svg>
+                      <div class="tooltip">Service type ID used when creating orders in Delybell</div>
+                    </div>
+                  </div>
+                  <div class="settings-item-description">The default delivery service type for all orders</div>
+                  <input type="number" class="settings-input" value="1" id="serviceTypeInput" placeholder="1">
+                </div>
+                <div class="settings-item">
+                  <div class="settings-item-label">
+                    Enable Cash on Delivery
+                    <div class="tooltip-wrapper">
+                      <svg class="tooltip-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                      </svg>
+                      <div class="tooltip">Automatically mark orders as COD when payment is pending</div>
+                    </div>
+                  </div>
+                  <div class="settings-item-description">Orders with pending payment will be marked as Cash on Delivery</div>
+                  <label class="toggle-switch" style="margin-top: 8px;">
+                    <input type="checkbox" checked disabled>
+                    <span class="toggle-slider"></span>
+                  </label>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Sync Mode Control - Enhanced -->
             <div class="sync-mode-card">
               <div class="sync-mode-header">
-                <div class="sync-mode-title">Sync Mode</div>
+                <div class="sync-mode-title-wrapper">
+                  <div class="sync-mode-title">Order Sync Mode</div>
+                  <div class="tooltip-wrapper">
+                    <svg class="tooltip-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                    <div class="tooltip">Choose how orders sync to Delybell: Auto syncs immediately, Manual lets you choose which orders to sync</div>
+                  </div>
+                </div>
                 <label class="toggle-switch">
                   <input type="checkbox" id="syncModeToggle" onchange="updateSyncMode(this.checked ? 'manual' : 'auto')">
                   <span class="toggle-slider"></span>
                 </label>
               </div>
-              <div class="sync-mode-description" id="syncModeDescription">
-                Orders sync automatically when created in Shopify.
+              <div class="toggle-labels">
+                <span class="toggle-label" id="autoLabel">Auto Sync</span>
+                <span class="toggle-label" id="manualLabel">Manual Sync</span>
+              </div>
+              <div class="sync-mode-explanation" id="syncModeDescription"></div>
+              <div class="bulk-actions" id="manualSyncControls">
+                <span class="bulk-actions-count" id="bulkCount">0 selected</span>
+                <button class="button button-primary" id="bulkSyncBtn" onclick="syncSelectedOrders()" disabled>
+                  <svg class="button-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                  Sync Selected
+                </button>
+                <button class="button button-secondary" id="bulkRetryBtn" onclick="retryFailedOrders()" disabled>
+                  <svg class="button-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+                  Retry Failed
+                </button>
               </div>
             </div>
             
@@ -1322,16 +1616,19 @@ ${order.errorMessage ? `Error: ${getFriendlyError(order.errorMessage)}` : ''}
               <div class="orders-header">
                 <div class="orders-title">Orders</div>
                 <button class="button button-secondary" onclick="loadOrders(currentPage)">
-                  🔁 Refresh
+                  <svg class="button-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+                  Refresh
                 </button>
               </div>
               <div class="bulk-actions" id="bulkActions">
-                <span class="bulk-actions-count" id="bulkCount">0 selected</span>
-                <button class="button button-primary" id="bulkSyncBtn" onclick="syncSelectedOrders()" disabled>
-                  ✅ Sync Selected
+                <span class="bulk-actions-count" id="bulkCount2">0 selected</span>
+                <button class="button button-primary" id="bulkSyncBtn2" onclick="syncSelectedOrders()" disabled>
+                  <svg class="button-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                  Sync Selected
                 </button>
-                <button class="button button-secondary" id="bulkRetryBtn" onclick="retryFailedOrders()" disabled>
-                  🔁 Retry Failed
+                <button class="button button-secondary" id="bulkRetryBtn2" onclick="retryFailedOrders()" disabled>
+                  <svg class="button-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+                  Retry Failed
                 </button>
               </div>
               <div class="orders-body">
@@ -1342,22 +1639,9 @@ ${order.errorMessage ? `Error: ${getFriendlyError(order.errorMessage)}` : ''}
               <div class="pagination">
                 <div class="pagination-info" id="paginationInfo">Loading...</div>
                 <div class="pagination-buttons">
-                  <button class="pagination-button" id="prevPage" onclick="loadOrders(currentPage - 1)">← Previous</button>
-                  <button class="pagination-button" id="nextPage" onclick="loadOrders(currentPage + 1)">Next →</button>
+                  <button class="pagination-button" id="prevPage" onclick="loadOrders(currentPage - 1)">Previous</button>
+                  <button class="pagination-button" id="nextPage" onclick="loadOrders(currentPage + 1)">Next</button>
                 </div>
-              </div>
-            </div>
-            
-            <!-- Settings -->
-            <div class="settings-card">
-              <div class="settings-title" style="font-size: 15px; font-weight: 600; margin-bottom: 16px;">Settings</div>
-              <div class="settings-item">
-                <div class="settings-label">Auto-retry Failed Orders</div>
-                <div class="settings-description">Automatically retry failed orders (coming soon)</div>
-                <label class="toggle-switch">
-                  <input type="checkbox" disabled>
-                  <span class="toggle-slider"></span>
-                </label>
               </div>
             </div>
           `;
@@ -1376,6 +1660,26 @@ ${order.errorMessage ? `Error: ${getFriendlyError(order.errorMessage)}` : ''}
           `;
         }
       }
+    }
+    
+    // Fix bulk actions to use same IDs
+    function updateBulkActions() {
+      const checked = document.querySelectorAll('.order-checkbox:checked').length;
+      const bulkActions = document.getElementById('bulkActions');
+      const bulkCount = document.getElementById('bulkCount');
+      const bulkCount2 = document.getElementById('bulkCount2');
+      const bulkSyncBtn = document.getElementById('bulkSyncBtn');
+      const bulkSyncBtn2 = document.getElementById('bulkSyncBtn2');
+      const bulkRetryBtn = document.getElementById('bulkRetryBtn');
+      const bulkRetryBtn2 = document.getElementById('bulkRetryBtn2');
+      
+      if (bulkActions) bulkActions.classList.toggle('active', checked > 0);
+      if (bulkCount) bulkCount.textContent = `${checked} selected`;
+      if (bulkCount2) bulkCount2.textContent = `${checked} selected`;
+      if (bulkSyncBtn) bulkSyncBtn.disabled = checked === 0;
+      if (bulkSyncBtn2) bulkSyncBtn2.disabled = checked === 0;
+      if (bulkRetryBtn) bulkRetryBtn.disabled = checked === 0;
+      if (bulkRetryBtn2) bulkRetryBtn2.disabled = checked === 0;
     }
     
     // Initialize

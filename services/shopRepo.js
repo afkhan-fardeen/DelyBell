@@ -14,7 +14,7 @@ const { supabase } = require('./db');
  * @param {string} params.syncMode - Sync mode: "auto" | "manual" (optional, defaults to "auto")
  * @returns {Promise<Object>} Supabase response
  */
-async function upsertShop({ shop, accessToken, scopes, syncMode = 'auto' }) {
+async function upsertShop({ shop, accessToken, scopes, syncMode = 'manual' }) {
   if (!process.env.SUPABASE_URL) {
     throw new Error('Supabase not configured. Set SUPABASE_URL environment variable.');
   }

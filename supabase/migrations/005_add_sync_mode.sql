@@ -1,7 +1,7 @@
 -- Add sync_mode column to shops table
--- sync_mode: "auto" | "manual" (default: "auto")
+-- sync_mode: "auto" | "manual" (default: "manual")
 ALTER TABLE shops
-ADD COLUMN IF NOT EXISTS sync_mode TEXT DEFAULT 'auto' CHECK (sync_mode IN ('auto', 'manual'));
+ADD COLUMN IF NOT EXISTS sync_mode TEXT DEFAULT 'manual' CHECK (sync_mode IN ('auto', 'manual'));
 
 -- Add synced_at column to order_logs table
 -- synced_at: timestamp when order was synced to Delybell (null if not synced)
