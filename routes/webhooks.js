@@ -211,6 +211,10 @@ router.post('/orders/create', async (req, res) => {
 
     console.log(`[Webhook] Starting order processing for shop: ${shop}`);
 
+    // Check shop sync mode
+    const syncMode = shopData.sync_mode || 'auto'; // Default to 'auto' if not set
+    console.log(`[Webhook] Shop sync mode: ${syncMode}`);
+
     // Respond quickly to Shopify (within 5 seconds)
     if (!respondQuickly()) {
       // If we're already past 4.5 seconds, just respond and process async
@@ -220,11 +224,40 @@ router.post('/orders/create', async (req, res) => {
       });
     }
 
-    // Process order (may take longer than 5 seconds, but we've already responded)
-    // IMPORTANT: We process ALL orders immediately when created, regardless of payment status
+    // Process order based on sync mode
     try {
-      console.log(`[Webhook] 🚀 Starting order processing for order ${orderId} (Status: ${orderStatus})...`);
-      console.log(`[Webhook] Processing order immediately - no payment status check`);
+      if (syncMode === 'manual') {
+        // Manual mode: Save order with status "pending_sync" (don't process immediately)
+        console.log(`[Webhook] 📝 Manual sync mode - saving order ${orderId} with status "pending_sync"`);
+        
+        const shippingAddress = shopifyOrder.shipping_address || shopifyOrder.billing_address;
+        const customerName = shippingAddress?.name || 
+          (shopifyOrder.customer?.first_name && shopifyOrder.customer?.last_name 
+            ? `${shopifyOrder.customer.first_name} ${shopifyOrder.customer.last_name}` 
+            : shopifyOrder.customer?.first_name || shopifyOrder.customer?.last_name || null);
+        const phone = shippingAddress?.phone || shopifyOrder.customer?.phone || null;
+        const shopifyOrderCreatedAt = shopifyOrder.created_at || null;
+
+        await orderProcessor.logOrder({
+          shop,
+          shopifyOrderId: shopifyOrder.id?.toString() || shopifyOrder.order_number?.toString(),
+          shopifyOrderNumber: shopifyOrder.order_number || null,
+          delybellOrderId: null, // Not synced yet
+          status: 'pending_sync',
+          errorMessage: null,
+          totalPrice: shopifyOrder.total_price ? parseFloat(shopifyOrder.total_price) : null,
+          currency: shopifyOrder.currency || 'USD',
+          customerName: customerName,
+          phone: phone,
+          shopifyOrderCreatedAt: shopifyOrderCreatedAt,
+        });
+
+        console.log(`[Webhook] ✅ Order ${orderId} saved with status "pending_sync" (manual mode)`);
+        return; // Don't process, just save
+      }
+
+      // Auto mode: Process order immediately (current behavior)
+      console.log(`[Webhook] 🚀 Auto sync mode - processing order ${orderId} immediately (Status: ${orderStatus})...`);
       
       const result = await orderProcessor.processOrder(
         shopifyOrder,

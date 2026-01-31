@@ -661,6 +661,11 @@ class OrderProcessor {
         phone: phone, // Customer phone number
         shopify_order_created_at: shopifyOrderCreatedAt, // When order was placed in Shopify
       };
+
+      // Add synced_at timestamp if order is processed (synced to Delybell)
+      if (status === 'processed' && delybellOrderId) {
+        insertData.synced_at = new Date().toISOString();
+      }
       
       // Try to add error_message if provided
       // If column doesn't exist, this will fail gracefully

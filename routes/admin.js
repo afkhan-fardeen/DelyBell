@@ -1588,17 +1588,262 @@ router.get('/admin/api/shops', async (req, res) => {
 
     const { data: shops, error } = await supabase
       .from('shops')
-      .select('shop')
+      .select('shop, sync_mode')
       .order('shop', { ascending: true });
 
     if (error) throw error;
 
     res.json({
       success: true,
-      shops: (shops || []).map(s => s.shop),
+      shops: (shops || []).map(s => ({
+        shop: s.shop,
+        sync_mode: s.sync_mode || 'auto',
+      })),
     });
   } catch (error) {
     console.error('[Admin] Error fetching shops:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message,
+    });
+  }
+});
+
+/**
+ * Admin API - Get shop sync mode
+ * GET /admin/api/shops/:shop/sync-mode
+ */
+router.get('/admin/api/shops/:shop/sync-mode', async (req, res) => {
+  try {
+    const { shop } = req.params;
+    const { getShop } = require('../services/shopRepo');
+    
+    const shopData = await getShop(shop);
+    if (!shopData) {
+      return res.status(404).json({
+        success: false,
+        error: 'Shop not found',
+      });
+    }
+
+    res.json({
+      success: true,
+      sync_mode: shopData.sync_mode || 'auto',
+    });
+  } catch (error) {
+    console.error('[Admin] Error fetching sync mode:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message,
+    });
+  }
+});
+
+/**
+ * Admin API - Update shop sync mode
+ * POST /admin/api/shops/:shop/sync-mode
+ * Body: { sync_mode: "auto" | "manual" }
+ */
+router.post('/admin/api/shops/:shop/sync-mode', async (req, res) => {
+  try {
+    const { shop } = req.params;
+    const { sync_mode } = req.body;
+
+    if (!sync_mode || (sync_mode !== 'auto' && sync_mode !== 'manual')) {
+      return res.status(400).json({
+        success: false,
+        error: 'sync_mode must be "auto" or "manual"',
+      });
+    }
+
+    const { updateSyncMode } = require('../services/shopRepo');
+    const updatedShop = await updateSyncMode(shop, sync_mode);
+
+    res.json({
+      success: true,
+      sync_mode: updatedShop.sync_mode,
+      message: `Sync mode updated to ${sync_mode}`,
+    });
+  } catch (error) {
+    console.error('[Admin] Error updating sync mode:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message,
+    });
+  }
+});
+
+/**
+ * Admin API - Sync selected orders
+ * POST /admin/api/orders/sync-selected
+ * Body: { orderIds: [id1, id2, ...] }
+ */
+router.post('/admin/api/orders/sync-selected', async (req, res) => {
+  try {
+    const { orderIds } = req.body;
+
+    if (!orderIds || !Array.isArray(orderIds) || orderIds.length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'orderIds array is required',
+      });
+    }
+
+    const { supabase } = require('../services/db');
+    const orderProcessor = require('../services/orderProcessor');
+    const { getShop } = require('../services/shopRepo');
+
+    // Fetch orders from database
+    const { data: orders, error: fetchError } = await supabase
+      .from('order_logs')
+      .select('*')
+      .in('id', orderIds)
+      .in('status', ['pending_sync', 'failed']); // Only sync pending or failed orders
+
+    if (fetchError) throw fetchError;
+
+    if (!orders || orders.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'No syncable orders found',
+      });
+    }
+
+    const results = [];
+
+    for (const order of orders) {
+      try {
+        // Get shop session
+        const shopData = await getShop(order.shop);
+        if (!shopData || !shopData.access_token) {
+          results.push({
+            orderId: order.id,
+            success: false,
+            error: 'Shop not authenticated',
+          });
+          continue;
+        }
+
+        const session = {
+          id: `offline_${order.shop}`,
+          shop: order.shop,
+          accessToken: shopData.access_token,
+          scope: shopData.scopes,
+          scopes: shopData.scopes,
+          isOnline: false,
+        };
+
+        // Fetch order from Shopify
+        const shopifyClientInstance = new shopifyClient.shopify.clients.Rest({ session });
+        const shopifyOrderResponse = await shopifyClientInstance.get({
+          path: `orders/${order.shopify_order_id}`,
+        });
+
+        const shopifyOrder = shopifyOrderResponse.body.order;
+        if (!shopifyOrder) {
+          results.push({
+            orderId: order.id,
+            success: false,
+            error: 'Shopify order not found',
+          });
+          continue;
+        }
+
+        // Process order
+        const mappingConfig = {
+          service_type_id: parseInt(process.env.DEFAULT_SERVICE_TYPE_ID) || 1,
+          shop: order.shop,
+          session: session,
+        };
+
+        const result = await orderProcessor.processOrder(shopifyOrder, session, mappingConfig);
+
+        results.push({
+          orderId: order.id,
+          success: result.success,
+          delybellOrderId: result.delybellOrderId,
+          error: result.error,
+        });
+      } catch (error) {
+        results.push({
+          orderId: order.id,
+          success: false,
+          error: error.message,
+        });
+      }
+    }
+
+    res.json({
+      success: true,
+      results,
+      synced: results.filter(r => r.success).length,
+      failed: results.filter(r => !r.success).length,
+    });
+  } catch (error) {
+    console.error('[Admin] Error syncing selected orders:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message,
+    });
+  }
+});
+
+/**
+ * Admin API - Sync all pending orders
+ * POST /admin/api/orders/sync-all
+ * Query: ?shop=shop.myshopify.com (optional, syncs all shops if not provided)
+ */
+router.post('/admin/api/orders/sync-all', async (req, res) => {
+  try {
+    const { shop } = req.query;
+    const { supabase } = require('../services/db');
+
+    // Build query
+    let query = supabase
+      .from('order_logs')
+      .select('*')
+      .in('status', ['pending_sync', 'failed']);
+
+    if (shop) {
+      query = query.eq('shop', shop);
+    }
+
+    const { data: orders, error: fetchError } = await query;
+
+    if (fetchError) throw fetchError;
+
+    if (!orders || orders.length === 0) {
+      return res.json({
+        success: true,
+        message: 'No pending orders to sync',
+        results: [],
+        synced: 0,
+        failed: 0,
+      });
+    }
+
+    // Use the same sync logic as sync-selected
+    const { orderIds } = { orderIds: orders.map(o => o.id) };
+    req.body = { orderIds };
+
+    // Reuse sync-selected logic
+    const syncSelectedRoute = router.stack.find(layer => 
+      layer.route && layer.route.path === '/admin/api/orders/sync-selected'
+    );
+
+    if (syncSelectedRoute) {
+      // Call the handler directly
+      const handler = syncSelectedRoute.route.stack[0].handle;
+      await handler(req, res);
+    } else {
+      // Fallback: manual processing
+      res.status(500).json({
+        success: false,
+        error: 'Sync handler not found',
+      });
+    }
+  } catch (error) {
+    console.error('[Admin] Error syncing all orders:', error);
     res.status(500).json({
       success: false,
       error: error.message,
