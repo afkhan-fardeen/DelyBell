@@ -770,12 +770,20 @@ Do you want to enable Auto Sync?`,
         
         if (orders.length === 0) {
           if (ordersContainer) {
+            const emptyMessage = statusFilter === 'pending_sync' 
+              ? 'No pending orders. New orders placed by customers will appear here.'
+              : statusFilter === 'processed'
+              ? 'No synced orders yet. Sync orders from the Pending tab to see them here.'
+              : statusFilter === 'failed'
+              ? 'No failed orders. Failed sync attempts will appear here.'
+              : 'No orders yet. Orders placed by customers will appear here once they are received.';
+            
             ordersContainer.innerHTML = `
               <tr>
-                <td colspan="6" class="px-6 py-8 text-center text-slate-500 dark:text-slate-400">
+                <td colspan="${showCheckboxes ? '7' : '6'}" class="px-6 py-8 text-center text-slate-500 dark:text-slate-400">
                   <span class="material-icons-outlined text-4xl mb-2 block">inbox</span>
-                  <div class="font-semibold">No orders yet</div>
-                  <div class="text-sm mt-1">Orders will appear here once they are synced.</div>
+                  <div class="font-semibold">No orders found</div>
+                  <div class="text-sm mt-1">${emptyMessage}</div>
                 </td>
               </tr>
             `;
@@ -1041,6 +1049,33 @@ Do you want to enable Auto Sync?`,
         'Sync Selected Orders',
         `Sync ${checked.length} selected order(s) to Delybell?`,
         async () => {
+          // Close modal and show progress
+          closeModal();
+          
+          // Show progress indicator
+          const ordersContainer = document.getElementById('ordersContainer');
+          const originalContent = ordersContainer ? ordersContainer.innerHTML : '';
+          
+          if (ordersContainer) {
+            ordersContainer.innerHTML = `
+              <tr>
+                <td colspan="${showCheckboxes ? '7' : '6'}" class="px-6 py-8 text-center">
+                  <div class="inline-flex flex-col items-center">
+                    <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-primary mb-3"></div>
+                    <div class="font-semibold text-slate-700 dark:text-slate-300">Syncing ${checked.length} order${checked.length > 1 ? 's' : ''}...</div>
+                    <div class="text-sm text-slate-500 dark:text-slate-400 mt-1">Please wait, this may take a moment</div>
+                  </div>
+                </td>
+              </tr>
+            `;
+          }
+          
+          // Disable sync buttons during sync
+          const bulkSyncBtn = document.getElementById('bulkSyncBtn');
+          const bulkSyncBtn2 = document.getElementById('bulkSyncBtn2');
+          if (bulkSyncBtn) bulkSyncBtn.disabled = true;
+          if (bulkSyncBtn2) bulkSyncBtn2.disabled = true;
+          
           try {
             const response = await fetch('/admin/api/orders/sync-selected', {
               method: 'POST',
@@ -1057,14 +1092,23 @@ Do you want to enable Auto Sync?`,
                 ? ` ${data.failed} order${data.failed > 1 ? 's' : ''} could not be sent.`
                 : '';
               showToast('success', 'Orders Sent', successMsg + failMsg);
-              loadOrders(currentPage);
+              
+              // Reload orders and update UI
+              await loadOrders(currentPage);
               loadConnectionHealth();
               updateOrderTabs();
             } else {
-              showToast('error', 'Could Not Send Orders', 'Some orders could not be sent to Delybell. Please try again or contact support.');
+              showToast('error', 'Could Not Send Orders', data.error || 'Some orders could not be sent to Delybell. Please try again or contact support.');
+              if (ordersContainer) ordersContainer.innerHTML = originalContent;
             }
           } catch (error) {
+            console.error('Error syncing orders:', error);
             showToast('error', 'Something Went Wrong', 'Please try again. If this continues, contact support.');
+            if (ordersContainer) ordersContainer.innerHTML = originalContent;
+          } finally {
+            // Re-enable buttons
+            if (bulkSyncBtn) bulkSyncBtn.disabled = false;
+            if (bulkSyncBtn2) bulkSyncBtn2.disabled = false;
           }
         }
       );
@@ -1081,6 +1125,32 @@ Do you want to enable Auto Sync?`,
         'Retry Failed Orders',
         `Retry syncing ${checked.length} failed order(s)?`,
         async () => {
+          closeModal();
+          
+          // Show progress indicator
+          const ordersContainer = document.getElementById('ordersContainer');
+          const originalContent = ordersContainer ? ordersContainer.innerHTML : '';
+          
+          if (ordersContainer) {
+            ordersContainer.innerHTML = `
+              <tr>
+                <td colspan="${showCheckboxes ? '7' : '6'}" class="px-6 py-8 text-center">
+                  <div class="inline-flex flex-col items-center">
+                    <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-primary mb-3"></div>
+                    <div class="font-semibold text-slate-700 dark:text-slate-300">Retrying ${checked.length} order${checked.length > 1 ? 's' : ''}...</div>
+                    <div class="text-sm text-slate-500 dark:text-slate-400 mt-1">Please wait, this may take a moment</div>
+                  </div>
+                </td>
+              </tr>
+            `;
+          }
+          
+          // Disable retry buttons during sync
+          const bulkRetryBtn = document.getElementById('bulkRetryBtn');
+          const bulkRetryBtn2 = document.getElementById('bulkRetryBtn2');
+          if (bulkRetryBtn) bulkRetryBtn.disabled = true;
+          if (bulkRetryBtn2) bulkRetryBtn2.disabled = true;
+          
           try {
             const results = await Promise.all(
               checked.map(id => fetch(`/admin/api/orders/${id}/retry`, { method: 'POST' }))
@@ -1102,11 +1172,19 @@ Do you want to enable Auto Sync?`,
               ? ` ${failed} order${failed > 1 ? 's' : ''} still could not be sent.`
               : '';
             showToast('success', 'Orders Retried', retrySuccessMsg + retryFailMsg);
-            loadOrders(currentPage);
+            
+            // Reload orders and update UI
+            await loadOrders(currentPage);
             loadConnectionHealth();
             updateOrderTabs();
           } catch (error) {
+            console.error('Error retrying orders:', error);
             showToast('error', 'Error', error.message);
+            if (ordersContainer) ordersContainer.innerHTML = originalContent;
+          } finally {
+            // Re-enable buttons
+            if (bulkRetryBtn) bulkRetryBtn.disabled = false;
+            if (bulkRetryBtn2) bulkRetryBtn2.disabled = false;
           }
         }
       );
@@ -1117,6 +1195,16 @@ Do you want to enable Auto Sync?`,
         'Sync Order',
         'Sync this order to Delybell now?',
         async () => {
+          closeModal();
+          
+          // Show progress on the button
+          const syncBtn = event.target.closest('button');
+          const originalContent = syncBtn ? syncBtn.innerHTML : '';
+          if (syncBtn) {
+            syncBtn.disabled = true;
+            syncBtn.innerHTML = '<span class="material-icons-outlined text-sm mr-1 animate-spin">sync</span> Syncing...';
+          }
+          
           try {
             const response = await fetch('/admin/api/orders/sync-selected', {
               method: 'POST',
@@ -1127,14 +1215,23 @@ Do you want to enable Auto Sync?`,
             const data = await response.json();
             if (data.success) {
               showToast('success', 'Order Sent', 'This order has been sent to Delybell successfully!');
-              loadOrders(currentPage);
+              await loadOrders(currentPage);
               loadConnectionHealth();
               updateOrderTabs();
             } else {
               showToast('error', 'Sync Failed', data.error || 'Unknown error');
+              if (syncBtn) {
+                syncBtn.innerHTML = originalContent;
+                syncBtn.disabled = false;
+              }
             }
           } catch (error) {
+            console.error('Error syncing order:', error);
             showToast('error', 'Error', error.message);
+            if (syncBtn) {
+              syncBtn.innerHTML = originalContent;
+              syncBtn.disabled = false;
+            }
           }
         }
       );
@@ -1145,19 +1242,38 @@ Do you want to enable Auto Sync?`,
         'Retry Order',
         'Retry syncing this order?',
         async () => {
+          closeModal();
+          
+          // Show progress on the button
+          const retryBtn = event.target.closest('button');
+          const originalContent = retryBtn ? retryBtn.innerHTML : '';
+          if (retryBtn) {
+            retryBtn.disabled = true;
+            retryBtn.innerHTML = '<span class="material-icons-outlined text-sm mr-1 animate-spin">sync</span> Retrying...';
+          }
+          
           try {
             const response = await fetch(`/admin/api/orders/${orderId}/retry`, { method: 'POST' });
             const data = await response.json();
             if (data.success) {
               showToast('success', 'Order Sent', 'This order has been sent to Delybell successfully!');
-              loadOrders(currentPage);
+              await loadOrders(currentPage);
               loadConnectionHealth();
               updateOrderTabs();
             } else {
-              showToast('error', 'Could Not Send Order', 'This order could not be sent. Please check the error details or contact support.');
+              showToast('error', 'Could Not Send Order', data.error || 'This order could not be sent. Please check the error details or contact support.');
+              if (retryBtn) {
+                retryBtn.innerHTML = originalContent;
+                retryBtn.disabled = false;
+              }
             }
           } catch (error) {
+            console.error('Error retrying order:', error);
             showToast('error', 'Something Went Wrong', 'Please try again. If this continues, contact support.');
+            if (retryBtn) {
+              retryBtn.innerHTML = originalContent;
+              retryBtn.disabled = false;
+            }
           }
         }
       );
@@ -1627,14 +1743,22 @@ Do you want to enable Auto Sync?`,
     console.log('[App] Page loaded, shop:', shop);
     loadAppStatus();
     
-    // Auto-refresh every 30 seconds
+    // Auto-refresh every 15 seconds to catch new orders quickly
     setInterval(() => {
       if (shop) {
         loadConnectionHealth();
         loadOrders(currentPage);
         updateOrderTabs();
       }
-    }, 30000);
+    }, 15000);
+    
+    // Also refresh when tab becomes visible (user switches back to tab)
+    document.addEventListener('visibilitychange', () => {
+      if (!document.hidden && shop) {
+        loadOrders(currentPage);
+        updateOrderTabs();
+      }
+    });
   </script>
 </body>
 </html>

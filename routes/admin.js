@@ -1405,9 +1405,12 @@ router.get('/admin/api/orders', async (req, res) => {
       .select('*', { count: 'exact', head: true });
 
     // Build query for fetching data
+    // Order by shopify_order_created_at (when order was placed) for better ordering
+    // Fallback to created_at if shopify_order_created_at is null
     let query = supabase
       .from('order_logs')
       .select('*')
+      .order('shopify_order_created_at', { ascending: false, nullsFirst: false })
       .order('created_at', { ascending: false })
       .range(parseInt(offset), parseInt(offset) + parseInt(limit) - 1);
 

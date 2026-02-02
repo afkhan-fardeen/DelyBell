@@ -281,7 +281,9 @@ router.post('/orders/create', async (req, res) => {
         });
 
         console.log(`[Webhook] ✅ Order ${orderId} saved with status "pending_sync" (manual mode)`);
-        return; // Don't process, just save
+        
+        // Response already sent by respondQuickly() above, so we're done
+        return;
       }
 
       // Auto mode: Process order immediately (current behavior)
