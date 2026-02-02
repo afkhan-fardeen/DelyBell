@@ -1,5 +1,6 @@
 const express = require('express');
 const bodyParser = require('body-parser');
+const cookieParser = require('cookie-parser');
 const path = require('path');
 const config = require('./config');
 const webhookRoutes = require('./routes/webhooks');
@@ -15,6 +16,9 @@ app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 
 // Middleware
+// CRITICAL: Cookie parser must be first (needed for OAuth flow)
+app.use(cookieParser());
+
 // CRITICAL: For webhooks, we need raw body for HMAC verification
 // Must be applied BEFORE any other body parsers
 app.use('/webhooks', bodyParser.raw({ 

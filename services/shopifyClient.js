@@ -24,6 +24,8 @@ class ShopifyClient {
       hostName: hostName,
       apiVersion: '2025-10', // Latest stable API version available
       isEmbeddedApp: true, // Set to true for embedded apps (as per guide)
+      // Cookie settings for OAuth flow
+      customShopDomains: undefined, // Use default
       // Use custom session storage
       sessionStorage: {
         storeSession: async (session) => {
