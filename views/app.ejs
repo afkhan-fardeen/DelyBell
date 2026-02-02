@@ -737,10 +737,13 @@ Do you want to enable Auto Sync?`,
       currentPage = page;
       const ordersContainer = document.getElementById('ordersContainer');
       
+      // Calculate showCheckboxes based on current sync mode (must be available in this scope)
+      const showCheckboxes = currentSyncMode === 'manual';
+      
       if (ordersContainer) {
         ordersContainer.innerHTML = `
           <tr>
-            <td colspan="6" class="px-6 py-8 text-center text-slate-500 dark:text-slate-400">
+            <td colspan="${showCheckboxes ? '7' : '6'}" class="px-6 py-8 text-center text-slate-500 dark:text-slate-400">
               <div class="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-primary mb-2"></div>
               <div>Loading orders...</div>
             </td>
@@ -762,11 +765,14 @@ Do you want to enable Auto Sync?`,
         const data = await response.json();
         
         if (!data.success) {
+          console.error('[App] Failed to load orders:', data.error);
           throw new Error(data.error || 'Failed to load orders');
         }
         
         const orders = data.orders || [];
         totalOrders = data.total !== undefined ? data.total : orders.length;
+        
+        console.log(`[App] Loaded ${orders.length} orders (total: ${totalOrders}, filter: ${statusFilter || 'all'}, shop: ${shop})`);
         
         if (orders.length === 0) {
           if (ordersContainer) {
