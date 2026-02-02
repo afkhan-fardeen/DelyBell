@@ -17,7 +17,11 @@ app.set('views', path.join(__dirname, 'views'));
 
 // Middleware
 // CRITICAL: Cookie parser must be first (needed for OAuth flow)
+// Configure cookie parser with proper settings for production
 app.use(cookieParser());
+
+// Trust proxy for proper cookie handling behind reverse proxy (Render, etc.)
+app.set('trust proxy', 1);
 
 // CRITICAL: For webhooks, we need raw body for HMAC verification
 // Must be applied BEFORE any other body parsers

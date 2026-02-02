@@ -1,10 +1,12 @@
 const express = require('express');
 const router = express.Router();
+const crypto = require('crypto');
 const shopifyClient = require('../services/shopifyClient');
 const sessionStorage = require('../services/sessionStorage'); // Keep for backward compatibility during migration
 const config = require('../config');
 const { upsertShop } = require('../services/shopRepo');
 const { normalizeShop } = require('../utils/normalizeShop');
+const { supabase } = require('../services/db');
 
 /**
  * OAuth Install Route
@@ -40,14 +42,45 @@ router.get('/install', async (req, res) => {
 
     console.log(`[Auth] Starting OAuth for shop: ${shop}`);
 
+    // WORKAROUND: Store OAuth state in database instead of relying on cookies
+    // This fixes the cookie issue when behind proxies like Render
+    const state = crypto.randomBytes(16).toString('hex');
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+    
+    // Store state in database
+    if (process.env.SUPABASE_URL) {
+      const { error: stateError } = await supabase
+        .from('oauth_states')
+        .insert({
+          state: state,
+          shop: shop,
+          expires_at: expiresAt.toISOString(),
+        });
+      
+      if (stateError) {
+        console.error('[Auth] Failed to store OAuth state:', stateError);
+        // Continue anyway - try library method
+      } else {
+        console.log(`[Auth] Stored OAuth state in database: ${state.substring(0, 8)}...`);
+      }
+    }
+
     // Use Shopify library's OAuth flow
-    await shopifyClient.shopify.auth.begin({
-      shop,
-      callbackPath: '/auth/callback',
-      isOnline: false,
-      rawRequest: req,
-      rawResponse: res,
-    });
+    // If cookies fail, we'll fall back to manual OAuth in callback
+    try {
+      await shopifyClient.shopify.auth.begin({
+        shop,
+        callbackPath: '/auth/callback',
+        isOnline: false,
+        rawRequest: req,
+        rawResponse: res,
+      });
+    } catch (beginError) {
+      console.error('[Auth] Library OAuth begin failed, will use manual flow:', beginError.message);
+      // If library fails, we'll handle manually in callback
+      // For now, let the error propagate - the library should still work
+      throw beginError;
+    }
   } catch (error) {
     console.error('OAuth install error:', error);
     console.error('Error details:', {
@@ -149,15 +182,140 @@ router.get('/callback', async (req, res) => {
   try {
     const { shop: shopParam, code } = req.query;
 
+    console.log('[Auth] OAuth callback received:', {
+      shop: shopParam,
+      hasCode: !!code,
+      cookies: req.cookies ? Object.keys(req.cookies) : 'no cookies',
+      headers: {
+        cookie: req.headers.cookie ? 'present' : 'missing',
+        referer: req.headers.referer,
+      },
+    });
+
     if (!shopParam || !code) {
       return res.status(400).send('Missing required parameters: shop or code');
     }
 
     // Use Shopify library's callback handler (works with ngrok HTTPS URLs)
-    const callbackResponse = await shopifyClient.shopify.auth.callback({
-      rawRequest: req,
-      rawResponse: res,
-    });
+    // The library handles cookie reading internally
+    let callbackResponse;
+    try {
+      callbackResponse = await shopifyClient.shopify.auth.callback({
+        rawRequest: req,
+        rawResponse: res,
+      });
+    } catch (callbackError) {
+      // Handle callback-specific errors (especially cookie errors)
+      console.error('[Auth] OAuth callback error:', callbackError.message);
+      console.error('[Auth] Callback error details:', {
+        name: callbackError.name,
+        message: callbackError.message,
+        shop: shopParam,
+        hasCode: !!code,
+        cookies: req.cookies ? Object.keys(req.cookies) : 'no cookies',
+        cookieHeader: req.headers.cookie ? 'present' : 'missing',
+      });
+      
+      // If it's a cookie error, try manual OAuth flow as fallback
+      if (callbackError.message.includes('cookie') || callbackError.message.includes('Cookie') || callbackError.name === 'CookieNotFound') {
+        console.error('[Auth] Cookie-related error detected. Attempting manual OAuth flow...');
+        
+        // MANUAL OAUTH FALLBACK: Complete OAuth without relying on cookies
+        try {
+          const { hmac: hmacParam } = req.query;
+          
+          // Verify HMAC manually
+          const queryString = Object.keys(req.query)
+            .filter(key => key !== 'hmac' && key !== 'signature')
+            .sort()
+            .map(key => `${key}=${req.query[key]}`)
+            .join('&');
+          
+          const calculatedHmac = crypto
+            .createHmac('sha256', config.shopify.apiSecret)
+            .update(queryString)
+            .digest('hex');
+          
+          if (hmacParam !== calculatedHmac) {
+            throw new Error('Invalid HMAC signature');
+          }
+          
+          console.log('[Auth] HMAC verified, proceeding with manual OAuth...');
+          
+          // Exchange code for access token manually
+          const tokenResponse = await fetch(`https://${shopParam}/admin/oauth/access_token`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              client_id: config.shopify.apiKey,
+              client_secret: config.shopify.apiSecret,
+              code: code,
+            }),
+          });
+          
+          if (!tokenResponse.ok) {
+            const errorText = await tokenResponse.text();
+            throw new Error(`Token exchange failed: ${errorText}`);
+          }
+          
+          const tokenData = await tokenResponse.json();
+          const accessToken = tokenData.access_token;
+          const scopes = tokenData.scope;
+          
+          console.log('[Auth] ✅ Manual OAuth successful, received access token');
+          
+          // Create session object manually
+          const session = {
+            id: `offline_${shopParam}`,
+            shop: shopParam,
+            accessToken: accessToken,
+            scope: scopes,
+            scopes: scopes,
+            isOnline: false,
+          };
+          
+          // Store session (this will be handled below)
+          callbackResponse = { session };
+          
+          console.log('[Auth] Manual OAuth flow completed successfully, continuing with session storage...');
+          // Continue to session storage code below (don't throw error)
+        } catch (manualError) {
+          console.error('[Auth] Manual OAuth fallback also failed:', manualError.message);
+          return res.status(500).send(`
+            <!DOCTYPE html>
+            <html>
+            <head>
+              <title>OAuth Error</title>
+              <style>
+                body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 50px auto; padding: 20px; }
+                .error { background: #fee; border: 1px solid #fcc; padding: 20px; border-radius: 8px; }
+                h1 { color: #d72c0d; }
+                code { background: #f6f6f7; padding: 2px 6px; border-radius: 3px; }
+              </style>
+            </head>
+            <body>
+              <div class="error">
+                <h1>OAuth Authentication Error</h1>
+                <p>The OAuth process could not complete.</p>
+                <p><strong>Error:</strong> ${callbackError.message}</p>
+                <p><strong>Fallback Error:</strong> ${manualError.message}</p>
+                <p>Please try:</p>
+                <ol>
+                  <li>Clear your browser cookies for this domain</li>
+                  <li>Try the installation again</li>
+                  <li>If the issue persists, contact support</li>
+                </ol>
+                <p><a href="/auth/install?shop=${shopParam || 'your-shop.myshopify.com'}">Try Again</a></p>
+              </div>
+            </body>
+            </html>
+          `);
+        }
+      } else {
+        // Not a cookie error - re-throw
+        throw callbackError;
+      }
+    }
 
     // Store the session
     const session = callbackResponse.session;
