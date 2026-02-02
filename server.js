@@ -15,8 +15,16 @@ app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 
 // Middleware
-// For webhooks, we need raw body for HMAC verification
-app.use('/webhooks', bodyParser.raw({ type: 'application/json' }));
+// CRITICAL: For webhooks, we need raw body for HMAC verification
+// Must be applied BEFORE any other body parsers
+app.use('/webhooks', bodyParser.raw({ 
+  type: 'application/json',
+  verify: (req, res, buf) => {
+    // Store raw body for HMAC verification
+    req.rawBody = buf;
+  }
+}));
+// Other body parsers (applied to non-webhook routes)
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
