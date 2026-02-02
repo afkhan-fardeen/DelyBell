@@ -730,5 +730,135 @@ router.post('/app/uninstalled', async (req, res) => {
   }
 });
 
+/**
+ * GDPR Compliance Webhook: Customer Data Request
+ * Required for public apps - customer requests their data
+ * @see https://shopify.dev/apps/store/data-protection/gdpr-requirements
+ */
+router.post('/customers/data_request', async (req, res) => {
+  try {
+    const shop = req.headers['x-shopify-shop-domain'];
+    const topic = req.headers['x-shopify-topic'];
+    
+    console.log('[Webhook] GDPR: Customer data request received', {
+      shop,
+      topic,
+      timestamp: new Date().toISOString(),
+    });
+    
+    // Parse webhook body to log request details
+    try {
+      const data = parseWebhookBody(req);
+      console.log('[Webhook] Customer data request details:', {
+        customerId: data.customer?.id || data.id,
+        shopifyOrderIds: data.orders_requested || [],
+      });
+    } catch (parseError) {
+      console.warn('[Webhook] Could not parse customer data request body:', parseError.message);
+    }
+    
+    // For now, just acknowledge - no customer data is stored in this app
+    // If you store customer data in the future, implement data export here
+    res.status(200).json({
+      success: true,
+      message: 'Customer data request acknowledged',
+    });
+  } catch (error) {
+    console.error('[Webhook] Customer data request error:', error.message);
+    // Always respond 200 OK - never block Shopify
+    res.status(200).json({
+      success: true,
+      message: 'Request acknowledged',
+    });
+  }
+});
+
+/**
+ * GDPR Compliance Webhook: Customer Redaction
+ * Required for public apps - customer requests data deletion
+ * @see https://shopify.dev/apps/store/data-protection/gdpr-requirements
+ */
+router.post('/customers/redact', async (req, res) => {
+  try {
+    const shop = req.headers['x-shopify-shop-domain'];
+    const topic = req.headers['x-shopify-topic'];
+    
+    console.log('[Webhook] GDPR: Customer redaction request received', {
+      shop,
+      topic,
+      timestamp: new Date().toISOString(),
+    });
+    
+    // Parse webhook body to log request details
+    try {
+      const data = parseWebhookBody(req);
+      console.log('[Webhook] Customer redaction details:', {
+        customerId: data.customer?.id || data.id,
+        shopifyOrderIds: data.orders_to_redact || [],
+      });
+    } catch (parseError) {
+      console.warn('[Webhook] Could not parse customer redaction body:', parseError.message);
+    }
+    
+    // For now, just acknowledge - no customer data is stored in this app
+    // If you store customer data in the future, implement data deletion here
+    // Note: Order logs may contain customer data - consider anonymizing/deleting if needed
+    res.status(200).json({
+      success: true,
+      message: 'Customer redaction request acknowledged',
+    });
+  } catch (error) {
+    console.error('[Webhook] Customer redaction error:', error.message);
+    // Always respond 200 OK - never block Shopify
+    res.status(200).json({
+      success: true,
+      message: 'Request acknowledged',
+    });
+  }
+});
+
+/**
+ * GDPR Compliance Webhook: Shop Redaction
+ * Required for public apps - shop requests data deletion after uninstall
+ * @see https://shopify.dev/apps/store/data-protection/gdpr-requirements
+ */
+router.post('/shop/redact', async (req, res) => {
+  try {
+    const shop = req.headers['x-shopify-shop-domain'];
+    const topic = req.headers['x-shopify-topic'];
+    
+    console.log('[Webhook] GDPR: Shop redaction request received', {
+      shop,
+      topic,
+      timestamp: new Date().toISOString(),
+    });
+    
+    // Parse webhook body to log request details
+    try {
+      const data = parseWebhookBody(req);
+      console.log('[Webhook] Shop redaction details:', {
+        shopDomain: data.shop_domain || shop,
+      });
+    } catch (parseError) {
+      console.warn('[Webhook] Could not parse shop redaction body:', parseError.message);
+    }
+    
+    // Note: This is typically called 48 hours after app uninstall
+    // You may want to delete/anonymize shop data here if needed
+    // For now, just acknowledge - shop data cleanup is handled in /app/uninstalled
+    res.status(200).json({
+      success: true,
+      message: 'Shop redaction request acknowledged',
+    });
+  } catch (error) {
+    console.error('[Webhook] Shop redaction error:', error.message);
+    // Always respond 200 OK - never block Shopify
+    res.status(200).json({
+      success: true,
+      message: 'Request acknowledged',
+    });
+  }
+});
+
 module.exports = router;
 
