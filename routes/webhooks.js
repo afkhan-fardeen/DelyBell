@@ -339,8 +339,37 @@ router.post('/orders/create', async (req, res) => {
     } catch (processError) {
       console.error(`[Webhook] ❌ Order processing error for order ${orderId}:`, processError.message);
       console.error(`[Webhook] Error stack:`, processError.stack);
-      // Order is already logged to database by orderProcessor.processOrder (in catch block)
-      // TODO: Add to retry queue for failed orders
+      
+      // CRITICAL: Ensure order is saved even if processing fails
+      // This ensures orders always appear in the UI, even if sync fails
+      try {
+        const shippingAddress = shopifyOrder.shipping_address || shopifyOrder.billing_address;
+        const customerName = shippingAddress?.name || 
+          (shopifyOrder.customer?.first_name && shopifyOrder.customer?.last_name 
+            ? `${shopifyOrder.customer.first_name} ${shopifyOrder.customer.last_name}` 
+            : shopifyOrder.customer?.first_name || shopifyOrder.customer?.last_name || null);
+        const phone = shippingAddress?.phone || shopifyOrder.customer?.phone || null;
+        const shopifyOrderCreatedAt = shopifyOrder.created_at || null;
+        
+        await orderProcessor.logOrder({
+          shop,
+          shopifyOrderId: shopifyOrder.id?.toString() || shopifyOrder.order_number?.toString(),
+          shopifyOrderNumber: shopifyOrder.order_number || null,
+          delybellOrderId: null,
+          status: 'failed',
+          errorMessage: `Processing error: ${processError.message}`,
+          totalPrice: shopifyOrder.total_price ? parseFloat(shopifyOrder.total_price) : null,
+          currency: shopifyOrder.currency || 'USD',
+          customerName: customerName,
+          phone: phone,
+          shopifyOrderCreatedAt: shopifyOrderCreatedAt,
+          financialStatus: shopifyOrder.financial_status || orderStatus,
+        });
+        console.log(`[Webhook] ✅ Order ${orderId} saved with failed status after processing error`);
+      } catch (logError) {
+        console.error(`[Webhook] ❌ Failed to save order ${orderId} after processing error:`, logError.message);
+      }
+      
       // Don't throw - we've already responded to Shopify
     }
   } catch (error) {

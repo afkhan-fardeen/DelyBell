@@ -2215,6 +2215,7 @@ router.get('/admin/api/debug', async (req, res) => {
       const shopData = await getShop(normalizedShop);
       debug.shopInDatabase = !!shopData;
       debug.syncMode = shopData?.sync_mode || 'not set';
+      debug.autoSyncEnabledAt = shopData?.auto_sync_enabled_at || null;
       
       // Check order logs
       const { supabase } = require('../services/db');
@@ -2241,6 +2242,41 @@ router.get('/admin/api/debug', async (req, res) => {
     });
   } catch (error) {
     console.error('[Debug] Error:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message,
+    });
+  }
+});
+
+/**
+ * Fix sync mode endpoint - Set shop to manual sync mode
+ * POST /admin/api/fix-sync-mode?shop=your-shop.myshopify.com
+ */
+router.post('/admin/api/fix-sync-mode', async (req, res) => {
+  try {
+    const { shop } = req.query;
+    
+    if (!shop) {
+      return res.status(400).json({
+        success: false,
+        error: 'Shop parameter is required',
+      });
+    }
+    
+    const { normalizeShop } = require('../utils/normalizeShop');
+    const normalizedShop = normalizeShop(shop);
+    
+    const { updateSyncMode } = require('../services/shopRepo');
+    const updatedShop = await updateSyncMode(normalizedShop, 'manual');
+    
+    res.json({
+      success: true,
+      message: 'Sync mode updated to manual',
+      shop: updatedShop,
+    });
+  } catch (error) {
+    console.error('[Fix Sync Mode] Error:', error);
     res.status(500).json({
       success: false,
       error: error.message,
