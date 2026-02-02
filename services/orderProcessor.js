@@ -762,8 +762,9 @@ class OrderProcessor {
 
       if (error) {
         console.error(`[OrderProcessor] Failed to log order ${shopifyOrderId}:`, error.message);
+        console.error(`[OrderProcessor] Error details:`, JSON.stringify(error, null, 2));
       } else {
-        console.log(`[OrderProcessor] ✅ Logged order ${shopifyOrderId} with status: ${status}`);
+        console.log(`[OrderProcessor] ✅ Logged order ${shopifyOrderId} with status: ${status}, shop: ${shop}`);
       }
     } catch (logError) {
       // Don't throw - logging failures shouldn't break order processing

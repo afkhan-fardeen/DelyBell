@@ -281,6 +281,7 @@ router.post('/orders/create', async (req, res) => {
         });
 
         console.log(`[Webhook] ✅ Order ${orderId} saved with status "pending_sync" (manual mode)`);
+        console.log(`[Webhook] Order details: shop=${shop}, orderNumber=${shopifyOrder.order_number}, shopifyOrderId=${shopifyOrder.id}`);
         
         // Response already sent by respondQuickly() above, so we're done
         return;

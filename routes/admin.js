@@ -1434,8 +1434,11 @@ router.get('/admin/api/orders', async (req, res) => {
     if (shop) {
       const { normalizeShop } = require('../utils/normalizeShop');
       const normalizedShop = normalizeShop(shop);
+      console.log(`[Admin API] Loading orders for shop: ${shop} (normalized: ${normalizedShop})`);
       query = query.eq('shop', normalizedShop);
       countQuery = countQuery.eq('shop', normalizedShop);
+    } else {
+      console.log(`[Admin API] Loading orders for all shops (no shop filter)`);
     }
 
     if (status) {
@@ -1473,8 +1476,16 @@ router.get('/admin/api/orders', async (req, res) => {
       query
     ]);
     
-    if (countError) throw countError;
-    if (ordersError) throw ordersError;
+    if (countError) {
+      console.error(`[Admin API] Count query error for shop ${shop}:`, countError);
+      throw countError;
+    }
+    if (ordersError) {
+      console.error(`[Admin API] Orders query error for shop ${shop}:`, ordersError);
+      throw ordersError;
+    }
+    
+    console.log(`[Admin API] Found ${orders?.length || 0} orders (total count: ${totalCount || 0}) for shop: ${shop}`);
     
     // Filter by phone/customer name if search is text and not a number
     let filteredOrders = orders || [];
@@ -2167,6 +2178,69 @@ router.patch('/admin/api/problem-reports/:id', async (req, res) => {
     });
   } catch (error) {
     console.error('[Admin] Error updating problem report:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message,
+    });
+  }
+});
+
+/**
+ * Debug endpoint - Check webhook registration and order logs
+ * GET /admin/api/debug?shop=your-shop.myshopify.com
+ */
+router.get('/admin/api/debug', async (req, res) => {
+  try {
+    const { shop } = req.query;
+    
+    if (!shop) {
+      return res.status(400).json({
+        success: false,
+        error: 'Shop parameter is required',
+      });
+    }
+    
+    const { normalizeShop } = require('../utils/normalizeShop');
+    const normalizedShop = normalizeShop(shop);
+    
+    const debug = {
+      shop: shop,
+      normalizedShop: normalizedShop,
+      timestamp: new Date().toISOString(),
+    };
+    
+    // Check if shop exists in database
+    if (process.env.SUPABASE_URL) {
+      const { getShop } = require('../services/shopRepo');
+      const shopData = await getShop(normalizedShop);
+      debug.shopInDatabase = !!shopData;
+      debug.syncMode = shopData?.sync_mode || 'not set';
+      
+      // Check order logs
+      const { supabase } = require('../services/db');
+      const { data: orderLogs, error: logsError } = await supabase
+        .from('order_logs')
+        .select('id, shopify_order_id, shopify_order_number, status, created_at')
+        .eq('shop', normalizedShop)
+        .order('created_at', { ascending: false })
+        .limit(10);
+      
+      if (!logsError) {
+        debug.recentOrders = orderLogs || [];
+        debug.totalOrders = orderLogs?.length || 0;
+      } else {
+        debug.orderLogsError = logsError.message;
+      }
+    } else {
+      debug.supabaseConfigured = false;
+    }
+    
+    res.json({
+      success: true,
+      debug,
+    });
+  } catch (error) {
+    console.error('[Debug] Error:', error);
     res.status(500).json({
       success: false,
       error: error.message,
