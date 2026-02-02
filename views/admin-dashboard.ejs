@@ -1383,10 +1383,11 @@
         if (data.success) {
           const select = document.getElementById('filterShop');
           select.innerHTML = '<option value="">All Shops</option>';
-          data.shops.forEach(shop => {
+          data.shops.forEach(shopObj => {
             const option = document.createElement('option');
-            option.value = shop;
-            option.textContent = shop;
+            const shopDomain = shopObj.shop || shopObj; // Handle both object and string formats
+            option.value = shopDomain;
+            option.textContent = shopDomain;
             select.appendChild(option);
           });
         }

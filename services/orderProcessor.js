@@ -678,20 +678,76 @@ class OrderProcessor {
         }
       }
       
-      const { error } = await supabase
-        .from('order_logs')
-        .insert(insertData);
+      // Use upsert to update existing records instead of creating duplicates
+      // Match on shop + shopify_order_id to update existing orders
+      // First try with unique constraint, fallback to manual update if constraint doesn't exist
+      let error = null;
+      
+      try {
+        const { error: upsertError } = await supabase
+          .from('order_logs')
+          .upsert(insertData, {
+            onConflict: 'shop,shopify_order_id',
+            ignoreDuplicates: false
+          });
+        error = upsertError;
+      } catch (constraintError) {
+        // Unique constraint might not exist yet - try manual update/insert
+        console.warn('[OrderProcessor] Unique constraint not found, using manual update/insert');
+        
+        // Check if order already exists
+        const existing = await this.findOrderLog(shop, shopifyOrderId);
+        
+        if (existing) {
+          // Update existing record
+          const { error: updateError } = await supabase
+            .from('order_logs')
+            .update(insertData)
+            .eq('shop', shop)
+            .eq('shopify_order_id', shopifyOrderId);
+          error = updateError;
+        } else {
+          // Insert new record
+          const { error: insertError } = await supabase
+            .from('order_logs')
+            .insert(insertData);
+          error = insertError;
+        }
+      }
       
       // If error is about missing column, try without error_message
       if (error && error.message && error.message.includes('error_message')) {
-        console.warn('[OrderProcessor] error_message column not found, inserting without it');
+        console.warn('[OrderProcessor] error_message column not found, upserting without it');
         delete insertData.error_message;
-        const { error: retryError } = await supabase
-          .from('order_logs')
-          .insert(insertData);
         
-        if (retryError) {
-          throw retryError;
+        try {
+          const { error: retryError } = await supabase
+            .from('order_logs')
+            .upsert(insertData, {
+              onConflict: 'shop,shopify_order_id',
+              ignoreDuplicates: false
+            });
+          error = retryError;
+        } catch (retryConstraintError) {
+          // Fallback to manual update
+          const existing = await this.findOrderLog(shop, shopifyOrderId);
+          if (existing) {
+            const { error: updateError } = await supabase
+              .from('order_logs')
+              .update(insertData)
+              .eq('shop', shop)
+              .eq('shopify_order_id', shopifyOrderId);
+            error = updateError;
+          } else {
+            const { error: insertError } = await supabase
+              .from('order_logs')
+              .insert(insertData);
+            error = insertError;
+          }
+        }
+        
+        if (error) {
+          throw error;
         }
         return; // Success on retry
       }
