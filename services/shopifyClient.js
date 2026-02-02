@@ -281,6 +281,104 @@ class ShopifyClient {
       throw error;
     }
   }
+
+  /**
+   * Register GDPR compliance webhooks (idempotent)
+   * Required for public apps - registers customers/data_request, customers/redact, shop/redact
+   * @param {Object} session - Shopify session
+   * @param {string} webhookBaseUrl - Base URL for webhooks (e.g., "https://delybell.onrender.com")
+   * @returns {Promise<Array>} Registered webhooks
+   */
+  async registerGDPRWebhooks(session, webhookBaseUrl) {
+    try {
+      if (!session || !session.accessToken) {
+        throw new Error('No valid session found. Please authenticate first.');
+      }
+
+      const client = new this.shopify.clients.Rest({ session });
+      
+      // GDPR webhooks required for public apps
+      const gdprWebhooks = [
+        {
+          topic: 'customers/data_request',
+          address: `${webhookBaseUrl}/webhooks/customers/data_request`,
+        },
+        {
+          topic: 'customers/redact',
+          address: `${webhookBaseUrl}/webhooks/customers/redact`,
+        },
+        {
+          topic: 'shop/redact',
+          address: `${webhookBaseUrl}/webhooks/shop/redact`,
+        },
+      ];
+
+      // First, get existing webhooks to check what's already registered
+      let existingWebhooks = [];
+      try {
+        const listResponse = await client.get({
+          path: 'webhooks',
+        });
+        existingWebhooks = listResponse.body.webhooks || [];
+        console.log(`[GDPR Webhooks] Found ${existingWebhooks.length} existing webhooks`);
+      } catch (listError) {
+        console.warn('[GDPR Webhooks] Could not list existing webhooks, will attempt to create:', listError.message);
+      }
+
+      const registered = [];
+      
+      for (const webhook of gdprWebhooks) {
+        // Check if webhook already exists
+        const existing = existingWebhooks.find(
+          w => w.topic === webhook.topic && w.address === webhook.address
+        );
+
+        if (existing) {
+          console.log(`[GDPR Webhooks] Webhook ${webhook.topic} already registered (id: ${existing.id})`);
+          registered.push(existing);
+          continue;
+        }
+
+        // Register new webhook
+        try {
+          const response = await client.post({
+            path: 'webhooks',
+            data: {
+              webhook: {
+                topic: webhook.topic,
+                address: webhook.address,
+                format: 'json',
+              },
+            },
+          });
+          registered.push(response.body.webhook);
+          console.log(`[GDPR Webhooks] ✅ Registered webhook: ${webhook.topic}`);
+        } catch (error) {
+          // Check if webhook already exists (idempotency)
+          const errorBody = error.response?.body || {};
+          const errorMessage = JSON.stringify(errorBody);
+          
+          if (errorMessage.includes('already been taken') || errorMessage.includes('already exists')) {
+            console.log(`[GDPR Webhooks] Webhook ${webhook.topic} already registered (this is fine)`);
+            // Try to find it in the list
+            const found = existingWebhooks.find(w => w.topic === webhook.topic);
+            if (found) {
+              registered.push(found);
+            }
+          } else {
+            console.error(`[GDPR Webhooks] ❌ Failed to register webhook ${webhook.topic}:`, error.message);
+            // Don't throw - continue with other webhooks
+          }
+        }
+      }
+
+      console.log(`[GDPR Webhooks] Registration complete. ${registered.length}/${gdprWebhooks.length} webhooks registered.`);
+      return registered;
+    } catch (error) {
+      console.error('[GDPR Webhooks] Error registering GDPR webhooks:', error);
+      throw error;
+    }
+  }
 }
 
 module.exports = new ShopifyClient();

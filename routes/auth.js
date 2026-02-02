@@ -206,6 +206,7 @@ router.get('/callback', async (req, res) => {
         const protocol = hostName.includes('localhost') ? 'http' : 'https';
         const webhookUrl = `${protocol}://${hostName}`;
         
+        // Register order/app webhooks
         const webhooks = [
           {
             topic: 'orders/create',
@@ -225,7 +226,16 @@ router.get('/callback', async (req, res) => {
         ];
         
         const registered = await shopifyClient.registerWebhooks(session, webhooks);
-        console.log(`[Auth] Auto-registered ${registered.length} webhooks for shop: ${session.shop}`);
+        console.log(`[Auth] Auto-registered ${registered.length} order/app webhooks for shop: ${session.shop}`);
+        
+        // Register GDPR compliance webhooks (required for public apps)
+        try {
+          const gdprWebhooks = await shopifyClient.registerGDPRWebhooks(session, webhookUrl);
+          console.log(`[Auth] ✅ Auto-registered ${gdprWebhooks.length} GDPR compliance webhooks for shop: ${session.shop}`);
+        } catch (gdprError) {
+          // Log error but don't fail installation - GDPR webhooks can be registered manually later
+          console.error('[Auth] ⚠️ Failed to auto-register GDPR webhooks (non-critical):', gdprError.message);
+        }
       } catch (webhookError) {
         // Log error but don't fail installation - webhooks can be registered manually later
         console.error('[Auth] Failed to auto-register webhooks (non-critical):', webhookError.message);
