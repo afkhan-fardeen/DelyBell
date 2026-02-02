@@ -579,6 +579,8 @@
     }
     
     // Load sync mode
+    let autoSyncEnabledAt = null;
+    
     async function loadSyncMode() {
       if (!shop) return;
       
@@ -586,12 +588,14 @@
         const response = await fetch(`/admin/api/shops/${encodeURIComponent(shop)}/sync-mode`);
         const data = await response.json();
         if (data.success) {
-          currentSyncMode = data.sync_mode || 'manual';
+          currentSyncMode = data.sync_mode || 'manual'; // STRICT: Default to manual
+          autoSyncEnabledAt = data.auto_sync_enabled_at || null;
           updateSyncModeUI();
         }
       } catch (error) {
         console.error('Error loading sync mode:', error);
         currentSyncMode = 'manual';
+        autoSyncEnabledAt = null;
         updateSyncModeUI();
       }
     }
@@ -622,14 +626,21 @@
       
       if (syncModeDescription) {
         if (currentSyncMode === 'auto') {
+          const enabledDate = autoSyncEnabledAt ? new Date(autoSyncEnabledAt).toLocaleString('en-US', { dateStyle: 'short', timeStyle: 'short' }) : null;
           syncModeDescription.innerHTML = `
             <div class="bg-blue-50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-900/30 rounded-lg p-4 flex items-start space-x-3">
               <span class="material-icons-outlined text-blue-600 dark:text-blue-400 mt-0.5">info</span>
-              <div>
-                <h3 class="font-semibold text-blue-900 dark:text-blue-300 text-sm">How Auto Sync Works</h3>
-                <p class="text-blue-800 dark:text-blue-400/80 text-sm mt-1 leading-relaxed">
+              <div class="flex-1">
+                <h3 class="font-semibold text-blue-900 dark:text-blue-300 text-sm mb-2">How Auto Sync Works</h3>
+                <p class="text-blue-800 dark:text-blue-400/80 text-sm leading-relaxed mb-2">
                   When a customer places an order in your Shopify store, it will <span class="font-bold">automatically sync to Delybell</span> within seconds. No action needed from you — orders appear in Delybell immediately.
                 </p>
+                ${enabledDate ? `
+                  <p class="text-blue-700 dark:text-blue-500 text-xs mt-2 pt-2 border-t border-blue-200 dark:border-blue-900/30">
+                    <span class="material-icons-outlined text-xs align-middle mr-1">schedule</span>
+                    Auto sync enabled on ${enabledDate}. Only orders placed after this time will sync automatically.
+                  </p>
+                ` : ''}
               </div>
             </div>
           `;
@@ -637,11 +648,17 @@
           syncModeDescription.innerHTML = `
             <div class="bg-yellow-50 dark:bg-yellow-900/10 border border-yellow-100 dark:border-yellow-900/30 rounded-lg p-4 flex items-start space-x-3">
               <span class="material-icons-outlined text-yellow-600 dark:text-yellow-400 mt-0.5">info</span>
-              <div>
-                <h3 class="font-semibold text-yellow-900 dark:text-yellow-300 text-sm">How Manual Sync Works</h3>
-                <p class="text-yellow-800 dark:text-yellow-400/80 text-sm mt-1 leading-relaxed">
+              <div class="flex-1">
+                <h3 class="font-semibold text-yellow-900 dark:text-yellow-300 text-sm mb-2">How Manual Sync Works</h3>
+                <p class="text-yellow-800 dark:text-yellow-400/80 text-sm leading-relaxed mb-2">
                   Orders are <span class="font-bold">saved but not synced automatically</span>. You can review orders and choose which ones to sync to Delybell. Use the checkboxes in the orders table below to select orders, then click "Sync Selected" when ready.
                 </p>
+                <div class="bg-yellow-100 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-900/40 rounded-md p-2 mt-2">
+                  <p class="text-yellow-900 dark:text-yellow-300 text-xs font-medium">
+                    <span class="material-icons-outlined text-xs align-middle mr-1">lock</span>
+                    Auto sync is OFF. All new orders will be saved for manual review.
+                  </p>
+                </div>
               </div>
             </div>
           `;
@@ -694,7 +711,8 @@ Do you want to enable Auto Sync?`,
         const data = await response.json();
         if (data.success) {
           currentSyncMode = mode;
-          updateSyncModeUI();
+          // Reload sync mode to get auto_sync_enabled_at timestamp
+          await loadSyncMode();
           loadOrders(currentPage); // Reload orders to update UI
           updateOrderTabs(); // Update counts
           
@@ -883,13 +901,25 @@ Do you want to enable Auto Sync?`,
       
       function getPaymentBadge(financialStatus) {
         if (!financialStatus) return '<span class="text-slate-400">—</span>';
-        if (financialStatus === 'paid') {
+        
+        const status = financialStatus.toLowerCase();
+        
+        if (status === 'paid') {
           return `<span class="inline-flex items-center px-2 py-1 bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 text-[10px] font-bold rounded border border-green-200 dark:border-green-900/50">
             <span class="material-icons-outlined text-[12px] mr-1">credit_card</span> PAID
           </span>`;
         }
-        return `<span class="inline-flex items-center px-2 py-1 bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 text-[10px] font-bold rounded border border-amber-200 dark:border-amber-900/50">
-          <span class="material-icons-outlined text-[12px] mr-1">payments</span> COD
+        
+        // COD or pending payment
+        if (status === 'pending' || status === 'authorized' || status === 'partially_paid') {
+          return `<span class="inline-flex items-center px-2 py-1 bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 text-[10px] font-bold rounded border border-amber-200 dark:border-amber-900/50">
+            <span class="material-icons-outlined text-[12px] mr-1">payments</span> COD
+          </span>`;
+        }
+        
+        // Other statuses
+        return `<span class="inline-flex items-center px-2 py-1 bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-400 text-[10px] font-bold rounded border border-slate-200 dark:border-slate-700">
+          <span class="material-icons-outlined text-[12px] mr-1">payment</span> ${financialStatus.toUpperCase()}
         </span>`;
       }
       
@@ -1160,7 +1190,7 @@ Do you want to enable Auto Sync?`,
                   </div>
                   <div>
                     <p class="text-slate-500 dark:text-slate-400 mb-1">Payment</p>
-                    <p class="font-semibold">${order.financialStatus === 'paid' ? 'Paid' : 'Cash on Delivery'}</p>
+                    <p class="font-semibold">${order.financialStatus === 'paid' ? 'Paid' : order.financialStatus === 'pending' || order.financialStatus === 'authorized' ? 'Cash on Delivery' : order.financialStatus ? order.financialStatus.charAt(0).toUpperCase() + order.financialStatus.slice(1) : 'Unknown'}</p>
                   </div>
                   <div>
                     <p class="text-slate-500 dark:text-slate-400 mb-1">Amount</p>
@@ -1188,13 +1218,18 @@ Do you want to enable Auto Sync?`,
                 ${order.createdAt ? `
                   <div>
                     <p class="text-slate-500 dark:text-slate-400 mb-1">Order Placed</p>
-                    <p class="font-semibold">${new Date(order.createdAt).toLocaleString()}</p>
+                    <p class="font-semibold">${new Date(order.createdAt).toLocaleString('en-US', { dateStyle: 'full', timeStyle: 'short' })}</p>
                   </div>
                 ` : ''}
                 ${order.syncedAt ? `
                   <div>
                     <p class="text-slate-500 dark:text-slate-400 mb-1">Synced At</p>
-                    <p class="font-semibold">${new Date(order.syncedAt).toLocaleString()}</p>
+                    <p class="font-semibold">${new Date(order.syncedAt).toLocaleString('en-US', { dateStyle: 'full', timeStyle: 'short' })}</p>
+                  </div>
+                ` : order.status === 'pending_sync' ? `
+                  <div>
+                    <p class="text-slate-500 dark:text-slate-400 mb-1">Synced At</p>
+                    <p class="font-semibold text-yellow-600 dark:text-yellow-400">Not synced yet</p>
                   </div>
                 ` : ''}
                 ${order.errorMessage ? `
@@ -1426,11 +1461,15 @@ Do you want to enable Auto Sync?`,
               <div class="px-6 py-4 border-b border-border-light dark:border-border-dark flex justify-between items-center">
                 <div class="flex items-center space-x-2">
                   <h2 class="font-semibold text-lg">Order Sync Mode</h2>
-                  <span class="sync-mode-badge px-2 py-0.5 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 text-[10px] font-bold uppercase rounded" id="syncModeBadge">Manual</span>
+                  <span class="sync-mode-badge px-2 py-0.5 bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400 text-[10px] font-bold uppercase rounded" id="syncModeBadge">Manual</span>
                 </div>
                 <div class="flex items-center bg-slate-100 dark:bg-slate-800 p-1 rounded-lg">
-                  <button class="px-4 py-1.5 text-sm font-medium rounded-md bg-white dark:bg-slate-700 shadow-sm text-slate-900 dark:text-white" id="autoSyncBtn" onclick="updateSyncMode('auto')">Auto Sync</button>
-                  <button class="px-4 py-1.5 text-sm font-medium text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200" id="manualSyncBtn" onclick="updateSyncMode('manual')">Manual Sync</button>
+                  <button class="px-4 py-1.5 text-sm font-medium text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-colors inline-flex items-center" id="autoSyncBtn" onclick="updateSyncMode('auto')" title="Orders will sync automatically when customers place them">
+                    <span class="material-icons-outlined text-sm mr-1">sync</span> Auto Sync
+                  </button>
+                  <button class="px-4 py-1.5 text-sm font-medium rounded-md bg-white dark:bg-slate-700 shadow-sm text-slate-900 dark:text-white transition-colors inline-flex items-center" id="manualSyncBtn" onclick="updateSyncMode('manual')" title="You choose which orders to sync manually">
+                    <span class="material-icons-outlined text-sm mr-1">touch_app</span> Manual Sync
+                  </button>
                 </div>
               </div>
               <div class="p-6">

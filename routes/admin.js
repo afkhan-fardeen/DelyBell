@@ -1480,7 +1480,7 @@ router.get('/admin/api/orders', async (req, res) => {
       phone: order.phone || 'N/A',
       amount: order.total_price,
       currency: order.currency || 'USD',
-      financialStatus: order.financial_status || (order.status === 'processed' ? 'paid' : 'pending'),
+      financialStatus: order.financial_status || null, // Use stored value, don't infer
       createdAt: order.shopify_order_created_at || order.created_at,
       syncedAt: order.synced_at || order.created_at,
       errorMessage: order.error_message,
@@ -1711,7 +1711,8 @@ router.get('/admin/api/shops/:shop/sync-mode', async (req, res) => {
 
     res.json({
       success: true,
-      sync_mode: shopData.sync_mode || 'auto',
+      sync_mode: shopData.sync_mode || 'manual', // STRICT: Default to manual
+      auto_sync_enabled_at: shopData.auto_sync_enabled_at || null,
     });
   } catch (error) {
     console.error('[Admin] Error fetching sync mode:', error);

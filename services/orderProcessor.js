@@ -102,6 +102,7 @@ class OrderProcessor {
       // shopifyOrder.order_number = display number (e.g., 1022) - USE FOR DISPLAY ONLY
       const shopifyOrderId = shopifyOrder.id?.toString() || shopifyOrder.order_number?.toString();
       const shopifyOrderNumber = shopifyOrder.order_number || null;
+      const financialStatus = shopifyOrder.financial_status || null;
       
       if (!shopifyOrderId) {
         throw new Error('Shopify order ID is required');
@@ -278,6 +279,7 @@ class OrderProcessor {
               customerName: customerName,
               phone: phone,
               shopifyOrderCreatedAt: shopifyOrderCreatedAt,
+              financialStatus: financialStatus,
             });
             
             return {
@@ -302,6 +304,7 @@ class OrderProcessor {
               customerName: customerName,
               phone: phone,
               shopifyOrderCreatedAt: shopifyOrderCreatedAt,
+              financialStatus: financialStatus,
             });
             
             return {
@@ -357,6 +360,7 @@ class OrderProcessor {
             customerName: customerName,
             phone: phone,
             shopifyOrderCreatedAt: shopifyOrderCreatedAt,
+            financialStatus: financialStatus,
           });
           
           return {
@@ -397,6 +401,7 @@ class OrderProcessor {
                 customerName: customerName,
                 phone: phone,
                 shopifyOrderCreatedAt: shopifyOrderCreatedAt,
+                financialStatus: financialStatus,
               });
               
               return {
@@ -463,10 +468,11 @@ class OrderProcessor {
           customerName: customerName,
           phone: phone,
           shopifyOrderCreatedAt: shopifyOrderCreatedAt,
+          financialStatus: financialStatus,
         });
-        
-        return {
-          success: true,
+
+      return {
+        success: true,
           shopifyOrderId: shopifyOrderId,
           delybellOrderId: delybellOrderId.toString(),
           message: 'Order created successfully',
@@ -489,6 +495,7 @@ class OrderProcessor {
         errorMessage: errorMessage,
         totalPrice: shopifyOrder.total_price ? parseFloat(shopifyOrder.total_price) : null,
         currency: shopifyOrder.currency || 'USD',
+        financialStatus: financialStatus,
       });
       
       throw new Error(errorMessage);
@@ -625,7 +632,7 @@ class OrderProcessor {
    * @param {string} params.phone - Customer phone number (optional)
    * @param {string} params.shopifyOrderCreatedAt - Shopify order creation time (when order was placed) (optional)
    */
-  async logOrder({ shop, shopifyOrderId, shopifyOrderNumber = null, delybellOrderId = null, status, errorMessage = null, totalPrice = null, currency = 'USD', customerName = null, phone = null, shopifyOrderCreatedAt = null }) {
+  async logOrder({ shop, shopifyOrderId, shopifyOrderNumber = null, delybellOrderId = null, status, errorMessage = null, totalPrice = null, currency = 'USD', customerName = null, phone = null, shopifyOrderCreatedAt = null, financialStatus = null }) {
     if (!process.env.SUPABASE_URL) {
       // Supabase not configured - skip logging
       return;
@@ -660,6 +667,7 @@ class OrderProcessor {
         customer_name: customerName, // Customer name
         phone: phone, // Customer phone number
         shopify_order_created_at: shopifyOrderCreatedAt, // When order was placed in Shopify
+        financial_status: financialStatus || null, // Payment status (paid, pending, authorized, etc.)
       };
 
       // Add synced_at timestamp if order is processed (synced to Delybell)

@@ -11,12 +11,21 @@ const { supabase } = require('./db');
  * @param {string} params.shop - Shop domain (e.g., 'store.myshopify.com')
  * @param {string} params.accessToken - Shopify access token
  * @param {string} params.scopes - OAuth scopes
- * @param {string} params.syncMode - Sync mode: "auto" | "manual" (optional, defaults to "auto")
+ * @param {string} params.syncMode - Sync mode: "auto" | "manual" (optional, defaults to "manual")
  * @returns {Promise<Object>} Supabase response
  */
 async function upsertShop({ shop, accessToken, scopes, syncMode = 'manual' }) {
   if (!process.env.SUPABASE_URL) {
     throw new Error('Supabase not configured. Set SUPABASE_URL environment variable.');
+  }
+
+  // STRICT: Ensure default is always manual
+  const finalSyncMode = syncMode || 'manual';
+  if (finalSyncMode !== 'auto' && finalSyncMode !== 'manual') {
+    console.warn(`[ShopRepo] Invalid sync_mode "${finalSyncMode}", defaulting to 'manual'`);
+    syncMode = 'manual';
+  } else {
+    syncMode = finalSyncMode;
   }
 
   console.log(`[ShopRepo] Upserting shop: ${shop} (sync_mode: ${syncMode})`);
@@ -28,7 +37,7 @@ async function upsertShop({ shop, accessToken, scopes, syncMode = 'manual' }) {
         shop,
         access_token: accessToken,
         scopes,
-        sync_mode: syncMode, // Default to 'auto' if not provided
+        sync_mode: syncMode, // STRICT: Default is 'manual'
         installed_at: new Date().toISOString(),
       },
       {

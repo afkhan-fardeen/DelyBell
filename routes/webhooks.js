@@ -277,6 +277,7 @@ router.post('/orders/create', async (req, res) => {
           customerName: customerName,
           phone: phone,
           shopifyOrderCreatedAt: shopifyOrderCreatedAt,
+          financialStatus: shopifyOrder.financial_status || orderStatus, // Store payment status
         });
 
         console.log(`[Webhook] ✅ Order ${orderId} saved with status "pending_sync" (manual mode)`);
@@ -575,6 +576,7 @@ router.post('/orders/update', async (req, res) => {
           customerName: customerName,
           phone: phone,
           shopifyOrderCreatedAt: shopifyOrderCreatedAt,
+          financialStatus: shopifyOrder.financial_status || orderStatus, // Store payment status
         });
 
         console.log(`[Webhook] ✅ Order update ${orderId} saved with status "pending_sync"`);
