@@ -131,6 +131,8 @@ async function getAllShops() {
 
 /**
  * Update shop sync mode
+ * CRITICAL: When switching to auto, set auto_sync_enabled_at timestamp
+ * This ensures we NEVER auto-sync orders created before auto mode was enabled
  * @param {string} shop - Shop domain
  * @param {string} syncMode - Sync mode: "auto" | "manual"
  * @returns {Promise<Object>} Updated shop data
@@ -146,9 +148,24 @@ async function updateSyncMode(shop, syncMode) {
 
   console.log(`[ShopRepo] Updating sync_mode for shop ${shop} to ${syncMode}`);
   
+  // Build update object
+  const updateData = { sync_mode: syncMode };
+  
+  // CRITICAL RULE: Set auto_sync_enabled_at when switching TO auto mode
+  // This timestamp is used to prevent auto-syncing orders created before auto mode was enabled
+  if (syncMode === 'auto') {
+    // Only set if not already set (preserve original enable time)
+    const currentShop = await getShop(shop);
+    if (!currentShop || !currentShop.auto_sync_enabled_at) {
+      updateData.auto_sync_enabled_at = new Date().toISOString();
+      console.log(`[ShopRepo] Setting auto_sync_enabled_at for shop ${shop}`);
+    }
+  }
+  // When switching back to manual, we keep auto_sync_enabled_at for historical reference
+  
   const { data, error } = await supabase
     .from('shops')
-    .update({ sync_mode: syncMode })
+    .update(updateData)
     .eq('shop', shop)
     .select()
     .single();
@@ -158,7 +175,11 @@ async function updateSyncMode(shop, syncMode) {
     throw error;
   }
 
-  console.log(`[ShopRepo] ✅ Sync mode updated for shop ${shop}`);
+  console.log(`[ShopRepo] ✅ Sync mode updated for shop ${shop} to ${syncMode}`);
+  if (syncMode === 'auto' && updateData.auto_sync_enabled_at) {
+    console.log(`[ShopRepo] ⚠️ Auto sync enabled. Only orders created AFTER ${updateData.auto_sync_enabled_at} will be auto-synced.`);
+  }
+  
   return data;
 }
 

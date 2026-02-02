@@ -661,6 +661,29 @@
         return;
       }
       
+      // If switching to auto mode, show warning about existing orders
+      if (mode === 'auto' && currentSyncMode === 'manual') {
+        showModal(
+          'Switch to Auto Sync?',
+          `When you switch to Auto Sync:
+          
+• Only NEW orders placed AFTER enabling will sync automatically
+• Existing pending orders will remain pending and need manual sync
+• This prevents duplicate orders and ensures data accuracy
+
+Do you want to enable Auto Sync?`,
+          async () => {
+            await performSyncModeUpdate(mode);
+          }
+        );
+        return;
+      }
+      
+      // If switching to manual, proceed directly
+      await performSyncModeUpdate(mode);
+    }
+    
+    async function performSyncModeUpdate(mode) {
       try {
         const response = await fetch(`/admin/api/shops/${encodeURIComponent(shop)}/sync-mode`, {
           method: 'POST',
@@ -672,9 +695,16 @@
         if (data.success) {
           currentSyncMode = mode;
           updateSyncModeUI();
-          showToast('success', 'Sync Mode Changed', `Your orders will now ${mode === 'auto' ? 'sync automatically when customers place orders' : 'be saved for you to sync manually'}.`);
+          loadOrders(currentPage); // Reload orders to update UI
+          updateOrderTabs(); // Update counts
+          
+          if (mode === 'auto') {
+            showToast('success', 'Auto Sync Enabled', 'New orders will now sync automatically. Existing orders remain pending for manual sync.');
+          } else {
+            showToast('success', 'Manual Sync Enabled', 'Orders will be saved for you to sync manually when ready.');
+          }
         } else {
-          showToast('error', 'Could Not Change Mode', 'Please try again. If this continues, contact support.');
+          showToast('error', 'Could Not Change Mode', data.error || 'Please try again. If this continues, contact support.');
         }
       } catch (error) {
         console.error('Error updating sync mode:', error);
@@ -876,16 +906,9 @@
               <td class="col-delybell-id font-mono text-xs text-slate-600 dark:text-slate-400">${order.delybellOrderId || '—'}</td>
               <td class="col-action text-right">
                 ${order.status === 'processed' ? `
-                  <div class="flex items-center gap-2 justify-end">
-                    <button class="inline-flex items-center px-3 py-1.5 bg-white dark:bg-surface-dark border border-border-light dark:border-border-dark rounded-md text-xs font-semibold hover:border-primary hover:text-primary dark:hover:text-primary transition-all shadow-sm" onclick="viewOrderDetails('${order.id}')">
-                      <span class="material-icons-outlined text-sm mr-1">visibility</span> View
-                    </button>
-                    ${order.delybellOrderId ? `
-                      <button class="inline-flex items-center px-3 py-1.5 bg-white dark:bg-surface-dark border border-border-light dark:border-border-dark rounded-md text-xs font-semibold hover:border-primary hover:text-primary dark:hover:text-primary transition-all shadow-sm" onclick="window.open('https://delybell.com/orders/${order.delybellOrderId}', '_blank')" title="View in Delybell">
-                        <span class="material-icons-outlined text-sm mr-1">open_in_new</span> Delybell
-                      </button>
-                    ` : ''}
-                  </div>
+                  <button class="inline-flex items-center px-3 py-1.5 bg-white dark:bg-surface-dark border border-border-light dark:border-border-dark rounded-md text-xs font-semibold hover:border-primary hover:text-primary dark:hover:text-primary transition-all shadow-sm" onclick="viewOrderDetails('${order.id}')">
+                    <span class="material-icons-outlined text-sm mr-1">visibility</span> View
+                  </button>
                 ` : ''}
                 ${order.status === 'failed' ? `
                   <button class="inline-flex items-center px-3 py-1.5 bg-white dark:bg-surface-dark border border-border-light dark:border-border-dark rounded-md text-xs font-semibold hover:border-primary hover:text-primary dark:hover:text-primary transition-all shadow-sm" onclick="retryOrder('${order.id}')">
