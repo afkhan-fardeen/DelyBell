@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html class="light" lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Terms of Service - Delybell Order Sync</title>
+  
+  <!-- Fonts -->
+  <link href="https://fonts.googleapis.com" rel="preconnect"/>
+  <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet"/>
+  
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com?plugins=forms,typography"></script>
+  <script>
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          colors: {
+            primary: "#008060",
+            "background-light": "#f6f6f7",
+            "background-dark": "#1a1a1a",
+            "surface-light": "#ffffff",
+            "surface-dark": "#2a2a2a",
+            "border-light": "#e1e3e5",
+            "border-dark": "#3e3e3e",
+          },
+          fontFamily: {
+            display: ["Inter", "sans-serif"],
+            sans: ["Inter", "sans-serif"],
+          },
+        },
+      },
+    };
+  </script>
+  
+  <style>
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    }
+    .prose {
+      max-width: none;
+    }
+    .prose h2 {
+      color: #202223;
+      font-weight: 600;
+      margin-top: 2rem;
+      margin-bottom: 1rem;
+    }
+    .dark .prose h2 {
+      color: #ffffff;
+    }
+    .prose p {
+      color: #6d7175;
+      margin-bottom: 1rem;
+    }
+    .dark .prose p {
+      color: #b3b3b3;
+    }
+    .prose ul {
+      color: #6d7175;
+      margin-left: 1.5rem;
+      margin-bottom: 1rem;
+    }
+    .dark .prose ul {
+      color: #b3b3b3;
+    }
+    .prose li {
+      margin-bottom: 0.5rem;
+    }
+    .prose strong {
+      color: #202223;
+      font-weight: 600;
+    }
+    .dark .prose strong {
+      color: #ffffff;
+    }
+  </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 min-h-screen">
+  <div class="min-h-screen flex flex-col">
+    <!-- Header -->
+    <header class="bg-surface-light dark:bg-surface-dark border-b border-border-light dark:border-border-dark">
+      <div class="max-w-4xl mx-auto px-6 py-4">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-3">
+            <div class="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
+              <span class="material-icons-outlined text-white text-lg">local_shipping</span>
+            </div>
+            <h1 class="text-xl font-bold text-slate-900 dark:text-slate-100">Delybell Order Sync</h1>
+          </div>
+          <button 
+            class="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+            onclick="document.documentElement.classList.toggle('dark')"
+            aria-label="Toggle dark mode"
+          >
+            <span class="material-icons-outlined dark:hidden">dark_mode</span>
+            <span class="material-icons-outlined hidden dark:block text-yellow-400">light_mode</span>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="flex-1 py-8 px-6">
+      <div class="max-w-4xl mx-auto">
+        <div class="bg-surface-light dark:bg-surface-dark rounded-lg border border-border-light dark:border-border-dark shadow-sm p-8 md:p-12">
+          <h1 class="text-3xl md:text-4xl font-bold text-slate-900 dark:text-slate-100 mb-2">Terms of Service</h1>
+          <p class="text-slate-500 dark:text-slate-400 text-sm mb-8">Last Updated: <span id="lastUpdated"></span></p>
+
+          <div class="prose prose-slate dark:prose-invert max-w-none">
+            <h2>1. Acceptance of Terms</h2>
+            <p>
+              By installing and using the Delybell Order Sync app ("the App"), you agree to be bound by these 
+              Terms of Service ("Terms"). If you do not agree to these Terms, do not install or use the App.
+            </p>
+
+            <h2>2. Description of Service</h2>
+            <p>
+              The App automatically syncs orders from your Shopify store to the Delybell delivery management 
+              system. The App processes orders in real-time and facilitates order fulfillment through Delybell's 
+              delivery network. You can choose between automatic sync (orders sync immediately) or manual sync 
+              (you control when orders are synced).
+            </p>
+
+            <h2>3. Eligibility</h2>
+            <p>
+              You must be at least 18 years old and have the legal authority to bind your business to these Terms. 
+              You must have a valid Shopify store and Delybell account to use the App.
+            </p>
+
+            <h2>4. App Usage</h2>
+            <p>You agree to:</p>
+            <ul>
+              <li>Use the App only for lawful purposes</li>
+              <li>Provide accurate information during installation</li>
+              <li>Maintain the security of your Shopify store credentials</li>
+              <li>Not attempt to reverse engineer or modify the App</li>
+              <li>Not use the App to transmit malicious code or spam</li>
+              <li>Not interfere with the App's operation or security</li>
+              <li>Comply with all applicable laws and regulations</li>
+            </ul>
+
+            <h2>5. Free Service</h2>
+            <p>
+              The App is provided free of charge. There are no subscription fees, usage fees, or hidden charges. 
+              However, standard Delybell delivery fees apply to orders processed through the App. These fees are 
+              separate from the App and are governed by Delybell's terms and conditions.
+            </p>
+
+            <h2>6. Data and Privacy</h2>
+            <p>
+              Your use of the App is subject to our Privacy Policy. By using the App, you consent to the 
+              collection and use of your data as described in the Privacy Policy. We process order data solely 
+              for the purpose of fulfilling deliveries through Delybell.
+            </p>
+            <p>
+              You are responsible for ensuring that you have the right to share customer data with us and that 
+              you comply with all applicable data protection laws when using the App.
+            </p>
+
+            <h2>7. Service Availability</h2>
+            <p>
+              We strive to maintain high availability of the App, but we do not guarantee uninterrupted or 
+              error-free service. The App may be temporarily unavailable due to maintenance, updates, or 
+              unforeseen circumstances. We are not liable for any losses resulting from service interruptions.
+            </p>
+
+            <h2>8. Order Processing</h2>
+            <p>
+              The App syncs orders to Delybell's system. We are not responsible for:
+            </p>
+            <ul>
+              <li>Delivery delays or failures by Delybell or its delivery partners</li>
+              <li>Incorrect order information provided by your Shopify store</li>
+              <li>Issues with Delybell's delivery management system</li>
+              <li>Orders that fail to sync due to invalid address data or other order issues</li>
+            </ul>
+
+            <h2>9. Limitation of Liability</h2>
+            <p>
+              To the maximum extent permitted by law, we shall not be liable for any indirect, incidental, 
+              special, consequential, or punitive damages arising from your use of the App. Our total liability 
+              shall not exceed the amount you paid for the App (which is $0 for this free app).
+            </p>
+            <p>
+              We are not liable for any losses related to:
+            </p>
+            <ul>
+              <li>Failed order syncs or delivery delays</li>
+              <li>Data loss or corruption</li>
+              <li>Service interruptions</li>
+              <li>Third-party services (including Delybell and Shopify)</li>
+            </ul>
+
+            <h2>10. Indemnification</h2>
+            <p>
+              You agree to indemnify and hold us harmless from any claims, damages, or expenses arising from 
+              your use of the App, violation of these Terms, or infringement of any rights of another party.
+            </p>
+
+            <h2>11. Intellectual Property</h2>
+            <p>
+              The App and all related intellectual property rights are owned by us or our licensors. You are 
+              granted a limited, non-exclusive, non-transferable license to use the App for its intended purpose. 
+              You may not copy, modify, distribute, or create derivative works of the App.
+            </p>
+
+            <h2>12. Termination</h2>
+            <p>
+              You may uninstall the App at any time through your Shopify admin panel. We reserve the right to 
+              suspend or terminate your access to the App if you violate these Terms or engage in fraudulent 
+              activity. Upon termination, we will stop processing your orders, but historical data may be retained 
+              as required by law or for legitimate business purposes.
+            </p>
+
+            <h2>13. Modifications</h2>
+            <p>
+              We reserve the right to modify these Terms at any time. We will notify you of material changes 
+              by posting the updated Terms on this page and updating the "Last Updated" date. Your continued use 
+              of the App after changes constitutes acceptance of the new Terms.
+            </p>
+
+            <h2>14. Support</h2>
+            <p>
+              We provide support for the App through the "Report Problem" feature within the App dashboard. 
+              While we strive to respond promptly, we do not guarantee specific response times or resolution 
+              of all issues.
+            </p>
+
+            <h2>15. Governing Law</h2>
+            <p>
+              These Terms shall be governed by and construed in accordance with applicable laws, without regard 
+              to conflict of law provisions. Any disputes shall be resolved through good faith negotiation.
+            </p>
+
+            <h2>16. Severability</h2>
+            <p>
+              If any provision of these Terms is found to be unenforceable, the remaining provisions shall 
+              remain in full effect.
+            </p>
+
+            <h2>17. Contact Information</h2>
+            <p>
+              If you have any questions about these Terms, please contact us:
+            </p>
+            <ul>
+              <li>Email: support@delybell.com</li>
+              <li>Through the App: Use the "Report Problem" feature in the app dashboard</li>
+            </ul>
+
+            <h2>18. Entire Agreement</h2>
+            <p>
+              These Terms, together with our Privacy Policy, constitute the entire agreement between you and us 
+              regarding the use of the App and supersede all prior agreements and understandings.
+            </p>
+          </div>
+
+          <!-- Footer Links -->
+          <div class="mt-12 pt-8 border-t border-border-light dark:border-border-dark flex flex-wrap gap-6 text-sm">
+            <a href="/privacy" class="text-primary hover:underline">Privacy Policy</a>
+            <a href="/terms" class="text-slate-600 dark:text-slate-400 hover:underline">Terms of Service</a>
+            <a href="/" class="text-slate-600 dark:text-slate-400 hover:underline">Back to App</a>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-surface-light dark:bg-surface-dark border-t border-border-light dark:border-border-dark mt-12">
+      <div class="max-w-4xl mx-auto px-6 py-6">
+        <p class="text-center text-sm text-slate-500 dark:text-slate-400">
+          © <%= new Date().getFullYear() %> Delybell Order Sync. All rights reserved.
+        </p>
+      </div>
+    </footer>
+  </div>
+
+  <script>
+    // Set last updated date
+    document.getElementById('lastUpdated').textContent = new Date().toLocaleDateString('en-US', { 
+      year: 'numeric', 
+      month: 'long', 
+      day: 'numeric' 
+    });
+
+    // Persist dark mode preference
+    const prefersDark = localStorage.getItem('darkMode') === 'true' || 
+      (!localStorage.getItem('darkMode') && window.matchMedia('(prefers-color-scheme: dark)').matches);
+    if (prefersDark) {
+      document.documentElement.classList.add('dark');
+    }
+
+    document.querySelector('button[aria-label="Toggle dark mode"]').addEventListener('click', () => {
+      const isDark = document.documentElement.classList.toggle('dark');
+      localStorage.setItem('darkMode', isDark);
+    });
+  </script>
+</body>
+</html>

@@ -16,6 +16,22 @@ router.get('/', (req, res) => {
 });
 
 /**
+ * Privacy Policy Page
+ * GET /privacy
+ */
+router.get('/privacy', (req, res) => {
+  res.render('privacy');
+});
+
+/**
+ * Terms of Service Page
+ * GET /terms
+ */
+router.get('/terms', (req, res) => {
+  res.render('terms');
+});
+
+/**
  * Embedded Shopify Admin App - SERVER-RENDERED (EJS)
  * Purpose: Actual app UI inside Shopify Admin
  * GET /app?shop=your-shop.myshopify.com

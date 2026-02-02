@@ -251,6 +251,22 @@
     </div>
   </div>
   
+  <!-- Footer -->
+  <footer class="mt-16 pt-8 border-t border-border-light dark:border-border-dark bg-surface-light dark:bg-surface-dark">
+    <div class="max-w-6xl mx-auto px-6 py-6">
+      <div class="flex flex-col md:flex-row justify-between items-center gap-4 text-sm text-slate-500 dark:text-slate-400">
+        <div class="flex items-center gap-6 flex-wrap justify-center md:justify-start">
+          <span class="font-semibold text-slate-700 dark:text-slate-300">Delybell Order Sync</span>
+          <a href="/privacy" class="hover:text-primary transition-colors">Privacy Policy</a>
+          <a href="/terms" class="hover:text-primary transition-colors">Terms of Service</a>
+        </div>
+        <div class="text-center md:text-right">
+          <p>&copy; <%= new Date().getFullYear() %> Delybell. All rights reserved.</p>
+        </div>
+      </div>
+    </div>
+  </footer>
+  
   <!-- Dark Mode Toggle -->
   <div class="fixed bottom-6 right-6">
     <button class="p-3 bg-white dark:bg-surface-dark border border-border-light dark:border-border-dark rounded-full shadow-lg hover:scale-110 transition-transform" onclick="document.documentElement.classList.toggle('dark')">

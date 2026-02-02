@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html class="light" lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Privacy Policy - Delybell Order Sync</title>
+  
+  <!-- Fonts -->
+  <link href="https://fonts.googleapis.com" rel="preconnect"/>
+  <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet"/>
+  
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com?plugins=forms,typography"></script>
+  <script>
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          colors: {
+            primary: "#008060",
+            "background-light": "#f6f6f7",
+            "background-dark": "#1a1a1a",
+            "surface-light": "#ffffff",
+            "surface-dark": "#2a2a2a",
+            "border-light": "#e1e3e5",
+            "border-dark": "#3e3e3e",
+          },
+          fontFamily: {
+            display: ["Inter", "sans-serif"],
+            sans: ["Inter", "sans-serif"],
+          },
+        },
+      },
+    };
+  </script>
+  
+  <style>
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    }
+    .prose {
+      max-width: none;
+    }
+    .prose h2 {
+      color: #202223;
+      font-weight: 600;
+      margin-top: 2rem;
+      margin-bottom: 1rem;
+    }
+    .dark .prose h2 {
+      color: #ffffff;
+    }
+    .prose p {
+      color: #6d7175;
+      margin-bottom: 1rem;
+    }
+    .dark .prose p {
+      color: #b3b3b3;
+    }
+    .prose ul {
+      color: #6d7175;
+      margin-left: 1.5rem;
+      margin-bottom: 1rem;
+    }
+    .dark .prose ul {
+      color: #b3b3b3;
+    }
+    .prose li {
+      margin-bottom: 0.5rem;
+    }
+    .prose strong {
+      color: #202223;
+      font-weight: 600;
+    }
+    .dark .prose strong {
+      color: #ffffff;
+    }
+  </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 min-h-screen">
+  <div class="min-h-screen flex flex-col">
+    <!-- Header -->
+    <header class="bg-surface-light dark:bg-surface-dark border-b border-border-light dark:border-border-dark">
+      <div class="max-w-4xl mx-auto px-6 py-4">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-3">
+            <div class="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
+              <span class="material-icons-outlined text-white text-lg">local_shipping</span>
+            </div>
+            <h1 class="text-xl font-bold text-slate-900 dark:text-slate-100">Delybell Order Sync</h1>
+          </div>
+          <button 
+            class="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+            onclick="document.documentElement.classList.toggle('dark')"
+            aria-label="Toggle dark mode"
+          >
+            <span class="material-icons-outlined dark:hidden">dark_mode</span>
+            <span class="material-icons-outlined hidden dark:block text-yellow-400">light_mode</span>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="flex-1 py-8 px-6">
+      <div class="max-w-4xl mx-auto">
+        <div class="bg-surface-light dark:bg-surface-dark rounded-lg border border-border-light dark:border-border-dark shadow-sm p-8 md:p-12">
+          <h1 class="text-3xl md:text-4xl font-bold text-slate-900 dark:text-slate-100 mb-2">Privacy Policy</h1>
+          <p class="text-slate-500 dark:text-slate-400 text-sm mb-8">Last Updated: <span id="lastUpdated"></span></p>
+
+          <div class="prose prose-slate dark:prose-invert max-w-none">
+            <h2>1. Introduction</h2>
+            <p>
+              Delybell Order Sync ("we", "our", or "us") is committed to protecting your privacy. 
+              This Privacy Policy explains how we collect, use, and safeguard information when you use 
+              our Shopify app ("the App").
+            </p>
+
+            <h2>2. Information We Collect</h2>
+            <p>When you install and use the App, we collect the following information:</p>
+            <ul>
+              <li><strong>Shop Information:</strong> Your Shopify store domain and basic shop details</li>
+              <li><strong>Order Data:</strong> Order information including customer details, shipping addresses, 
+                  order items, and order status</li>
+              <li><strong>Authentication Tokens:</strong> OAuth tokens required to access your Shopify store data</li>
+              <li><strong>Order Logs:</strong> We maintain logs of order synchronization attempts, including success/failure status</li>
+            </ul>
+
+            <h2>3. How We Use Your Information</h2>
+            <p>We use the collected information solely for the following purposes:</p>
+            <ul>
+              <li>To sync orders from your Shopify store to the Delybell delivery management system</li>
+              <li>To process and fulfill delivery orders</li>
+              <li>To provide customer support and technical assistance</li>
+              <li>To improve our services and troubleshoot issues</li>
+              <li>To comply with legal obligations</li>
+            </ul>
+
+            <h2>4. Data Sharing</h2>
+            <p>
+              We share order data with Delybell's delivery management system to process and fulfill deliveries. 
+              We do not sell, rent, or share your data with third parties except as necessary to provide our services.
+            </p>
+            <p>
+              We may share data in the following circumstances:
+            </p>
+            <ul>
+              <li>With Delybell's delivery management system for order fulfillment</li>
+              <li>When required by law or legal process</li>
+              <li>To protect our rights or prevent fraud</li>
+            </ul>
+
+            <h2>5. Data Security</h2>
+            <p>
+              We implement appropriate technical and organizational measures to protect your data against 
+              unauthorized access, alteration, disclosure, or destruction. All data transmission is encrypted 
+              using industry-standard SSL/TLS protocols. We use secure cloud infrastructure and follow 
+              industry best practices for data protection.
+            </p>
+
+            <h2>6. Data Retention</h2>
+            <p>
+              We retain your data only for as long as necessary to provide our services. When you uninstall 
+              the App, we delete your authentication tokens and stop processing your orders. Historical order 
+              data may be retained in Delybell's system as required for delivery fulfillment and legal compliance.
+            </p>
+            <p>
+              Order logs are retained for a reasonable period to assist with troubleshooting and support.
+            </p>
+
+            <h2>7. Your Rights</h2>
+            <p>You have the right to:</p>
+            <ul>
+              <li>Access your personal data</li>
+              <li>Request correction of inaccurate data</li>
+              <li>Request deletion of your data</li>
+              <li>Object to processing of your data</li>
+              <li>Request data portability</li>
+              <li>Uninstall the App at any time</li>
+            </ul>
+            <p>
+              To exercise these rights, please contact us at support@delybell.com or uninstall the App 
+              through your Shopify admin panel.
+            </p>
+
+            <h2>8. GDPR Compliance</h2>
+            <p>
+              We comply with the General Data Protection Regulation (GDPR) and process data in accordance 
+              with GDPR requirements. We have implemented the following GDPR webhooks:
+            </p>
+            <ul>
+              <li><strong>Customer Data Request:</strong> We respond to customer data requests as required by GDPR</li>
+              <li><strong>Customer Redaction:</strong> We process customer data deletion requests</li>
+              <li><strong>Shop Redaction:</strong> We handle shop data deletion requests after app uninstallation</li>
+            </ul>
+
+            <h2>9. Cookies and Tracking</h2>
+            <p>
+              We use session cookies to maintain your authentication state within the App. We do not use 
+              tracking cookies, third-party analytics, or advertising cookies. The App operates within 
+              Shopify's embedded app framework, which may use its own cookies for authentication.
+            </p>
+
+            <h2>10. Children's Privacy</h2>
+            <p>
+              Our App is not intended for use by individuals under the age of 18. We do not knowingly collect 
+              personal information from children. If you believe we have collected information from a child, 
+              please contact us immediately.
+            </p>
+
+            <h2>11. International Data Transfers</h2>
+            <p>
+              Your data may be transferred to and processed in countries other than your country of residence. 
+              We ensure that appropriate safeguards are in place to protect your data in accordance with 
+              applicable data protection laws.
+            </p>
+
+            <h2>12. Changes to This Policy</h2>
+            <p>
+              We may update this Privacy Policy from time to time. We will notify you of any material changes 
+              by posting the new Privacy Policy on this page and updating the "Last Updated" date. Your 
+              continued use of the App after changes constitutes acceptance of the updated policy.
+            </p>
+
+            <h2>13. Contact Us</h2>
+            <p>
+              If you have any questions about this Privacy Policy or wish to exercise your rights, please contact us:
+            </p>
+            <ul>
+              <li>Email: support@delybell.com</li>
+              <li>Through the App: Use the "Report Problem" feature in the app dashboard</li>
+            </ul>
+
+            <h2>14. Compliance</h2>
+            <p>
+              This Privacy Policy complies with:
+            </p>
+            <ul>
+              <li>General Data Protection Regulation (GDPR)</li>
+              <li>California Consumer Privacy Act (CCPA)</li>
+              <li>Shopify's App Store requirements</li>
+              <li>Other applicable data protection laws</li>
+            </ul>
+          </div>
+
+          <!-- Footer Links -->
+          <div class="mt-12 pt-8 border-t border-border-light dark:border-border-dark flex flex-wrap gap-6 text-sm">
+            <a href="/privacy" class="text-primary hover:underline">Privacy Policy</a>
+            <a href="/terms" class="text-slate-600 dark:text-slate-400 hover:underline">Terms of Service</a>
+            <a href="/" class="text-slate-600 dark:text-slate-400 hover:underline">Back to App</a>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-surface-light dark:bg-surface-dark border-t border-border-light dark:border-border-dark mt-12">
+      <div class="max-w-4xl mx-auto px-6 py-6">
+        <p class="text-center text-sm text-slate-500 dark:text-slate-400">
+          © <%= new Date().getFullYear() %> Delybell Order Sync. All rights reserved.
+        </p>
+      </div>
+    </footer>
+  </div>
+
+  <script>
+    // Set last updated date
+    document.getElementById('lastUpdated').textContent = new Date().toLocaleDateString('en-US', { 
+      year: 'numeric', 
+      month: 'long', 
+      day: 'numeric' 
+    });
+
+    // Persist dark mode preference
+    const prefersDark = localStorage.getItem('darkMode') === 'true' || 
+      (!localStorage.getItem('darkMode') && window.matchMedia('(prefers-color-scheme: dark)').matches);
+    if (prefersDark) {
+      document.documentElement.classList.add('dark');
+    }
+
+    document.querySelector('button[aria-label="Toggle dark mode"]').addEventListener('click', () => {
+      const isDark = document.documentElement.classList.toggle('dark');
+      localStorage.setItem('darkMode', isDark);
+    });
+  </script>
+</body>
+</html>
