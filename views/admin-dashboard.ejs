@@ -1256,6 +1256,50 @@
       </div>
     </div>
     
+    <!-- Problem Reports Section -->
+    <div class="orders-card" style="margin-bottom: 24px;">
+      <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
+        <div class="card-title">Problem Reports</div>
+        <div style="display: flex; gap: 8px;">
+          <select class="filter-select" id="reportStatusFilter" style="width: auto; padding: 6px 12px; font-size: 11px;">
+            <option value="">All Status</option>
+            <option value="open">Open</option>
+            <option value="in_progress">In Progress</option>
+            <option value="resolved">Resolved</option>
+            <option value="closed">Closed</option>
+          </select>
+          <button class="btn btn-secondary" onclick="loadProblemReports()" style="padding: 6px 12px; font-size: 11px;">
+            <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+            </svg>
+            Refresh
+          </button>
+        </div>
+      </div>
+      <div class="table-container">
+        <table>
+          <thead>
+            <tr>
+              <th>Reported At</th>
+              <th>Shop</th>
+              <th>Order #</th>
+              <th>Subject</th>
+              <th>Status</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody id="problemReportsTableBody">
+            <tr>
+              <td colspan="6" class="loading">
+                <div class="loading-spinner"></div>
+                <div>Loading reports...</div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    
     <!-- Orders Table -->
     <div class="orders-card">
       <div class="card-header">
@@ -1318,6 +1362,23 @@
       </div>
       <div class="modal-body" id="modalBody">
         <!-- Details will be loaded here -->
+      </div>
+    </div>
+  </div>
+  
+  <!-- Problem Report Details Modal -->
+  <div class="modal" id="reportModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <div class="modal-title">Problem Report Details</div>
+        <button class="modal-close" onclick="closeReportModal()">
+          <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+          </svg>
+        </button>
+      </div>
+      <div class="modal-body" id="reportModalBody">
+        <!-- Report details will be loaded here -->
       </div>
     </div>
   </div>
@@ -1902,10 +1963,226 @@ ${order.errorMessage ? `Error: ${order.errorMessage}` : ''}
       });
     }
     
+    // Problem Reports Functions
+    async function loadProblemReports() {
+      const tbody = document.getElementById('problemReportsTableBody');
+      if (!tbody) return;
+      
+      tbody.innerHTML = '<tr><td colspan="6" class="loading"><div class="loading-spinner"></div><div>Loading reports...</div></td></tr>';
+      
+      try {
+        const statusFilter = document.getElementById('reportStatusFilter')?.value || '';
+        const shopFilter = currentFilters.shop;
+        
+        const params = new URLSearchParams();
+        if (shopFilter) params.append('shop', shopFilter);
+        if (statusFilter) params.append('status', statusFilter);
+        params.append('limit', '50');
+        
+        const response = await fetch(`/admin/api/problem-reports?${params}`);
+        const data = await response.json();
+        
+        if (data.success) {
+          if (data.reports.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="6" class="empty-state"><div class="empty-state-icon"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg></div><div class="empty-state-title">No reports found</div></td></tr>';
+          } else {
+            tbody.innerHTML = data.reports.map(report => {
+              const statusClass = report.status === 'open' ? 'status-pending' : 
+                                 report.status === 'in_progress' ? 'status-pending' :
+                                 report.status === 'resolved' ? 'status-synced' : 'status-failed';
+              const statusText = report.status === 'open' ? 'Open' :
+                                report.status === 'in_progress' ? 'In Progress' :
+                                report.status === 'resolved' ? 'Resolved' : 'Closed';
+              
+              return `
+                <tr>
+                  <td>
+                    <div class="order-number">${new Date(report.reported_at).toLocaleString('en-US', { dateStyle: 'short', timeStyle: 'short' })}</div>
+                    <div class="time-ago">${timeAgo(report.reported_at)}</div>
+                  </td>
+                  <td>
+                    <a href="#" class="shop-link" onclick="filterByShop('${report.shop}'); return false;">${report.shop}</a>
+                  </td>
+                  <td>${report.shopify_order_number ? `#${report.shopify_order_number}` : '—'}</td>
+                  <td>
+                    <div class="order-number" style="max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${report.subject}">${report.subject}</div>
+                  </td>
+                  <td>
+                    <span class="status-badge ${statusClass}">${statusText}</span>
+                  </td>
+                  <td>
+                    <button class="btn btn-secondary" onclick="viewReportDetails('${report.id}')">
+                      <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                      </svg>
+                      View
+                    </button>
+                  </td>
+                </tr>
+              `;
+            }).join('');
+          }
+        }
+      } catch (error) {
+        tbody.innerHTML = `<tr><td colspan="6" class="empty-state"><div style="color: var(--color-error);">Error loading reports: ${error.message}</div></td></tr>`;
+      }
+    }
+    
+    async function viewReportDetails(reportId) {
+      try {
+        const response = await fetch(`/admin/api/problem-reports`);
+        const data = await response.json();
+        
+        if (data.success) {
+          const report = data.reports.find(r => r.id === reportId);
+          if (!report) {
+            alert('Report not found');
+            return;
+          }
+          
+          const modalBody = document.getElementById('reportModalBody');
+          const statusClass = report.status === 'open' ? 'status-pending' : 
+                             report.status === 'in_progress' ? 'status-pending' :
+                             report.status === 'resolved' ? 'status-synced' : 'status-failed';
+          const statusText = report.status === 'open' ? 'Open' :
+                            report.status === 'in_progress' ? 'In Progress' :
+                            report.status === 'resolved' ? 'Resolved' : 'Closed';
+          
+          modalBody.innerHTML = `
+            <div class="detail-row">
+              <div class="detail-label">Reported At</div>
+              <div class="detail-value">${new Date(report.reported_at).toLocaleString('en-US', { dateStyle: 'full', timeStyle: 'short' })}</div>
+            </div>
+            <div class="detail-row">
+              <div class="detail-label">Shop</div>
+              <div class="detail-value">${report.shop}</div>
+            </div>
+            ${report.shopify_order_number ? `
+              <div class="detail-row">
+                <div class="detail-label">Order #</div>
+                <div class="detail-value">#${report.shopify_order_number}</div>
+              </div>
+            ` : ''}
+            <div class="detail-row">
+              <div class="detail-label">Subject</div>
+              <div class="detail-value"><strong>${report.subject}</strong></div>
+            </div>
+            <div class="detail-row">
+              <div class="detail-label">Status</div>
+              <div class="detail-value"><span class="status-badge ${statusClass}">${statusText}</span></div>
+            </div>
+            <div class="detail-row">
+              <div class="detail-label">Message</div>
+              <div class="detail-value" style="white-space: pre-wrap; line-height: 1.6;">${report.message}</div>
+            </div>
+            ${report.admin_notes ? `
+              <div class="detail-row">
+                <div class="detail-label">Admin Notes</div>
+                <div class="detail-value" style="white-space: pre-wrap; line-height: 1.6;">${report.admin_notes}</div>
+              </div>
+            ` : ''}
+            ${report.resolved_at ? `
+              <div class="detail-row">
+                <div class="detail-label">Resolved At</div>
+                <div class="detail-value">${new Date(report.resolved_at).toLocaleString('en-US', { dateStyle: 'full', timeStyle: 'short' })}</div>
+              </div>
+            ` : ''}
+            <div style="margin-top: 20px; padding-top: 20px; border-top: 2px solid var(--color-border);">
+              <div class="detail-label" style="margin-bottom: 12px;">Update Status</div>
+              <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px;">
+                <button class="btn btn-primary" onclick="updateReportStatus('${report.id}', 'open')" ${report.status === 'open' ? 'disabled' : ''}>Mark as Open</button>
+                <button class="btn btn-primary" onclick="updateReportStatus('${report.id}', 'in_progress')" ${report.status === 'in_progress' ? 'disabled' : ''}>Mark as In Progress</button>
+                <button class="btn btn-primary" onclick="updateReportStatus('${report.id}', 'resolved')" ${report.status === 'resolved' ? 'disabled' : ''}>Mark as Resolved</button>
+                <button class="btn btn-secondary" onclick="updateReportStatus('${report.id}', 'closed')" ${report.status === 'closed' ? 'disabled' : ''}>Close</button>
+              </div>
+              <div>
+                <label class="detail-label">Add Admin Notes</label>
+                <textarea id="adminNotesInput" rows="3" class="filter-input" style="width: 100%; margin-top: 8px;" placeholder="Add notes about this report...">${report.admin_notes || ''}</textarea>
+                <button class="btn btn-primary" onclick="saveAdminNotes('${report.id}')" style="margin-top: 8px;">Save Notes</button>
+              </div>
+            </div>
+          `;
+          
+          document.getElementById('reportModal').classList.add('active');
+        }
+      } catch (error) {
+        alert('Error loading report details: ' + error.message);
+      }
+    }
+    
+    function closeReportModal() {
+      document.getElementById('reportModal').classList.remove('active');
+    }
+    
+    async function updateReportStatus(reportId, status) {
+      try {
+        const response = await fetch(`/admin/api/problem-reports/${reportId}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status }),
+        });
+        
+        const data = await response.json();
+        if (data.success) {
+          alert(`Report status updated to ${status}`);
+          closeReportModal();
+          loadProblemReports();
+        } else {
+          alert('Failed to update status: ' + (data.error || 'Unknown error'));
+        }
+      } catch (error) {
+        alert('Error updating status: ' + error.message);
+      }
+    }
+    
+    async function saveAdminNotes(reportId) {
+      const notes = document.getElementById('adminNotesInput').value;
+      
+      try {
+        const response = await fetch(`/admin/api/problem-reports/${reportId}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ admin_notes: notes }),
+        });
+        
+        const data = await response.json();
+        if (data.success) {
+          alert('Notes saved successfully');
+          viewReportDetails(reportId); // Reload to show updated notes
+        } else {
+          alert('Failed to save notes: ' + (data.error || 'Unknown error'));
+        }
+      } catch (error) {
+        alert('Error saving notes: ' + error.message);
+      }
+    }
+    
+    // Close report modal on outside click
+    document.addEventListener('DOMContentLoaded', () => {
+      const reportModal = document.getElementById('reportModal');
+      if (reportModal) {
+        reportModal.addEventListener('click', (e) => {
+          if (e.target.id === 'reportModal') {
+            closeReportModal();
+          }
+        });
+      }
+      
+      // Report status filter change handler
+      const reportStatusFilter = document.getElementById('reportStatusFilter');
+      if (reportStatusFilter) {
+        reportStatusFilter.addEventListener('change', () => {
+          loadProblemReports();
+        });
+      }
+    });
+    
     // Initialize
     loadStats();
     loadShops();
     loadOrders();
+    loadProblemReports();
     
     // Load sync mode after shops are loaded
     setTimeout(() => {
@@ -1919,6 +2196,7 @@ ${order.errorMessage ? `Error: ${order.errorMessage}` : ''}
     setInterval(() => {
       loadStats();
       loadOrders();
+      loadProblemReports();
     }, 30000);
   </script>
 </body>

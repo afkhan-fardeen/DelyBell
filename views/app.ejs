@@ -220,6 +220,10 @@
         <p class="text-slate-500 dark:text-slate-400 mt-1">Simple delivery automation for your Shopify store</p>
       </div>
       <div class="flex gap-3">
+        <button class="px-4 py-2 bg-white dark:bg-surface-dark border border-border-light dark:border-border-dark rounded font-medium text-sm hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors inline-flex items-center gap-2" onclick="showReportProblemModal()">
+          <span class="material-icons-outlined text-sm">bug_report</span>
+          Report Problem
+        </button>
         <a href="/app/help-center" class="px-4 py-2 bg-white dark:bg-surface-dark border border-border-light dark:border-border-dark rounded font-medium text-sm hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors inline-flex items-center gap-2">
           <span class="material-icons-outlined text-sm">help_outline</span>
           Help Center
@@ -259,6 +263,47 @@
         <button class="px-4 py-2 bg-white dark:bg-surface-dark border border-border-light dark:border-border-dark rounded font-medium text-sm hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors" onclick="closeModal()">Cancel</button>
         <button class="px-4 py-2 bg-primary text-white rounded font-medium text-sm hover:opacity-90 transition-opacity" id="modalConfirmBtn">Confirm</button>
       </div>
+    </div>
+  </div>
+  
+  <!-- Report Problem Modal -->
+  <div class="modal" id="reportProblemModal">
+    <div class="modal-content" style="max-width: 600px;">
+      <div class="flex items-center justify-between mb-6">
+        <h2 class="text-xl font-bold text-slate-900 dark:text-white">Report a Problem</h2>
+        <button class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300" onclick="closeReportModal()">
+          <span class="material-icons-outlined">close</span>
+        </button>
+      </div>
+      <form id="reportProblemForm" onsubmit="submitProblemReport(event)">
+        <div class="space-y-4">
+          <div>
+            <label class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">Subject</label>
+            <input type="text" id="reportSubject" required class="w-full px-4 py-2 border border-border-light dark:border-border-dark rounded-lg bg-white dark:bg-surface-dark text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary" placeholder="Brief description of the issue">
+          </div>
+          <div>
+            <label class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">Order # (Optional)</label>
+            <input type="text" id="reportOrderNumber" class="w-full px-4 py-2 border border-border-light dark:border-border-dark rounded-lg bg-white dark:bg-surface-dark text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary" placeholder="e.g., #1033">
+          </div>
+          <div>
+            <label class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">Describe the Problem</label>
+            <textarea id="reportMessage" required rows="5" class="w-full px-4 py-2 border border-border-light dark:border-border-dark rounded-lg bg-white dark:bg-surface-dark text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary resize-none" placeholder="Please provide as much detail as possible about the issue you're experiencing..."></textarea>
+          </div>
+          <div class="bg-blue-50 dark:bg-blue-900/10 border border-blue-200 dark:border-blue-900/30 rounded-lg p-3">
+            <p class="text-xs text-blue-800 dark:text-blue-400">
+              <span class="material-icons-outlined text-sm align-middle mr-1">info</span>
+              Your report will be reviewed by our support team. We'll get back to you as soon as possible.
+            </p>
+          </div>
+        </div>
+        <div class="flex gap-3 justify-end mt-6">
+          <button type="button" class="px-4 py-2 bg-white dark:bg-surface-dark border border-border-light dark:border-border-dark rounded font-medium text-sm hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors" onclick="closeReportModal()">Cancel</button>
+          <button type="submit" class="px-4 py-2 bg-primary text-white rounded font-medium text-sm hover:opacity-90 transition-opacity inline-flex items-center gap-2">
+            <span class="material-icons-outlined text-sm">send</span>
+            Submit Report
+          </button>
+        </div>
+      </form>
     </div>
   </div>
   
@@ -419,6 +464,81 @@
     function closeModal() {
       document.getElementById('confirmModal').classList.remove('active');
     }
+    
+    // Report Problem Modal Functions
+    function showReportProblemModal() {
+      const modal = document.getElementById('reportProblemModal');
+      if (modal) {
+        modal.classList.add('active');
+        // Reset form
+        document.getElementById('reportProblemForm').reset();
+      }
+    }
+    
+    function closeReportModal() {
+      const modal = document.getElementById('reportProblemModal');
+      if (modal) {
+        modal.classList.remove('active');
+      }
+    }
+    
+    async function submitProblemReport(event) {
+      event.preventDefault();
+      
+      const subject = document.getElementById('reportSubject').value.trim();
+      const message = document.getElementById('reportMessage').value.trim();
+      const orderNumber = document.getElementById('reportOrderNumber').value.trim();
+      
+      if (!subject || !message) {
+        showToast('warning', 'Missing Information', 'Please fill in all required fields.');
+        return;
+      }
+      
+      const submitBtn = event.target.querySelector('button[type="submit"]');
+      const originalText = submitBtn.innerHTML;
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = '<span class="material-icons-outlined text-sm animate-spin">sync</span> Submitting...';
+      
+      try {
+        const response = await fetch('/app/api/report-problem', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            shop: shop,
+            subject: subject,
+            message: message,
+            orderNumber: orderNumber || null,
+          }),
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+          showToast('success', 'Report Submitted', 'Thank you! Your report has been submitted. We\'ll review it and get back to you soon.');
+          closeReportModal();
+        } else {
+          showToast('error', 'Submission Failed', data.error || 'Unable to submit your report. Please try again.');
+        }
+      } catch (error) {
+        console.error('Error submitting report:', error);
+        showToast('error', 'Something Went Wrong', 'Please try again. If this continues, contact support.');
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = originalText;
+      }
+    }
+    
+    // Close report modal when clicking outside
+    document.addEventListener('DOMContentLoaded', () => {
+      const reportModal = document.getElementById('reportProblemModal');
+      if (reportModal) {
+        reportModal.addEventListener('click', (e) => {
+          if (e.target.id === 'reportProblemModal') {
+            closeReportModal();
+          }
+        });
+      }
+    });
     
     // Load connection health
     async function loadConnectionHealth() {

@@ -1934,4 +1934,224 @@ router.post('/admin/api/orders/sync-all', async (req, res) => {
   }
 });
 
+/**
+ * App API - Submit Problem Report
+ * POST /app/api/report-problem
+ * Body: { shop, subject, message, orderNumber }
+ */
+router.post('/app/api/report-problem', async (req, res) => {
+  try {
+    const { shop, subject, message, orderNumber } = req.body;
+    
+    if (!shop || !subject || !message) {
+      return res.status(400).json({
+        success: false,
+        error: 'Shop, subject, and message are required',
+      });
+    }
+    
+    if (!process.env.SUPABASE_URL) {
+      return res.status(503).json({
+        success: false,
+        error: 'Database not configured',
+      });
+    }
+    
+    const { supabase } = require('../services/db');
+    const { normalizeShop } = require('../utils/normalizeShop');
+    const normalizedShop = normalizeShop(shop);
+    
+    // Extract order number if provided (remove # if present)
+    let shopifyOrderNumber = null;
+    let shopifyOrderId = null;
+    
+    if (orderNumber) {
+      const orderNum = orderNumber.replace(/^#/, '').trim();
+      shopifyOrderNumber = orderNum;
+      
+      // Try to find the order in order_logs to get shopify_order_id
+      const { data: orderLog } = await supabase
+        .from('order_logs')
+        .select('shopify_order_id')
+        .eq('shop', normalizedShop)
+        .eq('shopify_order_number', parseInt(orderNum))
+        .limit(1)
+        .single();
+      
+      if (orderLog) {
+        shopifyOrderId = orderLog.shopify_order_id;
+      }
+    }
+    
+    const { data: report, error } = await supabase
+      .from('problem_reports')
+      .insert({
+        shop: normalizedShop,
+        shopify_order_id: shopifyOrderId,
+        shopify_order_number: shopifyOrderNumber,
+        subject: subject.trim(),
+        message: message.trim(),
+        status: 'open',
+      })
+      .select()
+      .single();
+    
+    if (error) throw error;
+    
+    console.log(`[Problem Report] New report submitted by ${normalizedShop}: ${subject}`);
+    
+    res.json({
+      success: true,
+      reportId: report.id,
+      message: 'Report submitted successfully',
+    });
+  } catch (error) {
+    console.error('[Problem Report] Error submitting report:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message,
+    });
+  }
+});
+
+/**
+ * Admin API - Get Problem Reports
+ * GET /admin/api/problem-reports
+ * Query: ?shop=shop.myshopify.com&status=open&limit=50&offset=0
+ */
+router.get('/admin/api/problem-reports', async (req, res) => {
+  try {
+    if (!process.env.SUPABASE_URL) {
+      return res.status(503).json({
+        success: false,
+        error: 'Supabase not configured',
+      });
+    }
+    
+    const { shop, status, limit = 50, offset = 0 } = req.query;
+    const { supabase } = require('../services/db');
+    
+    // Build query
+    let query = supabase
+      .from('problem_reports')
+      .select('*')
+      .order('reported_at', { ascending: false })
+      .range(parseInt(offset), parseInt(offset) + parseInt(limit) - 1);
+    
+    if (shop) {
+      const { normalizeShop } = require('../utils/normalizeShop');
+      query = query.eq('shop', normalizeShop(shop));
+    }
+    
+    if (status) {
+      query = query.eq('status', status);
+    }
+    
+    const { data: reports, error } = await query;
+    
+    if (error) throw error;
+    
+    // Get total count
+    let countQuery = supabase
+      .from('problem_reports')
+      .select('*', { count: 'exact', head: true });
+    
+    if (shop) {
+      const { normalizeShop } = require('../utils/normalizeShop');
+      countQuery = countQuery.eq('shop', normalizeShop(shop));
+    }
+    
+    if (status) {
+      countQuery = countQuery.eq('status', status);
+    }
+    
+    const { count, error: countError } = await countQuery;
+    
+    if (countError) throw countError;
+    
+    res.json({
+      success: true,
+      reports: reports || [],
+      total: count || 0,
+      count: reports?.length || 0,
+    });
+  } catch (error) {
+    console.error('[Admin] Error fetching problem reports:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message,
+    });
+  }
+});
+
+/**
+ * Admin API - Update Problem Report Status
+ * PATCH /admin/api/problem-reports/:id
+ * Body: { status, admin_notes }
+ */
+router.patch('/admin/api/problem-reports/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status, admin_notes } = req.body;
+    
+    if (!process.env.SUPABASE_URL) {
+      return res.status(503).json({
+        success: false,
+        error: 'Supabase not configured',
+      });
+    }
+    
+    const { supabase } = require('../services/db');
+    
+    const updateData = {
+      updated_at: new Date().toISOString(),
+    };
+    
+    if (status) {
+      if (!['open', 'in_progress', 'resolved', 'closed'].includes(status)) {
+        return res.status(400).json({
+          success: false,
+          error: 'Invalid status. Must be: open, in_progress, resolved, or closed',
+        });
+      }
+      updateData.status = status;
+      
+      if (status === 'resolved' || status === 'closed') {
+        updateData.resolved_at = new Date().toISOString();
+      }
+    }
+    
+    if (admin_notes !== undefined) {
+      updateData.admin_notes = admin_notes;
+    }
+    
+    const { data: report, error } = await supabase
+      .from('problem_reports')
+      .update(updateData)
+      .eq('id', id)
+      .select()
+      .single();
+    
+    if (error) throw error;
+    
+    if (!report) {
+      return res.status(404).json({
+        success: false,
+        error: 'Report not found',
+      });
+    }
+    
+    res.json({
+      success: true,
+      report: report,
+    });
+  } catch (error) {
+    console.error('[Admin] Error updating problem report:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message,
+    });
+  }
+});
+
 module.exports = router;
