@@ -274,6 +274,22 @@ router.post('/webhooks/register', async (req, res) => {
         address: `${webhookUrl}/webhooks/app/uninstalled`,
         format: 'json',
       },
+      // GDPR Compliance Webhooks (Required for public apps)
+      {
+        topic: 'customers/data_request',
+        address: `${webhookUrl}/webhooks/customers/data_request`,
+        format: 'json',
+      },
+      {
+        topic: 'customers/redact',
+        address: `${webhookUrl}/webhooks/customers/redact`,
+        format: 'json',
+      },
+      {
+        topic: 'shop/redact',
+        address: `${webhookUrl}/webhooks/shop/redact`,
+        format: 'json',
+      },
     ];
 
     const registered = await shopifyClient.registerWebhooks(session, webhooks);

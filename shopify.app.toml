@@ -23,7 +23,15 @@ scopes = "read_orders,write_orders"
 # These will be registered automatically when app is installed
 [[webhooks]]
 api_version = "2025-10"  # Latest stable API version available
-subscriptions = ["orders/create", "orders/updated", "app/uninstalled"]
+subscriptions = [
+  "orders/create",
+  "orders/updated",
+  "app/uninstalled",
+  # GDPR Compliance Webhooks (Required for public apps)
+  "customers/data_request",
+  "customers/redact",
+  "shop/redact"
+]
 
 # App settings
 [app_proxy]
