@@ -6,7 +6,6 @@ const webhookRoutes = require('./routes/webhooks');
 const apiRoutes = require('./routes/api');
 const authRoutes = require('./routes/auth');
 const adminRoutes = require('./routes/admin');
-const verifyWebhook = require('./middleware/webhookVerification');
 
 const app = express();
 
@@ -22,24 +21,9 @@ app.use(cookieParser());
 // Trust proxy for proper cookie handling behind reverse proxy (Render, etc.)
 app.set('trust proxy', 1);
 
-// CRITICAL: For webhooks, we need raw body for HMAC verification
-// Must be applied BEFORE any other body parsers
-// Use Express built-in raw parser (more reliable than body-parser)
-app.use('/webhooks', express.raw({ 
-  type: 'application/json',
-  verify: (req, res, buf) => {
-    // Store raw body for HMAC verification BEFORE any modifications
-    req.rawBody = buf;
-    console.log('[Server] Raw body stored for webhook:', {
-      length: buf.length,
-      type: buf.constructor.name,
-      firstBytes: buf.slice(0, 20).toString('hex'),
-    });
-  }
-}));
-// Other body parsers (applied to non-webhook routes)
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+// 🚨 CRITICAL: Webhook routes MUST be defined FIRST, before any body parsers
+// This ensures the raw body is preserved exactly as Shopify sends it
+// Webhook routes will use express.raw() inline for HMAC verification
 
 // Serve static files (public install page, legal pages, etc.)
 app.use(express.static(path.join(__dirname, 'public')));
@@ -55,14 +39,19 @@ app.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
-// OAuth routes (must be before webhooks)
+// OAuth routes
 app.use('/auth', authRoutes);
+
+// 🚨 WEBHOOK ROUTES FIRST - before any body parsers
+// Webhook routes handle their own raw body parsing inline
+app.use('/webhooks', webhookRoutes);
+
+// ✅ NOW apply body parsers for all other routes
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
 // Admin routes (embedded app interface)
 app.use('/', adminRoutes);
-
-// Webhook routes (with verification middleware)
-app.use('/webhooks', verifyWebhook, webhookRoutes);
 
 // API routes
 app.use('/api', apiRoutes);

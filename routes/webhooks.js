@@ -1,10 +1,12 @@
 const express = require('express');
+const crypto = require('crypto');
 const router = express.Router();
 const orderProcessor = require('../services/orderProcessor');
 const shopifyClient = require('../services/shopifyClient');
 const { getShop } = require('../services/shopRepo');
 const { normalizeShop } = require('../utils/normalizeShop');
 const { supabase } = require('../services/db');
+const config = require('../config');
 
 /**
  * Parse webhook body (raw JSON string)
@@ -78,11 +80,81 @@ function parseWebhookBody(req) {
 }
 
 /**
+ * Verify webhook HMAC signature
+ * This must be done BEFORE parsing JSON to ensure the raw body is used
+ */
+function verifyWebhookHMAC(req, res, next) {
+  try {
+    const hmac = req.headers['x-shopify-hmac-sha256'];
+    
+    if (!hmac) {
+      if (process.env.NODE_ENV === 'production') {
+        return res.status(401).json({
+          success: false,
+          error: 'Webhook verification required',
+        });
+      }
+      console.warn('[Webhook] HMAC header missing (development mode - allowing)');
+      return next();
+    }
+
+    if (!config.shopify.apiSecret) {
+      console.error('[Webhook] ❌ API secret not configured!');
+      if (process.env.NODE_ENV === 'production') {
+        return res.status(500).json({
+          success: false,
+          error: 'Webhook verification not configured',
+        });
+      }
+      console.warn('[Webhook] Development mode: Allowing webhook without API secret');
+      return next();
+    }
+
+    // CRITICAL: req.body is a Buffer from express.raw()
+    // Use it directly - do NOT stringify or modify it
+    const digest = crypto
+      .createHmac('sha256', config.shopify.apiSecret)
+      .update(req.body) // Raw Buffer ONLY
+      .digest('base64');
+
+    // Use timing-safe comparison to prevent timing attacks
+    if (!crypto.timingSafeEqual(
+      Buffer.from(digest),
+      Buffer.from(hmac)
+    )) {
+      console.error('[Webhook] ❌ HMAC verification failed');
+      console.error('[Webhook] Expected:', digest);
+      console.error('[Webhook] Received:', hmac);
+      
+      if (process.env.NODE_ENV === 'production') {
+        return res.status(401).json({
+          success: false,
+          error: 'Invalid webhook signature',
+          hint: 'Check that SHOPIFY_API_SECRET matches your app\'s API secret in Shopify Partner Dashboard',
+        });
+      }
+      
+      console.warn('[Webhook] ⚠️ Development mode: Allowing webhook despite HMAC mismatch');
+      return next();
+    }
+
+    console.log('[Webhook] ✅ HMAC verified successfully');
+    next();
+  } catch (error) {
+    console.error('[Webhook] Verification error:', error.message);
+    return res.status(500).json({
+      success: false,
+      error: 'Webhook verification failed',
+    });
+  }
+}
+
+/**
  * Webhook endpoint for new order creation
  * This endpoint receives webhooks from Shopify when orders are created
- * Webhook verification is handled by middleware
+ * Raw body parsing and HMAC verification are handled inline
  */
-router.post('/orders/create', async (req, res) => {
+router.post('/orders/create', express.raw({ type: 'application/json' }), verifyWebhookHMAC, async (req, res) => {
   const startTime = Date.now();
   
   // CRITICAL: Always respond 200 OK within 5 seconds (Shopify requirement)
@@ -389,8 +461,9 @@ router.post('/orders/create', async (req, res) => {
 /**
  * Webhook endpoint for order updates
  * Processes orders when they are updated (e.g., marked as paid, fulfilled, etc.)
+ * Raw body parsing and HMAC verification are handled inline
  */
-router.post('/orders/update', async (req, res) => {
+router.post('/orders/update', express.raw({ type: 'application/json' }), verifyWebhookHMAC, async (req, res) => {
   const startTime = Date.now();
   
   // CRITICAL: Always respond 200 OK within 5 seconds (Shopify requirement)
@@ -679,8 +752,9 @@ router.post('/orders/update', async (req, res) => {
  * App Uninstall Webhook
  * Handles app uninstallation - cleans up sessions and data
  * POST /webhooks/app/uninstalled
+ * Raw body parsing and HMAC verification are handled inline
  */
-router.post('/app/uninstalled', async (req, res) => {
+router.post('/app/uninstalled', express.raw({ type: 'application/json' }), verifyWebhookHMAC, async (req, res) => {
   try {
     console.log('[Webhook] App uninstall webhook received');
     
@@ -764,8 +838,9 @@ router.post('/app/uninstalled', async (req, res) => {
  * GDPR Compliance Webhook: Customer Data Request
  * Required for public apps - customer requests their data
  * @see https://shopify.dev/apps/store/data-protection/gdpr-requirements
+ * Raw body parsing and HMAC verification are handled inline
  */
-router.post('/customers/data_request', async (req, res) => {
+router.post('/customers/data_request', express.raw({ type: 'application/json' }), verifyWebhookHMAC, async (req, res) => {
   try {
     const shop = req.headers['x-shopify-shop-domain'];
     const topic = req.headers['x-shopify-topic'];
@@ -807,8 +882,9 @@ router.post('/customers/data_request', async (req, res) => {
  * GDPR Compliance Webhook: Customer Redaction
  * Required for public apps - customer requests data deletion
  * @see https://shopify.dev/apps/store/data-protection/gdpr-requirements
+ * Raw body parsing and HMAC verification are handled inline
  */
-router.post('/customers/redact', async (req, res) => {
+router.post('/customers/redact', express.raw({ type: 'application/json' }), verifyWebhookHMAC, async (req, res) => {
   try {
     const shop = req.headers['x-shopify-shop-domain'];
     const topic = req.headers['x-shopify-topic'];
@@ -851,8 +927,9 @@ router.post('/customers/redact', async (req, res) => {
  * GDPR Compliance Webhook: Shop Redaction
  * Required for public apps - shop requests data deletion after uninstall
  * @see https://shopify.dev/apps/store/data-protection/gdpr-requirements
+ * Raw body parsing and HMAC verification are handled inline
  */
-router.post('/shop/redact', async (req, res) => {
+router.post('/shop/redact', express.raw({ type: 'application/json' }), verifyWebhookHMAC, async (req, res) => {
   try {
     const shop = req.headers['x-shopify-shop-domain'];
     const topic = req.headers['x-shopify-topic'];
