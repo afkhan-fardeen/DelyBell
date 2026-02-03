@@ -642,6 +642,7 @@ class OrderProcessor {
       // 4️⃣ Fix Supabase status rules
       // Rule: processed → delybell_order_id is REQUIRED
       // Rule: failed → delybell_order_id is NULL
+      // Rule: completed → delybell_order_id can be null or set (order was fulfilled/completed in Shopify)
       if (status === 'processed' && !delybellOrderId) {
         console.error(`[OrderProcessor] ❌ Invalid state: status='processed' but delybell_order_id is null. This should never happen.`);
         // Force to failed status if processed without orderId
@@ -654,6 +655,9 @@ class OrderProcessor {
         console.warn(`[OrderProcessor] ⚠️ Invalid state: status='failed' but delybell_order_id is provided. Setting delybell_order_id to null.`);
         delybellOrderId = null;
       }
+      
+      // Completed status: Order was fulfilled/completed in Shopify, no sync needed
+      // delybell_order_id can be null (never synced) or set (was synced before completion)
 
       // Build insert object
       const insertData = {

@@ -1343,6 +1343,7 @@ router.get('/admin/api/stats', async (req, res) => {
 
     const totalToday = todayOrders?.length || 0;
     const syncedToday = todayOrders?.filter(o => o.status === 'processed' && o.delybell_order_id).length || 0;
+    const completedToday = todayOrders?.filter(o => o.status === 'completed').length || 0;
     const pendingSync = todayOrders?.filter(o => o.status === 'pending_sync').length || 0;
     const failedToday = todayOrders?.filter(o => o.status === 'failed').length || 0;
     const needsAttention = failedToday; // Orders that failed and need retry
@@ -1351,7 +1352,8 @@ router.get('/admin/api/stats', async (req, res) => {
       success: true,
       stats: {
         totalOrdersToday: totalToday,
-        successfullySynced: syncedToday,
+        successfullySynced: syncedToday + completedToday, // Include completed in synced count
+        completed: completedToday,
         pendingSync: pendingSync,
         failed: failedToday,
         needsAttention: needsAttention,
@@ -1442,8 +1444,14 @@ router.get('/admin/api/orders', async (req, res) => {
     }
 
     if (status) {
-      query = query.eq('status', status);
-      countQuery = countQuery.eq('status', status);
+      // For 'synced' tab, include both 'processed' and 'completed' orders
+      if (status === 'processed') {
+        query = query.in('status', ['processed', 'completed']);
+        countQuery = countQuery.in('status', ['processed', 'completed']);
+      } else {
+        query = query.eq('status', status);
+        countQuery = countQuery.eq('status', status);
+      }
     }
 
     if (dateFrom) {
@@ -1763,14 +1771,18 @@ router.post('/admin/api/orders/fetch-historical', async (req, res) => {
 
     console.log(`[Admin] Found ${shopifyOrders.length} orders from Shopify`);
 
-    // Filter out archived and cancelled orders
+    // Filter out archived, cancelled, and fulfilled/completed orders
     const activeOrders = shopifyOrders.filter(order => {
       const cancelled = order.cancelled_at !== null;
       const archived = order.tags && order.tags.toLowerCase().includes('archived');
       const financialStatus = (order.financial_status || '').toLowerCase();
+      const fulfillmentStatus = (order.fulfillment_status || '').toLowerCase();
       const isCancelledStatus = financialStatus === 'voided' || financialStatus === 'refunded';
+      const isFulfilled = fulfillmentStatus === 'fulfilled' || fulfillmentStatus === 'complete';
+      const isPaidAndFulfilled = financialStatus === 'paid' && isFulfilled;
       
-      return !cancelled && !archived && !isCancelledStatus;
+      // Exclude: cancelled, archived, voided/refunded, or fulfilled/completed orders
+      return !cancelled && !archived && !isCancelledStatus && !isFulfilled && !isPaidAndFulfilled;
     });
 
     console.log(`[Admin] Filtered to ${activeOrders.length} active orders (excluded archived/cancelled)`);
@@ -1992,6 +2004,39 @@ router.post('/admin/api/orders/sync-selected', async (req, res) => {
           continue;
         }
 
+        // Skip fulfilled/completed orders
+        const fulfillmentStatus = (shopifyOrder.fulfillment_status || '').toLowerCase();
+        const financialStatus = (shopifyOrder.financial_status || '').toLowerCase();
+        const isFulfilled = fulfillmentStatus === 'fulfilled' || fulfillmentStatus === 'complete';
+        const isPaid = financialStatus === 'paid' || financialStatus === 'authorized' || financialStatus === 'partially_paid';
+        const isCompleted = isPaid && isFulfilled;
+        
+        if (isCompleted) {
+          // Mark as completed in database
+          await orderProcessor.logOrder({
+            shop: order.shop,
+            shopifyOrderId: order.shopify_order_id,
+            shopifyOrderNumber: order.shopify_order_number,
+            delybellOrderId: order.delybell_order_id,
+            status: 'completed',
+            errorMessage: null,
+            totalPrice: order.total_price,
+            currency: order.currency,
+            customerName: order.customer_name,
+            phone: order.phone,
+            shopifyOrderCreatedAt: order.shopify_order_created_at,
+            financialStatus: shopifyOrder.financial_status || null,
+          });
+          
+          results.push({
+            orderId: order.id,
+            success: false,
+            skipped: true,
+            error: 'Order is fulfilled/completed and cannot be synced',
+          });
+          continue;
+        }
+
         // Process order
         const mappingConfig = {
           service_type_id: parseInt(process.env.DEFAULT_SERVICE_TYPE_ID) || 1,
@@ -2016,11 +2061,21 @@ router.post('/admin/api/orders/sync-selected', async (req, res) => {
       }
     }
 
+    const synced = results.filter(r => r.success).length;
+    const failed = results.filter(r => !r.success && !r.skipped).length;
+    const skipped = results.filter(r => r.skipped).length;
+    
     res.json({
       success: true,
       results,
-      synced: results.filter(r => r.success).length,
-      failed: results.filter(r => !r.success).length,
+      synced,
+      failed,
+      skipped,
+      message: synced > 0 
+        ? `${synced} order${synced > 1 ? 's' : ''} sent successfully${skipped > 0 ? `. ${skipped} order${skipped > 1 ? 's were' : ' was'} skipped (already completed)` : ''}${failed > 0 ? `. ${failed} order${failed > 1 ? 's' : ''} could not be sent` : ''}`
+        : skipped > 0
+        ? `${skipped} order${skipped > 1 ? 's were' : ' was'} skipped (already completed)`
+        : 'No orders were sent',
     });
   } catch (error) {
     console.error('[Admin] Error syncing selected orders:', error);

@@ -214,9 +214,23 @@ router.post('/orders/create', express.raw({ type: 'application/json' }), verifyW
     const orderStatus = shopifyOrder.financial_status || 'unknown';
     const orderFulfillmentStatus = shopifyOrder.fulfillment_status || 'unfulfilled';
     
+    // Skip fulfilled/completed orders - they shouldn't be synced
+    const isFulfilled = (orderFulfillmentStatus || '').toLowerCase() === 'fulfilled' || 
+                        (orderFulfillmentStatus || '').toLowerCase() === 'complete';
+    const isPaid = orderStatus === 'paid' || orderStatus === 'authorized' || orderStatus === 'partially_paid';
+    const isCompleted = isPaid && isFulfilled;
+    
+    if (isCompleted) {
+      console.log(`[Webhook] ⚠️ Order ${orderId} is already fulfilled/completed - skipping (won't sync completed orders)`);
+      return res.status(200).json({
+        success: true,
+        message: 'Order is fulfilled/completed, skipped',
+      });
+    }
+    
     console.log(`[Webhook] 📦 Received webhook for NEW order: ${orderId}`);
     console.log(`[Webhook] Order status - Financial: ${orderStatus}, Fulfillment: ${orderFulfillmentStatus}`);
-    console.log(`[Webhook] Order will be synced to Delybell immediately (regardless of payment status)`);
+    console.log(`[Webhook] Order will be saved as pending_sync for manual review`);
 
     // Get shop domain from headers or order data
     let shop = req.headers['x-shopify-shop-domain'] || shopifyOrder.shop;
@@ -518,6 +532,12 @@ router.post('/orders/update', express.raw({ type: 'application/json' }), verifyW
       return;
     }
 
+    // Check if order is fulfilled/completed - mark as completed if it exists in DB
+    const fulfillmentStatus = (shopifyOrder.fulfillment_status || '').toLowerCase();
+    const isFulfilled = fulfillmentStatus === 'fulfilled' || fulfillmentStatus === 'complete';
+    const isPaid = (orderStatus === 'paid' || orderStatus === 'authorized' || orderStatus === 'partially_paid');
+    const isCompleted = isPaid && isFulfilled;
+
     // Respond quickly to Shopify (within 5 seconds)
     if (!respondQuickly()) {
       return res.status(200).json({
@@ -526,10 +546,9 @@ router.post('/orders/update', express.raw({ type: 'application/json' }), verifyW
       });
     }
 
-    // SIMPLIFIED: Always save order updates as pending_sync - user will sync manually
+    // If order exists in DB and is now completed, mark it as completed
+    // Otherwise, save as pending_sync
     try {
-      console.log(`[Webhook] 📝 Saving order update ${orderId} with status "pending_sync" (manual sync only)`);
-      
       const shippingAddress = shopifyOrder.shipping_address || shopifyOrder.billing_address;
       const customerName = shippingAddress?.name || 
         (shopifyOrder.customer?.first_name && shopifyOrder.customer?.last_name 
@@ -538,12 +557,29 @@ router.post('/orders/update', express.raw({ type: 'application/json' }), verifyW
       const phone = shippingAddress?.phone || shopifyOrder.customer?.phone || null;
       const shopifyOrderCreatedAt = shopifyOrder.created_at || null;
 
+      // If order exists in DB and is now completed, mark as completed
+      // Otherwise, save as pending_sync (for new orders or non-completed updates)
+      let orderStatusToSave = 'pending_sync';
+      if (dbOrder && isCompleted) {
+        orderStatusToSave = 'completed';
+        console.log(`[Webhook] 📝 Order ${orderId} is now completed - marking as completed`);
+      } else if (!dbOrder) {
+        // New order - save as pending_sync (unless it's already completed, then skip)
+        if (isCompleted) {
+          console.log(`[Webhook] ⚠️ Order ${orderId} is already completed - skipping (won't sync completed orders)`);
+          return;
+        }
+        console.log(`[Webhook] 📝 Saving new order ${orderId} with status "pending_sync"`);
+      } else {
+        console.log(`[Webhook] 📝 Updating order ${orderId} status`);
+      }
+
       await orderProcessor.logOrder({
         shop,
         shopifyOrderId: shopifyOrderId,
         shopifyOrderNumber: shopifyOrder.order_number || null,
-        delybellOrderId: null,
-        status: 'pending_sync',
+        delybellOrderId: dbOrder?.delybell_order_id || null, // Preserve existing delybell_order_id if exists
+        status: orderStatusToSave,
         errorMessage: null,
         totalPrice: shopifyOrder.total_price ? parseFloat(shopifyOrder.total_price) : null,
         currency: shopifyOrder.currency || 'USD',
@@ -553,7 +589,7 @@ router.post('/orders/update', express.raw({ type: 'application/json' }), verifyW
         financialStatus: shopifyOrder.financial_status || orderStatus, // Store payment status
       });
 
-      console.log(`[Webhook] ✅ Order update ${orderId} saved with status "pending_sync"`);
+      console.log(`[Webhook] ✅ Order update ${orderId} saved with status "${orderStatusToSave}"`);
       return;
     } catch (processError) {
       console.error(`[Webhook] ❌ Order processing error for order ${orderId}:`, processError.message);

@@ -586,7 +586,7 @@
       if (ordersContainer) {
         ordersContainer.innerHTML = `
           <tr>
-            <td colspan="6" class="px-6 py-8 text-center text-slate-500 dark:text-slate-400">
+            <td colspan="7" class="px-6 py-8 text-center text-slate-500 dark:text-slate-400">
               <div class="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-primary mb-2"></div>
               <div>Loading orders...</div>
             </td>
@@ -622,14 +622,14 @@
             const emptyMessage = statusFilter === 'pending_sync' 
               ? 'No pending orders. New orders placed by customers will appear here.'
               : statusFilter === 'processed'
-              ? 'No synced orders yet. Sync orders from the Pending tab to see them here.'
+              ? 'No synced or completed orders yet. Sync orders from the Pending tab to see them here.'
               : statusFilter === 'failed'
               ? 'No failed orders. Failed sync attempts will appear here.'
               : 'No orders yet. Orders placed by customers will appear here once they are received.';
             
             ordersContainer.innerHTML = `
               <tr>
-                <td colspan="6" class="px-6 py-8 text-center text-slate-500 dark:text-slate-400">
+                <td colspan="7" class="px-6 py-8 text-center text-slate-500 dark:text-slate-400">
                   <span class="material-icons-outlined text-4xl mb-2 block">inbox</span>
                   <div class="font-semibold">No orders found</div>
                   <div class="text-sm mt-1">${emptyMessage}</div>
@@ -668,7 +668,7 @@
         
         if (statsData.success) {
           const stats = statsData.stats;
-          const syncedCount = stats.successfullySynced || 0;
+          const syncedCount = stats.successfullySynced || 0; // Includes completed
           const pendingCount = stats.pendingSync || 0;
           const failedCount = stats.failed || 0;
           const totalCount = stats.totalOrdersToday || 0;
@@ -707,7 +707,7 @@
       // Load orders with filter
       const statusMap = {
         'all': null,
-        'synced': 'processed',
+        'synced': 'processed', // Will include completed orders via API filter
         'pending': 'pending_sync',
         'failed': 'failed'
       };
@@ -734,6 +734,11 @@
         if (status === 'processed') {
           return `<span class="inline-flex items-center px-2 py-0.5 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 text-[11px] font-semibold rounded-full">
             <span class="w-1.5 h-1.5 bg-green-500 rounded-full mr-1.5"></span> Synced
+          </span>`;
+        }
+        if (status === 'completed') {
+          return `<span class="inline-flex items-center px-2 py-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 text-[11px] font-semibold rounded-full">
+            <span class="w-1.5 h-1.5 bg-blue-500 rounded-full mr-1.5"></span> Completed
           </span>`;
         }
         if (status === 'pending_sync') {
@@ -782,15 +787,19 @@
       if (ordersContainer) {
         ordersContainer.innerHTML = orders.map((order, index) => {
           const hasError = order.status === 'failed' && order.errorMessage;
+          const canSelect = order.status === 'pending_sync' || order.status === 'failed';
           return `
             <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors group">
+              <td class="text-left" style="width: 50px;">
+                ${canSelect ? `<input type="checkbox" class="order-checkbox" value="${order.id}" onchange="updateBulkActions()">` : ''}
+              </td>
               <td class="col-order-number font-semibold text-sm">#${order.shopifyOrderNumber || 'N/A'}</td>
               <td class="col-date text-slate-600 dark:text-slate-400 text-sm">${formatDate(order.createdAt)}</td>
               <td class="col-payment text-center">${getPaymentBadge(order.financialStatus)}</td>
               <td class="col-status">${getStatusBadge(order.status, order.errorMessage)}</td>
               <td class="col-delybell-id font-mono text-xs text-slate-600 dark:text-slate-400">${order.delybellOrderId || '—'}</td>
               <td class="col-action text-right">
-                ${order.status === 'processed' ? `
+                ${order.status === 'processed' || order.status === 'completed' ? `
                   <button class="inline-flex items-center px-3 py-1.5 bg-white dark:bg-surface-dark border border-border-light dark:border-border-dark rounded-md text-xs font-semibold hover:border-primary hover:text-primary dark:hover:text-primary transition-all shadow-sm" onclick="viewOrderDetails('${order.id}')">
                     <span class="material-icons-outlined text-sm mr-1">visibility</span> View
                   </button>
@@ -809,7 +818,7 @@
             </tr>
             ${hasError ? `
               <tr id="error-${index}" class="hidden">
-                <td colspan="6" class="py-3 px-4 bg-red-50 dark:bg-red-900/10 border-l-4 border-red-500">
+                <td colspan="7" class="py-3 px-4 bg-red-50 dark:bg-red-900/10 border-l-4 border-red-500">
                   <div class="text-sm text-red-700 dark:text-red-400">${getFriendlyError(order.errorMessage)}</div>
                 </td>
               </tr>
@@ -900,6 +909,186 @@
       }
     }
     
+    function toggleSelectAll() {
+      const selectAll = document.getElementById('selectAllCheckbox');
+      if (selectAll) {
+        const checked = selectAll.checked;
+        document.querySelectorAll('.order-checkbox:not(:disabled)').forEach(cb => {
+          cb.checked = checked;
+        });
+        updateBulkActions();
+      }
+    }
+    
+    function updateBulkActions() {
+      const checked = document.querySelectorAll('.order-checkbox:checked').length;
+      const bulkActions = document.getElementById('bulkActions');
+      const bulkCount = document.getElementById('bulkCount');
+      const bulkSyncBtn = document.getElementById('bulkSyncBtn');
+      const bulkRetryBtn = document.getElementById('bulkRetryBtn');
+      
+      if (bulkActions) bulkActions.classList.toggle('hidden', checked === 0);
+      if (bulkCount) bulkCount.textContent = `${checked} selected`;
+      if (bulkSyncBtn) bulkSyncBtn.disabled = checked === 0;
+      if (bulkRetryBtn) bulkRetryBtn.disabled = checked === 0;
+    }
+    
+    async function syncSelectedOrders() {
+      const checked = Array.from(document.querySelectorAll('.order-checkbox:checked')).map(cb => cb.value);
+      if (checked.length === 0) {
+        showToast('warning', 'No Orders Selected', 'Please select orders to sync.');
+        return;
+      }
+      
+      showModal(
+        'Sync Selected Orders',
+        `Sync ${checked.length} selected order${checked.length > 1 ? 's' : ''} to Delybell?`,
+        async () => {
+          closeModal();
+          
+          // Show progress indicator
+          const ordersContainer = document.getElementById('ordersContainer');
+          const originalContent = ordersContainer ? ordersContainer.innerHTML : '';
+          
+          if (ordersContainer) {
+            ordersContainer.innerHTML = `
+              <tr>
+                <td colspan="7" class="px-6 py-8 text-center">
+                  <div class="inline-flex flex-col items-center">
+                    <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-primary mb-3"></div>
+                    <div class="font-semibold text-slate-700 dark:text-slate-300">Syncing ${checked.length} order${checked.length > 1 ? 's' : ''}...</div>
+                    <div class="text-sm text-slate-500 dark:text-slate-400 mt-1">Please wait</div>
+                  </div>
+                </td>
+              </tr>
+            `;
+          }
+          
+          // Disable sync buttons
+          const bulkSyncBtn = document.getElementById('bulkSyncBtn');
+          if (bulkSyncBtn) bulkSyncBtn.disabled = true;
+          
+          try {
+            const response = await fetch('/admin/api/orders/sync-selected', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ orderIds: checked }),
+            });
+            
+            const data = await response.json();
+            if (data.success) {
+              if (data.synced > 0) {
+                let message = `${data.synced} order${data.synced > 1 ? 's' : ''} sent to Delybell successfully!`;
+                if (data.skipped > 0) {
+                  message += ` ${data.skipped} order${data.skipped > 1 ? 's were' : ' was'} skipped (already completed).`;
+                }
+                if (data.failed > 0) {
+                  message += ` ${data.failed} order${data.failed > 1 ? 's' : ''} could not be sent.`;
+                }
+                showToast('success', 'Orders Sent', message);
+              } else if (data.skipped > 0) {
+                showToast('warning', 'Orders Skipped', `${data.skipped} order${data.skipped > 1 ? 's were' : ' was'} skipped because ${data.skipped > 1 ? 'they are' : 'it is'} already completed.`);
+              } else {
+                showToast('error', 'Could Not Send Orders', data.message || 'No orders were sent. Please try again.');
+              }
+              
+              // Reload orders and update UI
+              await loadOrders(currentPage);
+              loadConnectionHealth();
+              updateOrderTabs();
+              updateBulkActions();
+            } else {
+              showToast('error', 'Could Not Send Orders', data.error || 'Some orders could not be sent. Please try again.');
+              if (ordersContainer) ordersContainer.innerHTML = originalContent;
+            }
+          } catch (error) {
+            console.error('Error syncing orders:', error);
+            showToast('error', 'Error', 'Could not sync orders. Please try again.');
+            if (ordersContainer) ordersContainer.innerHTML = originalContent;
+          } finally {
+            if (bulkSyncBtn) bulkSyncBtn.disabled = false;
+          }
+        }
+      );
+    }
+    
+    async function retryFailedOrders() {
+      const checked = Array.from(document.querySelectorAll('.order-checkbox:checked')).map(cb => cb.value);
+      if (checked.length === 0) {
+        showToast('warning', 'No Orders Selected', 'Please select failed orders to retry.');
+        return;
+      }
+      
+      showModal(
+        'Retry Failed Orders',
+        `Retry syncing ${checked.length} failed order${checked.length > 1 ? 's' : ''}?`,
+        async () => {
+          closeModal();
+          
+          // Show progress indicator
+          const ordersContainer = document.getElementById('ordersContainer');
+          const originalContent = ordersContainer ? ordersContainer.innerHTML : '';
+          
+          if (ordersContainer) {
+            ordersContainer.innerHTML = `
+              <tr>
+                <td colspan="7" class="px-6 py-8 text-center">
+                  <div class="inline-flex flex-col items-center">
+                    <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-primary mb-3"></div>
+                    <div class="font-semibold text-slate-700 dark:text-slate-300">Retrying ${checked.length} order${checked.length > 1 ? 's' : ''}...</div>
+                    <div class="text-sm text-slate-500 dark:text-slate-400 mt-1">Please wait</div>
+                  </div>
+                </td>
+              </tr>
+            `;
+          }
+          
+          // Disable retry buttons
+          const bulkRetryBtn = document.getElementById('bulkRetryBtn');
+          if (bulkRetryBtn) bulkRetryBtn.disabled = true;
+          
+          try {
+            const results = await Promise.all(
+              checked.map(id => fetch(`/admin/api/orders/${id}/retry`, { method: 'POST' }))
+            );
+            
+            let success = 0;
+            let failed = 0;
+            
+            for (const result of results) {
+              const data = await result.json();
+              if (data.success) success++;
+              else failed++;
+            }
+            
+            if (success > 0) {
+              const successMsg = `${success} order${success > 1 ? 's' : ''} sent to Delybell successfully!`;
+              const failMsg = failed > 0 
+                ? ` ${failed} order${failed > 1 ? 's' : ''} still could not be sent.`
+                : '';
+              showToast('success', 'Orders Sent', successMsg + failMsg);
+            } else {
+              showToast('error', 'Could Not Send Orders', failed > 0 
+                ? `${failed} order${failed > 1 ? 's' : ''} could not be sent. Please try again.`
+                : 'No orders were sent. Please try again.');
+            }
+            
+            // Reload orders and update UI
+            await loadOrders(currentPage);
+            loadConnectionHealth();
+            updateOrderTabs();
+            updateBulkActions();
+          } catch (error) {
+            console.error('Error retrying orders:', error);
+            showToast('error', 'Error', 'Could not retry orders. Please try again.');
+            if (ordersContainer) ordersContainer.innerHTML = originalContent;
+          } finally {
+            if (bulkRetryBtn) bulkRetryBtn.disabled = false;
+          }
+        }
+      );
+    }
+    
     async function syncSingleOrder(orderId) {
       showModal(
         'Sync Order',
@@ -924,12 +1113,32 @@
             
             const data = await response.json();
             if (data.success) {
-              showToast('success', 'Order Sent', 'This order has been sent to Delybell successfully!');
-              await loadOrders(currentPage);
-              loadConnectionHealth();
-              updateOrderTabs();
+              if (data.synced > 0) {
+                showToast('success', 'Order Sent', 'This order has been sent to Delybell successfully!');
+                await loadOrders(currentPage);
+                loadConnectionHealth();
+                updateOrderTabs();
+                updateBulkActions();
+              } else if (data.skipped > 0) {
+                showToast('warning', 'Order Skipped', 'This order is already completed and cannot be synced.');
+                await loadOrders(currentPage);
+                updateOrderTabs();
+                updateBulkActions();
+                if (syncBtn) {
+                  syncBtn.innerHTML = originalContent;
+                  syncBtn.disabled = false;
+                }
+              } else {
+                const errorMsg = data.message || 'Could not send this order. Please try again.';
+                showToast('error', 'Could Not Send Order', errorMsg);
+                if (syncBtn) {
+                  syncBtn.innerHTML = originalContent;
+                  syncBtn.disabled = false;
+                }
+              }
             } else {
-              showToast('error', 'Sync Failed', data.error || 'Unknown error');
+              const errorMsg = data.error || 'Could not send this order. Please try again.';
+              showToast('error', 'Could Not Send Order', errorMsg);
               if (syncBtn) {
                 syncBtn.innerHTML = originalContent;
                 syncBtn.disabled = false;
@@ -1331,12 +1540,22 @@
               </div>
               
               <!-- Bulk Actions -->
+              <div id="bulkActions" class="hidden px-6 py-3 bg-slate-50 dark:bg-slate-800/50 border-b border-border-light dark:border-border-dark flex items-center gap-3 flex-wrap">
+                <span class="text-sm text-slate-600 dark:text-slate-400" id="bulkCount">0 selected</span>
+                <button class="inline-flex items-center px-3 py-1.5 bg-primary text-white rounded-md text-xs font-semibold hover:opacity-90 transition-opacity" id="bulkSyncBtn" onclick="syncSelectedOrders()" disabled>
+                  <span class="material-icons-outlined text-sm mr-1">sync</span> Sync Selected
+                </button>
+                <button class="inline-flex items-center px-3 py-1.5 bg-white dark:bg-surface-dark border border-border-light dark:border-border-dark rounded-md text-xs font-semibold hover:border-primary hover:text-primary transition-all" id="bulkRetryBtn" onclick="retryFailedOrders()" disabled>
+                  <span class="material-icons-outlined text-sm mr-1">refresh</span> Retry Failed
+                </button>
+              </div>
               
               <!-- Orders Table -->
               <div class="overflow-x-auto mt-6">
                 <table class="orders-table">
                   <thead>
                     <tr class="bg-slate-50 dark:bg-slate-800/50 text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                      <th class="text-left" style="width: 50px;"><input type="checkbox" id="selectAllCheckbox" onchange="toggleSelectAll()"></th>
                       <th class="text-left col-order-number">Order #</th>
                       <th class="text-left col-date">Date</th>
                       <th class="text-center col-payment">Payment</th>
@@ -1347,7 +1566,7 @@
                   </thead>
                   <tbody class="divide-y divide-border-light dark:divide-border-dark" id="ordersContainer">
                     <tr>
-                      <td colspan="6" class="text-center text-slate-500 dark:text-slate-400 py-8">
+                      <td colspan="7" class="text-center text-slate-500 dark:text-slate-400 py-8">
                         <div class="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-primary mb-2"></div>
                         <div>Loading orders...</div>
                       </td>
