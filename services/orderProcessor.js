@@ -635,7 +635,7 @@ class OrderProcessor {
   async logOrder({ shop, shopifyOrderId, shopifyOrderNumber = null, delybellOrderId = null, status, errorMessage = null, totalPrice = null, currency = 'USD', customerName = null, phone = null, shopifyOrderCreatedAt = null, financialStatus = null }) {
     if (!process.env.SUPABASE_URL) {
       // Supabase not configured - skip logging
-      return;
+      return { success: true, skipped: true, reason: 'Supabase not configured' };
     }
 
     try {
@@ -688,87 +688,86 @@ class OrderProcessor {
       
       // Use upsert to update existing records instead of creating duplicates
       // Match on shop + shopify_order_id to update existing orders
-      // First try with unique constraint, fallback to manual update if constraint doesn't exist
+      // Use manual check-and-update/insert since Supabase upsert onConflict syntax can be tricky
       let error = null;
       
-      try {
-        const { error: upsertError } = await supabase
+      // Check if order already exists
+      const { data: existing, error: findError } = await supabase
+        .from('order_logs')
+        .select('id')
+        .eq('shop', shop)
+        .eq('shopify_order_id', shopifyOrderId)
+        .limit(1)
+        .single();
+      
+      if (findError && findError.code !== 'PGRST116') { // PGRST116 = no rows returned (expected if new)
+        console.warn('[OrderProcessor] Error checking for existing order:', findError.message);
+      }
+      
+      if (existing && existing.id) {
+        // Update existing record
+        const { error: updateError } = await supabase
           .from('order_logs')
-          .upsert(insertData, {
-            onConflict: 'shop,shopify_order_id',
-            ignoreDuplicates: false
-          });
-        error = upsertError;
-      } catch (constraintError) {
-        // Unique constraint might not exist yet - try manual update/insert
-        console.warn('[OrderProcessor] Unique constraint not found, using manual update/insert');
+          .update(insertData)
+          .eq('id', existing.id);
+        error = updateError;
         
-        // Check if order already exists
-        const existing = await this.findOrderLog(shop, shopifyOrderId);
+        if (!error) {
+          console.log(`[OrderProcessor] ✅ Updated existing order ${shopifyOrderId} with status: ${status}, shop: ${shop}`);
+        }
+      } else {
+        // Insert new record
+        const { error: insertError } = await supabase
+          .from('order_logs')
+          .insert(insertData);
+        error = insertError;
         
-        if (existing) {
-          // Update existing record
+        if (!error) {
+          console.log(`[OrderProcessor] ✅ Inserted new order ${shopifyOrderId} with status: ${status}, shop: ${shop}`);
+        }
+      }
+      
+      // If error is about missing column (error_message), try without it
+      if (error && error.message && error.message.includes('error_message')) {
+        console.warn('[OrderProcessor] error_message column not found, retrying without it');
+        delete insertData.error_message;
+        
+        // Retry with same logic (check and update/insert)
+        const { data: existingRetry } = await supabase
+          .from('order_logs')
+          .select('id')
+          .eq('shop', shop)
+          .eq('shopify_order_id', shopifyOrderId)
+          .limit(1)
+          .single();
+        
+        if (existingRetry && existingRetry.id) {
           const { error: updateError } = await supabase
             .from('order_logs')
             .update(insertData)
-            .eq('shop', shop)
-            .eq('shopify_order_id', shopifyOrderId);
+            .eq('id', existingRetry.id);
           error = updateError;
         } else {
-          // Insert new record
           const { error: insertError } = await supabase
             .from('order_logs')
             .insert(insertData);
           error = insertError;
         }
       }
-      
-      // If error is about missing column, try without error_message
-      if (error && error.message && error.message.includes('error_message')) {
-        console.warn('[OrderProcessor] error_message column not found, upserting without it');
-        delete insertData.error_message;
-        
-        try {
-          const { error: retryError } = await supabase
-            .from('order_logs')
-            .upsert(insertData, {
-              onConflict: 'shop,shopify_order_id',
-              ignoreDuplicates: false
-            });
-          error = retryError;
-        } catch (retryConstraintError) {
-          // Fallback to manual update
-          const existing = await this.findOrderLog(shop, shopifyOrderId);
-          if (existing) {
-            const { error: updateError } = await supabase
-              .from('order_logs')
-              .update(insertData)
-              .eq('shop', shop)
-              .eq('shopify_order_id', shopifyOrderId);
-            error = updateError;
-          } else {
-            const { error: insertError } = await supabase
-              .from('order_logs')
-              .insert(insertData);
-            error = insertError;
-          }
-        }
-        
-        if (error) {
-          throw error;
-        }
-        return; // Success on retry
-      }
 
       if (error) {
         console.error(`[OrderProcessor] Failed to log order ${shopifyOrderId}:`, error.message);
         console.error(`[OrderProcessor] Error details:`, JSON.stringify(error, null, 2));
-      } else {
-        console.log(`[OrderProcessor] ✅ Logged order ${shopifyOrderId} with status: ${status}, shop: ${shop}`);
+        // Don't throw - logging failures shouldn't break order processing
+        // Caller can check return value if needed
+        return { success: false, error: error.message };
       }
+      
+      return { success: true };
     } catch (logError) {
       // Don't throw - logging failures shouldn't break order processing
-      console.error(`[OrderProcessor] Error logging order:`, logError.message);
+      console.error(`[OrderProcessor] Error logging order ${shopifyOrderId}:`, logError.message);
+      return { success: false, error: logError.message };
     }
   }
 }

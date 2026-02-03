@@ -1753,14 +1753,27 @@ router.post('/admin/api/orders/fetch-historical', async (req, res) => {
     }
 
     // Fetch recent orders from Shopify (last 30 days, limit 250)
+    // Exclude archived and cancelled orders
     console.log(`[Admin] Fetching historical orders from Shopify for shop: ${normalizedShop}`);
     const shopifyOrders = await shopifyClient.getOrders(session, { 
       limit: 250,
-      status: 'any',
+      status: 'any', // Get all statuses, we'll filter below
       created_at_min: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()
     });
 
     console.log(`[Admin] Found ${shopifyOrders.length} orders from Shopify`);
+
+    // Filter out archived and cancelled orders
+    const activeOrders = shopifyOrders.filter(order => {
+      const cancelled = order.cancelled_at !== null;
+      const archived = order.tags && order.tags.toLowerCase().includes('archived');
+      const financialStatus = (order.financial_status || '').toLowerCase();
+      const isCancelledStatus = financialStatus === 'voided' || financialStatus === 'refunded';
+      
+      return !cancelled && !archived && !isCancelledStatus;
+    });
+
+    console.log(`[Admin] Filtered to ${activeOrders.length} active orders (excluded archived/cancelled)`);
 
     // Get existing order IDs from database
     const { data: existingOrders } = await supabase
@@ -1771,7 +1784,7 @@ router.post('/admin/api/orders/fetch-historical', async (req, res) => {
     const existingOrderIds = new Set((existingOrders || []).map(o => o.shopify_order_id?.toString()));
 
     // Filter out orders that already exist
-    const newOrders = shopifyOrders.filter(order => {
+    const newOrders = activeOrders.filter(order => {
       const orderId = order.id?.toString() || order.order_number?.toString();
       return orderId && !existingOrderIds.has(orderId);
     });
@@ -1791,7 +1804,7 @@ router.post('/admin/api/orders/fetch-historical', async (req, res) => {
             : shopifyOrder.customer?.first_name || shopifyOrder.customer?.last_name || null);
         const phone = shippingAddress?.phone || shopifyOrder.customer?.phone || null;
 
-        await orderProcessor.logOrder({
+        const result = await orderProcessor.logOrder({
           shop: normalizedShop,
           shopifyOrderId: shopifyOrder.id?.toString() || shopifyOrder.order_number?.toString(),
           shopifyOrderNumber: shopifyOrder.order_number || null,
@@ -1805,7 +1818,13 @@ router.post('/admin/api/orders/fetch-historical', async (req, res) => {
           shopifyOrderCreatedAt: shopifyOrder.created_at || null,
           financialStatus: shopifyOrder.financial_status || null,
         });
-        saved++;
+        
+        if (result && result.success) {
+          saved++;
+        } else {
+          errors++;
+          console.error(`[Admin] Error saving order ${shopifyOrder.order_number}:`, result?.error || 'Unknown error');
+        }
       } catch (error) {
         console.error(`[Admin] Error saving order ${shopifyOrder.order_number}:`, error.message);
         errors++;
@@ -1814,10 +1833,13 @@ router.post('/admin/api/orders/fetch-historical', async (req, res) => {
 
     res.json({
       success: true,
-      message: `Fetched ${saved} new orders from Shopify`,
+      message: saved > 0 
+        ? `Fetched ${saved} new order${saved > 1 ? 's' : ''} from Shopify. ${shopifyOrders.length - newOrders.length} already existed.`
+        : `No new orders found. All ${shopifyOrders.length} orders are already in the system.`,
       saved,
       errors,
       total: shopifyOrders.length,
+      active: activeOrders.length,
       existing: shopifyOrders.length - newOrders.length,
     });
   } catch (error) {
