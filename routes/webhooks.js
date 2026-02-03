@@ -283,36 +283,6 @@ router.post('/orders/create', express.raw({ type: 'application/json' }), verifyW
 
     console.log(`[Webhook] Starting order processing for shop: ${shop}`);
 
-    // Check shop sync mode
-    const syncMode = shopData.sync_mode || 'manual'; // Default to 'manual' (changed from 'auto')
-    const autoSyncEnabledAt = shopData.auto_sync_enabled_at;
-    console.log(`[Webhook] Shop sync mode: ${syncMode}`);
-    if (syncMode === 'auto' && autoSyncEnabledAt) {
-      console.log(`[Webhook] Auto sync enabled at: ${autoSyncEnabledAt}`);
-    }
-
-    // CRITICAL RULE: Check if order was created before auto sync was enabled
-    // Never auto-sync orders created before auto mode was enabled
-    const orderCreatedAt = shopifyOrder.created_at ? new Date(shopifyOrder.created_at) : new Date();
-    let shouldAutoSync = false;
-    
-    if (syncMode === 'auto') {
-      if (autoSyncEnabledAt) {
-        const autoSyncEnabledDate = new Date(autoSyncEnabledAt);
-        shouldAutoSync = orderCreatedAt >= autoSyncEnabledDate;
-        if (!shouldAutoSync) {
-          console.log(`[Webhook] ⚠️ Order ${orderId} created at ${orderCreatedAt.toISOString()} is BEFORE auto sync was enabled at ${autoSyncEnabledDate.toISOString()}`);
-          console.log(`[Webhook] ⚠️ This order will NOT be auto-synced (saved as pending_sync instead)`);
-        } else {
-          console.log(`[Webhook] ✅ Order ${orderId} created at ${orderCreatedAt.toISOString()} is AFTER auto sync was enabled - will auto-sync`);
-        }
-      } else {
-        // No auto_sync_enabled_at set - this shouldn't happen, but treat as manual for safety
-        console.log(`[Webhook] ⚠️ Auto mode enabled but auto_sync_enabled_at not set - treating as manual for safety`);
-        shouldAutoSync = false;
-      }
-    }
-
     // Respond quickly to Shopify (within 5 seconds)
     if (!respondQuickly()) {
       // If we're already past 4.5 seconds, just respond and process async
@@ -322,92 +292,38 @@ router.post('/orders/create', express.raw({ type: 'application/json' }), verifyW
       });
     }
 
-    // Process order based on sync mode
+    // SIMPLIFIED: Always save orders as pending_sync - user will sync manually
     try {
-      if (syncMode === 'manual' || !shouldAutoSync) {
-        // Manual mode OR order created before auto sync was enabled: Save order with status "pending_sync"
-        const reason = syncMode === 'manual' ? 'manual sync mode' : 'order created before auto sync was enabled';
-        console.log(`[Webhook] 📝 ${reason.charAt(0).toUpperCase() + reason.slice(1)} - saving order ${orderId} with status "pending_sync"`);
-        
-        const shippingAddress = shopifyOrder.shipping_address || shopifyOrder.billing_address;
-        const customerName = shippingAddress?.name || 
-          (shopifyOrder.customer?.first_name && shopifyOrder.customer?.last_name 
-            ? `${shopifyOrder.customer.first_name} ${shopifyOrder.customer.last_name}` 
-            : shopifyOrder.customer?.first_name || shopifyOrder.customer?.last_name || null);
-        const phone = shippingAddress?.phone || shopifyOrder.customer?.phone || null;
-        const shopifyOrderCreatedAt = shopifyOrder.created_at || null;
+      console.log(`[Webhook] 📝 Saving order ${orderId} with status "pending_sync" (manual sync only)`);
+      
+      const shippingAddress = shopifyOrder.shipping_address || shopifyOrder.billing_address;
+      const customerName = shippingAddress?.name || 
+        (shopifyOrder.customer?.first_name && shopifyOrder.customer?.last_name 
+          ? `${shopifyOrder.customer.first_name} ${shopifyOrder.customer.last_name}` 
+          : shopifyOrder.customer?.first_name || shopifyOrder.customer?.last_name || null);
+      const phone = shippingAddress?.phone || shopifyOrder.customer?.phone || null;
+      const shopifyOrderCreatedAt = shopifyOrder.created_at || null;
 
-        await orderProcessor.logOrder({
-          shop,
-          shopifyOrderId: shopifyOrder.id?.toString() || shopifyOrder.order_number?.toString(),
-          shopifyOrderNumber: shopifyOrder.order_number || null,
-          delybellOrderId: null, // Not synced yet
-          status: 'pending_sync',
-          errorMessage: null,
-          totalPrice: shopifyOrder.total_price ? parseFloat(shopifyOrder.total_price) : null,
-          currency: shopifyOrder.currency || 'USD',
-          customerName: customerName,
-          phone: phone,
-          shopifyOrderCreatedAt: shopifyOrderCreatedAt,
-          financialStatus: shopifyOrder.financial_status || orderStatus, // Store payment status
-        });
+      await orderProcessor.logOrder({
+        shop,
+        shopifyOrderId: shopifyOrder.id?.toString() || shopifyOrder.order_number?.toString(),
+        shopifyOrderNumber: shopifyOrder.order_number || null,
+        delybellOrderId: null, // Not synced yet
+        status: 'pending_sync',
+        errorMessage: null,
+        totalPrice: shopifyOrder.total_price ? parseFloat(shopifyOrder.total_price) : null,
+        currency: shopifyOrder.currency || 'USD',
+        customerName: customerName,
+        phone: phone,
+        shopifyOrderCreatedAt: shopifyOrderCreatedAt,
+        financialStatus: shopifyOrder.financial_status || orderStatus, // Store payment status
+      });
 
-        console.log(`[Webhook] ✅ Order ${orderId} saved with status "pending_sync" (manual mode)`);
-        console.log(`[Webhook] Order details: shop=${shop}, orderNumber=${shopifyOrder.order_number}, shopifyOrderId=${shopifyOrder.id}`);
-        
-        // Response already sent by respondQuickly() above, so we're done
-        return;
-      }
-
-      // Auto mode: Process order immediately (current behavior)
-      console.log(`[Webhook] 🚀 Auto sync mode - processing order ${orderId} immediately (Status: ${orderStatus})...`);
-
-    const result = await orderProcessor.processOrder(
-      shopifyOrder,
-      session,
-      mappingConfig
-    );
-
-      if (process.env.NODE_ENV !== 'production') {
-        console.log(`[Webhook] Order processing result:`, JSON.stringify(result, null, 2));
-      } else {
-        console.log(`[Webhook] Order processing completed:`, result.success ? 'Success' : 'Failed');
-        if (!result.success) {
-          // 5️⃣ Only log ERROR when Delybell order was not created AND no orderId is available
-          if (result.isDuplicate) {
-            // Duplicate webhook is normal - log as INFO
-            console.log(`[Webhook] ℹ️ Duplicate webhook for order ${orderId} - already synced, skipping`);
-          } else if (!result.delybellOrderId) {
-            // Actual failure - no orderId means order was not created
-            console.error(`[Webhook] ❌ Order processing failed for order ${orderId}:`, result.error);
-          } else {
-            // Has orderId but marked as failed - this shouldn't happen, but log as warning
-            console.warn(`[Webhook] ⚠️ Order ${orderId} has orderId ${result.delybellOrderId} but marked as failed:`, result.error);
-          }
-        } else {
-          console.log(`[Webhook] ✅ Order ${orderId} synced to Delybell: ${result.delybellOrderId}`);
-        }
-      }
-
-      // Log result but don't send response (already sent)
-      if (!result.success) {
-        // 5️⃣ Only log ERROR when Delybell order was not created AND no orderId is available
-        if (result.isDuplicate) {
-          // Duplicate webhook is normal - log as INFO
-          console.log(`[Webhook] ℹ️ Duplicate webhook for order ${orderId} - already synced, skipping`);
-        } else if (!result.delybellOrderId) {
-          // Actual failure - no orderId means order was not created
-          console.error(`[Webhook] ❌ Order processing failed for order ${orderId}:`, result.error);
-          console.error(`[Webhook] Error details:`, result.errorDetails || 'No details');
-        } else {
-          // Has orderId but marked as failed - this shouldn't happen, but log as warning
-          console.warn(`[Webhook] ⚠️ Order ${orderId} has orderId ${result.delybellOrderId} but marked as failed:`, result.error);
-        }
-        // Order is already logged to database by orderProcessor.processOrder
-        // TODO: Add to retry queue for failed orders
-      } else {
-        console.log(`[Webhook] ✅ Order ${orderId} successfully processed and logged to database`);
-      }
+      console.log(`[Webhook] ✅ Order ${orderId} saved with status "pending_sync"`);
+      console.log(`[Webhook] Order details: shop=${shop}, orderNumber=${shopifyOrder.order_number}, shopifyOrderId=${shopifyOrder.id}`);
+      
+      // Response already sent by respondQuickly() above, so we're done
+      return;
     } catch (processError) {
       console.error(`[Webhook] ❌ Order processing error for order ${orderId}:`, processError.message);
       console.error(`[Webhook] Error stack:`, processError.stack);
@@ -572,11 +488,6 @@ router.post('/orders/update', express.raw({ type: 'application/json' }), verifyW
       isOnline: false,
     };
 
-    // Check shop sync mode (same logic as orders/create)
-    const syncMode = shopData.sync_mode || 'manual';
-    const autoSyncEnabledAt = shopData.auto_sync_enabled_at;
-    console.log(`[Webhook] Shop sync mode: ${syncMode}`);
-    
     // Check if order was already synced (has delybell tag or exists in DB)
     const existingTags = shopifyOrder.tags ? shopifyOrder.tags.split(', ') : [];
     const alreadySynced = existingTags.some(tag => tag.startsWith('delybell-synced') || tag.startsWith('delybell-order-id:'));
@@ -595,7 +506,7 @@ router.post('/orders/update', express.raw({ type: 'application/json' }), verifyW
       dbOrder = data;
     }
     
-    // CRITICAL RULE: Never sync an order already marked as synced
+    // CRITICAL RULE: Never update an order already synced
     if (alreadySynced || (dbOrder && dbOrder.status === 'processed' && dbOrder.delybell_order_id)) {
       console.log(`[Webhook] ℹ️ Order ${orderId} already synced to Delybell, skipping update`);
       if (!respondQuickly()) {
@@ -606,45 +517,6 @@ router.post('/orders/update', express.raw({ type: 'application/json' }), verifyW
       }
       return;
     }
-    
-    // CRITICAL RULE: Check if order was created before auto sync was enabled
-    const orderCreatedAt = shopifyOrder.created_at ? new Date(shopifyOrder.created_at) : new Date();
-    let shouldAutoSync = false;
-    
-    if (syncMode === 'auto') {
-      if (autoSyncEnabledAt) {
-        const autoSyncEnabledDate = new Date(autoSyncEnabledAt);
-        shouldAutoSync = orderCreatedAt >= autoSyncEnabledDate;
-        if (!shouldAutoSync) {
-          console.log(`[Webhook] ⚠️ Order ${orderId} created before auto sync was enabled - will not auto-sync`);
-        }
-      } else {
-        console.log(`[Webhook] ⚠️ Auto mode enabled but auto_sync_enabled_at not set - treating as manual for safety`);
-        shouldAutoSync = false;
-      }
-    }
-
-    // Only process orders that are paid or authorized (not pending/unpaid)
-    const shouldProcess = orderStatus === 'paid' || orderStatus === 'authorized' || orderStatus === 'partially_paid';
-    
-    if (!shouldProcess) {
-      console.log(`[Webhook] Order ${orderId} status is ${orderStatus}, skipping (will sync when marked as paid)`);
-      if (!respondQuickly()) {
-        return res.status(200).json({
-          success: true,
-          message: `Order status is ${orderStatus}, will sync when marked as paid`,
-        });
-      }
-      return;
-    }
-
-    // Process the order (same as orders/create)
-    const mappingConfig = {
-      service_type_id: parseInt(process.env.DEFAULT_SERVICE_TYPE_ID) || 1,
-      shop: shop,
-      session: session,
-      destination: null,
-    };
 
     // Respond quickly to Shopify (within 5 seconds)
     if (!respondQuickly()) {
@@ -654,83 +526,35 @@ router.post('/orders/update', express.raw({ type: 'application/json' }), verifyW
       });
     }
 
-    // Process order based on sync mode
+    // SIMPLIFIED: Always save order updates as pending_sync - user will sync manually
     try {
-      if (syncMode === 'manual' || !shouldAutoSync) {
-        // Manual mode OR order created before auto sync: Save as pending_sync
-        const reason = syncMode === 'manual' ? 'manual sync mode' : 'order created before auto sync was enabled';
-        console.log(`[Webhook] 📝 ${reason.charAt(0).toUpperCase() + reason.slice(1)} - saving order update ${orderId} with status "pending_sync"`);
-        
-        const shippingAddress = shopifyOrder.shipping_address || shopifyOrder.billing_address;
-        const customerName = shippingAddress?.name || 
-          (shopifyOrder.customer?.first_name && shopifyOrder.customer?.last_name 
-            ? `${shopifyOrder.customer.first_name} ${shopifyOrder.customer.last_name}` 
-            : shopifyOrder.customer?.first_name || shopifyOrder.customer?.last_name || null);
-        const phone = shippingAddress?.phone || shopifyOrder.customer?.phone || null;
-        const shopifyOrderCreatedAt = shopifyOrder.created_at || null;
+      console.log(`[Webhook] 📝 Saving order update ${orderId} with status "pending_sync" (manual sync only)`);
+      
+      const shippingAddress = shopifyOrder.shipping_address || shopifyOrder.billing_address;
+      const customerName = shippingAddress?.name || 
+        (shopifyOrder.customer?.first_name && shopifyOrder.customer?.last_name 
+          ? `${shopifyOrder.customer.first_name} ${shopifyOrder.customer.last_name}` 
+          : shopifyOrder.customer?.first_name || shopifyOrder.customer?.last_name || null);
+      const phone = shippingAddress?.phone || shopifyOrder.customer?.phone || null;
+      const shopifyOrderCreatedAt = shopifyOrder.created_at || null;
 
-        await orderProcessor.logOrder({
-          shop,
-          shopifyOrderId: shopifyOrderId,
-          shopifyOrderNumber: shopifyOrder.order_number || null,
-          delybellOrderId: null,
-          status: 'pending_sync',
-          errorMessage: null,
-          totalPrice: shopifyOrder.total_price ? parseFloat(shopifyOrder.total_price) : null,
-          currency: shopifyOrder.currency || 'USD',
-          customerName: customerName,
-          phone: phone,
-          shopifyOrderCreatedAt: shopifyOrderCreatedAt,
-          financialStatus: shopifyOrder.financial_status || orderStatus, // Store payment status
-        });
+      await orderProcessor.logOrder({
+        shop,
+        shopifyOrderId: shopifyOrderId,
+        shopifyOrderNumber: shopifyOrder.order_number || null,
+        delybellOrderId: null,
+        status: 'pending_sync',
+        errorMessage: null,
+        totalPrice: shopifyOrder.total_price ? parseFloat(shopifyOrder.total_price) : null,
+        currency: shopifyOrder.currency || 'USD',
+        customerName: customerName,
+        phone: phone,
+        shopifyOrderCreatedAt: shopifyOrderCreatedAt,
+        financialStatus: shopifyOrder.financial_status || orderStatus, // Store payment status
+      });
 
-        console.log(`[Webhook] ✅ Order update ${orderId} saved with status "pending_sync"`);
-        return;
-      }
-
-      // Auto mode AND order eligible: Process order immediately
-      console.log(`[Webhook] 🚀 Auto sync mode - processing order update ${orderId} immediately...`);
-      const result = await orderProcessor.processOrder(
-        shopifyOrder,
-        session,
-        mappingConfig
-      );
-
-      if (process.env.NODE_ENV !== 'production') {
-        console.log(`[Webhook] Order processing result:`, JSON.stringify(result, null, 2));
-      } else {
-        console.log(`[Webhook] Order processing completed:`, result.success ? 'Success' : 'Failed');
-        if (!result.success) {
-          // 5️⃣ Only log ERROR when Delybell order was not created AND no orderId is available
-          if (result.isDuplicate) {
-            // Duplicate webhook is normal - log as INFO
-            console.log(`[Webhook] ℹ️ Duplicate webhook for order ${orderId} - already synced, skipping`);
-          } else if (!result.delybellOrderId) {
-            // Actual failure - no orderId means order was not created
-            console.error(`[Webhook] ❌ Order processing failed for order ${orderId}:`, result.error);
-          } else {
-            // Has orderId but marked as failed - this shouldn't happen, but log as warning
-            console.warn(`[Webhook] ⚠️ Order ${orderId} has orderId ${result.delybellOrderId} but marked as failed:`, result.error);
-          }
-        } else {
-          console.log(`[Webhook] ✅ Order ${orderId} synced to Delybell: ${result.delybellOrderId}`);
-        }
-      }
-
-      if (!result.success) {
-        // 5️⃣ Only log ERROR when Delybell order was not created AND no orderId is available
-        if (result.isDuplicate) {
-          // Duplicate webhook is normal - log as INFO
-          console.log(`[Webhook] ℹ️ Duplicate webhook for order ${orderId} - already synced, skipping`);
-        } else if (!result.delybellOrderId) {
-          // Actual failure - no orderId means order was not created
-          console.error(`[Webhook] ❌ Order processing failed for order ${orderId}:`, result.error);
-          console.error(`[Webhook] Error details:`, result.errorDetails || 'No details');
-        } else {
-          // Has orderId but marked as failed - this shouldn't happen, but log as warning
-          console.warn(`[Webhook] ⚠️ Order ${orderId} has orderId ${result.delybellOrderId} but marked as failed:`, result.error);
-        }
-      }
+      console.log(`[Webhook] ✅ Order update ${orderId} saved with status "pending_sync"`);
+      return;
     } catch (processError) {
       console.error(`[Webhook] ❌ Order processing error for order ${orderId}:`, processError.message);
       console.error(`[Webhook] Error stack:`, processError.stack);

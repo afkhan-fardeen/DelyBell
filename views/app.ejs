@@ -311,7 +311,6 @@
     let app;
     let shop = window.SHOPIFY_SHOP || '<%= shop %>';
     const apiKey = window.SHOPIFY_API_KEY;
-    let currentSyncMode = 'manual';
     let currentPage = 1;
     let pageSize = 10;
     let totalOrders = 0;
@@ -577,159 +576,6 @@
         return { shopify: false, delybell: false, lastSync: null, storeDomain: shop };
       }
     }
-    
-    // Load sync mode
-    let autoSyncEnabledAt = null;
-    
-    async function loadSyncMode() {
-      if (!shop) return;
-      
-      try {
-        const response = await fetch(`/admin/api/shops/${encodeURIComponent(shop)}/sync-mode`);
-        const data = await response.json();
-        if (data.success) {
-          currentSyncMode = data.sync_mode || 'manual'; // STRICT: Default to manual
-          autoSyncEnabledAt = data.auto_sync_enabled_at || null;
-          updateSyncModeUI();
-        }
-      } catch (error) {
-        console.error('Error loading sync mode:', error);
-        currentSyncMode = 'manual';
-        autoSyncEnabledAt = null;
-        updateSyncModeUI();
-      }
-    }
-    
-    function updateSyncModeUI() {
-      const autoBtn = document.getElementById('autoSyncBtn');
-      const manualBtn = document.getElementById('manualSyncBtn');
-      const syncModeBadge = document.getElementById('syncModeBadge');
-      const syncModeDescription = document.getElementById('syncModeDescription');
-      const manualControls = document.getElementById('manualSyncControls');
-      
-      if (autoBtn && manualBtn) {
-        if (currentSyncMode === 'auto') {
-          autoBtn.className = 'px-4 py-1.5 text-sm font-medium rounded-md bg-white dark:bg-slate-700 shadow-sm text-slate-900 dark:text-white';
-          manualBtn.className = 'px-4 py-1.5 text-sm font-medium text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200';
-        } else {
-          autoBtn.className = 'px-4 py-1.5 text-sm font-medium text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200';
-          manualBtn.className = 'px-4 py-1.5 text-sm font-medium rounded-md bg-white dark:bg-slate-700 shadow-sm text-slate-900 dark:text-white';
-        }
-      }
-      
-      if (syncModeBadge) {
-        syncModeBadge.textContent = currentSyncMode === 'auto' ? 'Auto' : 'Manual';
-        syncModeBadge.className = currentSyncMode === 'auto' 
-          ? 'px-2 py-0.5 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 text-[10px] font-bold uppercase rounded'
-          : 'px-2 py-0.5 bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400 text-[10px] font-bold uppercase rounded';
-      }
-      
-      if (syncModeDescription) {
-        if (currentSyncMode === 'auto') {
-          const enabledDate = autoSyncEnabledAt ? new Date(autoSyncEnabledAt).toLocaleString('en-US', { dateStyle: 'short', timeStyle: 'short' }) : null;
-          syncModeDescription.innerHTML = `
-            <div class="bg-blue-50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-900/30 rounded-lg p-4 flex items-start space-x-3">
-              <span class="material-icons-outlined text-blue-600 dark:text-blue-400 mt-0.5">info</span>
-              <div class="flex-1">
-                <h3 class="font-semibold text-blue-900 dark:text-blue-300 text-sm mb-2">How Auto Sync Works</h3>
-                <p class="text-blue-800 dark:text-blue-400/80 text-sm leading-relaxed mb-2">
-                  When a customer places an order in your Shopify store, it will <span class="font-bold">automatically sync to Delybell</span> within seconds. No action needed from you — orders appear in Delybell immediately.
-                </p>
-                ${enabledDate ? `
-                  <p class="text-blue-700 dark:text-blue-500 text-xs mt-2 pt-2 border-t border-blue-200 dark:border-blue-900/30">
-                    <span class="material-icons-outlined text-xs align-middle mr-1">schedule</span>
-                    Auto sync enabled on ${enabledDate}. Only orders placed after this time will sync automatically.
-                  </p>
-                ` : ''}
-              </div>
-            </div>
-          `;
-        } else {
-          syncModeDescription.innerHTML = `
-            <div class="bg-yellow-50 dark:bg-yellow-900/10 border border-yellow-100 dark:border-yellow-900/30 rounded-lg p-4 flex items-start space-x-3">
-              <span class="material-icons-outlined text-yellow-600 dark:text-yellow-400 mt-0.5">info</span>
-              <div class="flex-1">
-                <h3 class="font-semibold text-yellow-900 dark:text-yellow-300 text-sm mb-2">How Manual Sync Works</h3>
-                <p class="text-yellow-800 dark:text-yellow-400/80 text-sm leading-relaxed mb-2">
-                  Orders are <span class="font-bold">saved but not synced automatically</span>. You can review orders and choose which ones to sync to Delybell. Use the checkboxes in the orders table below to select orders, then click "Sync Selected" when ready.
-                </p>
-                <div class="bg-yellow-100 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-900/40 rounded-md p-2 mt-2">
-                  <p class="text-yellow-900 dark:text-yellow-300 text-xs font-medium">
-                    <span class="material-icons-outlined text-xs align-middle mr-1">lock</span>
-                    Auto sync is OFF. All new orders will be saved for manual review.
-                  </p>
-                </div>
-              </div>
-            </div>
-          `;
-        }
-      }
-      
-      if (manualControls) {
-        manualControls.classList.toggle('hidden', currentSyncMode === 'auto');
-      }
-      
-      loadOrders();
-    }
-    
-    async function updateSyncMode(mode) {
-      if (!shop) {
-        showToast('error', 'Store Not Found', 'Could not detect your store. Please refresh the page or contact support.');
-        return;
-      }
-      
-      // If switching to auto mode, show warning about existing orders
-      if (mode === 'auto' && currentSyncMode === 'manual') {
-        showModal(
-          'Switch to Auto Sync?',
-          `When you switch to Auto Sync:
-          
-• Only NEW orders placed AFTER enabling will sync automatically
-• Existing pending orders will remain pending and need manual sync
-• This prevents duplicate orders and ensures data accuracy
-
-Do you want to enable Auto Sync?`,
-          async () => {
-            await performSyncModeUpdate(mode);
-          }
-        );
-        return;
-      }
-      
-      // If switching to manual, proceed directly
-      await performSyncModeUpdate(mode);
-    }
-    
-    async function performSyncModeUpdate(mode) {
-      try {
-        const response = await fetch(`/admin/api/shops/${encodeURIComponent(shop)}/sync-mode`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ sync_mode: mode }),
-        });
-        
-        const data = await response.json();
-        if (data.success) {
-          currentSyncMode = mode;
-          // Reload sync mode to get auto_sync_enabled_at timestamp
-          await loadSyncMode();
-          loadOrders(currentPage); // Reload orders to update UI
-          updateOrderTabs(); // Update counts
-          
-          if (mode === 'auto') {
-            showToast('success', 'Auto Sync Enabled', 'New orders will now sync automatically. Existing orders remain pending for manual sync.');
-          } else {
-            showToast('success', 'Manual Sync Enabled', 'Orders will be saved for you to sync manually when ready.');
-          }
-        } else {
-          showToast('error', 'Could Not Change Mode', data.error || 'Please try again. If this continues, contact support.');
-        }
-      } catch (error) {
-        console.error('Error updating sync mode:', error);
-        showToast('error', 'Something Went Wrong', 'Could not change sync mode. Please try again.');
-      }
-    }
-    
     // Load orders with pagination and filtering
     async function loadOrders(page = 1, statusFilter = null) {
       if (!shop) return;
@@ -737,13 +583,10 @@ Do you want to enable Auto Sync?`,
       currentPage = page;
       const ordersContainer = document.getElementById('ordersContainer');
       
-      // Calculate showCheckboxes based on current sync mode (must be available in this scope)
-      const showCheckboxes = currentSyncMode === 'manual';
-      
       if (ordersContainer) {
         ordersContainer.innerHTML = `
           <tr>
-            <td colspan="${showCheckboxes ? '7' : '6'}" class="px-6 py-8 text-center text-slate-500 dark:text-slate-400">
+            <td colspan="6" class="px-6 py-8 text-center text-slate-500 dark:text-slate-400">
               <div class="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-primary mb-2"></div>
               <div>Loading orders...</div>
             </td>
@@ -786,7 +629,7 @@ Do you want to enable Auto Sync?`,
             
             ordersContainer.innerHTML = `
               <tr>
-                <td colspan="${showCheckboxes ? '7' : '6'}" class="px-6 py-8 text-center text-slate-500 dark:text-slate-400">
+                <td colspan="6" class="px-6 py-8 text-center text-slate-500 dark:text-slate-400">
                   <span class="material-icons-outlined text-4xl mb-2 block">inbox</span>
                   <div class="font-semibold">No orders found</div>
                   <div class="text-sm mt-1">${emptyMessage}</div>
@@ -874,7 +717,6 @@ Do you want to enable Auto Sync?`,
     
     function renderOrders(orders) {
       const ordersContainer = document.getElementById('ordersContainer');
-      const showCheckboxes = currentSyncMode === 'manual';
       
       function formatDate(dateString) {
         if (!dateString) return 'N/A';
@@ -942,7 +784,6 @@ Do you want to enable Auto Sync?`,
           const hasError = order.status === 'failed' && order.errorMessage;
           return `
             <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors group">
-              ${showCheckboxes ? `<td class="text-left" style="width: 50px;"><input type="checkbox" class="order-checkbox" value="${order.id}" ${(order.status === 'pending_sync' || order.status === 'failed') ? '' : 'disabled'} onchange="updateBulkActions()"></td>` : ''}
               <td class="col-order-number font-semibold text-sm">#${order.shopifyOrderNumber || 'N/A'}</td>
               <td class="col-date text-slate-600 dark:text-slate-400 text-sm">${formatDate(order.createdAt)}</td>
               <td class="col-payment text-center">${getPaymentBadge(order.financialStatus)}</td>
@@ -959,21 +800,16 @@ Do you want to enable Auto Sync?`,
                     <span class="material-icons-outlined text-sm mr-1">refresh</span> Retry
                   </button>
                 ` : ''}
-                ${order.status === 'pending_sync' && currentSyncMode === 'manual' ? `
+                ${order.status === 'pending_sync' ? `
                   <button class="inline-flex items-center px-3 py-1.5 bg-primary text-white rounded-md text-xs font-semibold hover:opacity-90 transition-opacity" onclick="syncSingleOrder('${order.id}')">
                     <span class="material-icons-outlined text-sm mr-1">sync</span> Sync
-                  </button>
-                ` : ''}
-                ${order.status === 'pending_sync' && currentSyncMode === 'auto' ? `
-                  <button class="inline-flex items-center px-3 py-1.5 bg-white dark:bg-surface-dark border border-border-light dark:border-border-dark rounded-md text-xs font-semibold hover:border-primary hover:text-primary dark:hover:text-primary transition-all shadow-sm" onclick="viewOrderDetails('${order.id}')">
-                    <span class="material-icons-outlined text-sm mr-1">visibility</span> View
                   </button>
                 ` : ''}
               </td>
             </tr>
             ${hasError ? `
               <tr id="error-${index}" class="hidden">
-                <td colspan="${showCheckboxes ? '7' : '6'}" class="py-3 px-4 bg-red-50 dark:bg-red-900/10 border-l-4 border-red-500">
+                <td colspan="6" class="py-3 px-4 bg-red-50 dark:bg-red-900/10 border-l-4 border-red-500">
                   <div class="text-sm text-red-700 dark:text-red-400">${getFriendlyError(order.errorMessage)}</div>
                 </td>
               </tr>
@@ -1018,182 +854,6 @@ Do you want to enable Auto Sync?`,
           ? 'p-1 px-3 border border-border-light dark:border-border-dark rounded bg-white dark:bg-surface-dark text-slate-400 cursor-not-allowed text-sm'
           : 'p-1 px-3 border border-border-light dark:border-border-dark rounded bg-white dark:bg-surface-dark text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 text-sm';
       }
-    }
-    
-    function toggleSelectAll() {
-      const selectAll = document.getElementById('selectAllCheckbox');
-      if (selectAll) {
-        const checked = selectAll.checked;
-        document.querySelectorAll('.order-checkbox:not(:disabled)').forEach(cb => {
-          cb.checked = checked;
-        });
-        updateBulkActions();
-      }
-    }
-    
-    function updateBulkActions() {
-      const checked = document.querySelectorAll('.order-checkbox:checked').length;
-      const bulkActions = document.getElementById('bulkActions');
-      const bulkCount = document.getElementById('bulkCount');
-      const bulkSyncBtn = document.getElementById('bulkSyncBtn');
-      const bulkRetryBtn = document.getElementById('bulkRetryBtn');
-      
-      if (bulkActions) bulkActions.classList.toggle('hidden', checked === 0);
-      if (bulkCount) bulkCount.textContent = `${checked} selected`;
-      if (bulkSyncBtn) bulkSyncBtn.disabled = checked === 0;
-      if (bulkRetryBtn) bulkRetryBtn.disabled = checked === 0;
-    }
-    
-    async function syncSelectedOrders() {
-      const checked = Array.from(document.querySelectorAll('.order-checkbox:checked')).map(cb => cb.value);
-      if (checked.length === 0) {
-        showToast('warning', 'No Orders Selected', 'Please check the boxes next to the orders you want to sync.');
-        return;
-      }
-      
-      showModal(
-        'Sync Selected Orders',
-        `Sync ${checked.length} selected order(s) to Delybell?`,
-        async () => {
-          // Close modal and show progress
-          closeModal();
-          
-          // Show progress indicator
-          const ordersContainer = document.getElementById('ordersContainer');
-          const originalContent = ordersContainer ? ordersContainer.innerHTML : '';
-          
-          if (ordersContainer) {
-            ordersContainer.innerHTML = `
-              <tr>
-                <td colspan="${showCheckboxes ? '7' : '6'}" class="px-6 py-8 text-center">
-                  <div class="inline-flex flex-col items-center">
-                    <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-primary mb-3"></div>
-                    <div class="font-semibold text-slate-700 dark:text-slate-300">Syncing ${checked.length} order${checked.length > 1 ? 's' : ''}...</div>
-                    <div class="text-sm text-slate-500 dark:text-slate-400 mt-1">Please wait, this may take a moment</div>
-                  </div>
-                </td>
-              </tr>
-            `;
-          }
-          
-          // Disable sync buttons during sync
-          const bulkSyncBtn = document.getElementById('bulkSyncBtn');
-          const bulkSyncBtn2 = document.getElementById('bulkSyncBtn2');
-          if (bulkSyncBtn) bulkSyncBtn.disabled = true;
-          if (bulkSyncBtn2) bulkSyncBtn2.disabled = true;
-          
-          try {
-            const response = await fetch('/admin/api/orders/sync-selected', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ orderIds: checked }),
-            });
-            
-            const data = await response.json();
-            if (data.success) {
-              const successMsg = data.synced > 0 
-                ? `${data.synced} order${data.synced > 1 ? 's' : ''} sent to Delybell successfully!`
-                : 'No orders were sent.';
-              const failMsg = data.failed > 0 
-                ? ` ${data.failed} order${data.failed > 1 ? 's' : ''} could not be sent.`
-                : '';
-              showToast('success', 'Orders Sent', successMsg + failMsg);
-              
-              // Reload orders and update UI
-              await loadOrders(currentPage);
-              loadConnectionHealth();
-              updateOrderTabs();
-            } else {
-              showToast('error', 'Could Not Send Orders', data.error || 'Some orders could not be sent to Delybell. Please try again or contact support.');
-              if (ordersContainer) ordersContainer.innerHTML = originalContent;
-            }
-          } catch (error) {
-            console.error('Error syncing orders:', error);
-            showToast('error', 'Something Went Wrong', 'Please try again. If this continues, contact support.');
-            if (ordersContainer) ordersContainer.innerHTML = originalContent;
-          } finally {
-            // Re-enable buttons
-            if (bulkSyncBtn) bulkSyncBtn.disabled = false;
-            if (bulkSyncBtn2) bulkSyncBtn2.disabled = false;
-          }
-        }
-      );
-    }
-    
-    async function retryFailedOrders() {
-      const checked = Array.from(document.querySelectorAll('.order-checkbox:checked')).map(cb => cb.value);
-      if (checked.length === 0) {
-        showToast('warning', 'No Orders Selected', 'Please check the boxes next to the failed orders you want to retry.');
-        return;
-      }
-      
-      showModal(
-        'Retry Failed Orders',
-        `Retry syncing ${checked.length} failed order(s)?`,
-        async () => {
-          closeModal();
-          
-          // Show progress indicator
-          const ordersContainer = document.getElementById('ordersContainer');
-          const originalContent = ordersContainer ? ordersContainer.innerHTML : '';
-          
-          if (ordersContainer) {
-            ordersContainer.innerHTML = `
-              <tr>
-                <td colspan="${showCheckboxes ? '7' : '6'}" class="px-6 py-8 text-center">
-                  <div class="inline-flex flex-col items-center">
-                    <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-primary mb-3"></div>
-                    <div class="font-semibold text-slate-700 dark:text-slate-300">Retrying ${checked.length} order${checked.length > 1 ? 's' : ''}...</div>
-                    <div class="text-sm text-slate-500 dark:text-slate-400 mt-1">Please wait, this may take a moment</div>
-                  </div>
-                </td>
-              </tr>
-            `;
-          }
-          
-          // Disable retry buttons during sync
-          const bulkRetryBtn = document.getElementById('bulkRetryBtn');
-          const bulkRetryBtn2 = document.getElementById('bulkRetryBtn2');
-          if (bulkRetryBtn) bulkRetryBtn.disabled = true;
-          if (bulkRetryBtn2) bulkRetryBtn2.disabled = true;
-          
-          try {
-            const results = await Promise.all(
-              checked.map(id => fetch(`/admin/api/orders/${id}/retry`, { method: 'POST' }))
-            );
-            
-            let success = 0;
-            let failed = 0;
-            
-            for (const result of results) {
-              const data = await result.json();
-              if (data.success) success++;
-              else failed++;
-            }
-            
-            const retrySuccessMsg = success > 0 
-              ? `${success} order${success > 1 ? 's' : ''} sent successfully!`
-              : 'No orders were sent.';
-            const retryFailMsg = failed > 0 
-              ? ` ${failed} order${failed > 1 ? 's' : ''} still could not be sent.`
-              : '';
-            showToast('success', 'Orders Retried', retrySuccessMsg + retryFailMsg);
-            
-            // Reload orders and update UI
-            await loadOrders(currentPage);
-            loadConnectionHealth();
-            updateOrderTabs();
-          } catch (error) {
-            console.error('Error retrying orders:', error);
-            showToast('error', 'Error', error.message);
-            if (ordersContainer) ordersContainer.innerHTML = originalContent;
-          } finally {
-            // Re-enable buttons
-            if (bulkRetryBtn) bulkRetryBtn.disabled = false;
-            if (bulkRetryBtn2) bulkRetryBtn2.disabled = false;
-          }
-        }
-      );
     }
     
     async function syncSingleOrder(orderId) {
@@ -1528,7 +1188,6 @@ Do you want to enable Auto Sync?`,
         }
         
         // Load sync mode first (defaults to manual)
-        await loadSyncMode();
         
         // Load connection health
         const health = await loadConnectionHealth();
@@ -1579,35 +1238,6 @@ Do you want to enable Auto Sync?`,
               </div>
             </div>
             
-            <!-- Sync Mode Card -->
-            <div class="bg-surface-light dark:bg-surface-dark rounded-xl border border-border-light dark:border-border-dark mb-8 overflow-hidden">
-              <div class="px-6 py-4 border-b border-border-light dark:border-border-dark flex justify-between items-center">
-                <div class="flex items-center space-x-2">
-                  <h2 class="font-semibold text-lg">Order Sync Mode</h2>
-                  <span class="sync-mode-badge px-2 py-0.5 bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400 text-[10px] font-bold uppercase rounded" id="syncModeBadge">Manual</span>
-                </div>
-                <div class="flex items-center bg-slate-100 dark:bg-slate-800 p-1 rounded-lg">
-                  <button class="px-4 py-1.5 text-sm font-medium text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-colors inline-flex items-center" id="autoSyncBtn" onclick="updateSyncMode('auto')" title="Orders will sync automatically when customers place them">
-                    <span class="material-icons-outlined text-sm mr-1">sync</span> Auto Sync
-                  </button>
-                  <button class="px-4 py-1.5 text-sm font-medium rounded-md bg-white dark:bg-slate-700 shadow-sm text-slate-900 dark:text-white transition-colors inline-flex items-center" id="manualSyncBtn" onclick="updateSyncMode('manual')" title="You choose which orders to sync manually">
-                    <span class="material-icons-outlined text-sm mr-1">touch_app</span> Manual Sync
-                  </button>
-                </div>
-              </div>
-              <div class="p-6">
-                <div id="syncModeDescription"></div>
-                <div id="manualSyncControls" class="hidden mt-4 flex items-center gap-3 flex-wrap">
-                  <span class="text-sm text-slate-600 dark:text-slate-400" id="bulkCount">0 selected</span>
-                  <button class="inline-flex items-center px-3 py-1.5 bg-primary text-white rounded-md text-xs font-semibold hover:opacity-90 transition-opacity" id="bulkSyncBtn" onclick="syncSelectedOrders()" disabled>
-                    <span class="material-icons-outlined text-sm mr-1">sync</span> Sync Selected
-                  </button>
-                  <button class="inline-flex items-center px-3 py-1.5 bg-white dark:bg-surface-dark border border-border-light dark:border-border-dark rounded-md text-xs font-semibold hover:border-primary hover:text-primary transition-all" id="bulkRetryBtn" onclick="retryFailedOrders()" disabled>
-                    <span class="material-icons-outlined text-sm mr-1">refresh</span> Retry Failed
-                  </button>
-                </div>
-              </div>
-            </div>
             
             <!-- Orders Card -->
             <div class="bg-surface-light dark:bg-surface-dark rounded-xl border border-border-light dark:border-border-dark overflow-hidden shadow-sm">
@@ -1644,22 +1274,12 @@ Do you want to enable Auto Sync?`,
               </div>
               
               <!-- Bulk Actions -->
-              <div id="bulkActions" class="hidden px-6 py-3 bg-slate-50 dark:bg-slate-800/50 border-b border-border-light dark:border-border-dark flex items-center gap-3 flex-wrap">
-                <span class="text-sm text-slate-600 dark:text-slate-400" id="bulkCount2">0 selected</span>
-                <button class="inline-flex items-center px-3 py-1.5 bg-primary text-white rounded-md text-xs font-semibold hover:opacity-90 transition-opacity" id="bulkSyncBtn2" onclick="syncSelectedOrders()" disabled>
-                  <span class="material-icons-outlined text-sm mr-1">sync</span> Sync Selected
-                </button>
-                <button class="inline-flex items-center px-3 py-1.5 bg-white dark:bg-surface-dark border border-border-light dark:border-border-dark rounded-md text-xs font-semibold hover:border-primary hover:text-primary transition-all" id="bulkRetryBtn2" onclick="retryFailedOrders()" disabled>
-                  <span class="material-icons-outlined text-sm mr-1">refresh</span> Retry Failed
-                </button>
-              </div>
               
               <!-- Orders Table -->
               <div class="overflow-x-auto mt-6">
                 <table class="orders-table">
                   <thead>
                     <tr class="bg-slate-50 dark:bg-slate-800/50 text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                      ${showCheckboxes ? '<th class="text-left" style="width: 50px;"><input type="checkbox" id="selectAllCheckbox" onchange="toggleSelectAll()"></th>' : ''}
                       <th class="text-left col-order-number">Order #</th>
                       <th class="text-left col-date">Date</th>
                       <th class="text-center col-payment">Payment</th>
@@ -1670,7 +1290,7 @@ Do you want to enable Auto Sync?`,
                   </thead>
                   <tbody class="divide-y divide-border-light dark:divide-border-dark" id="ordersContainer">
                     <tr>
-                      <td colspan="${showCheckboxes ? '7' : '6'}" class="text-center text-slate-500 dark:text-slate-400 py-8">
+                      <td colspan="6" class="text-center text-slate-500 dark:text-slate-400 py-8">
                         <div class="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-primary mb-2"></div>
                         <div>Loading orders...</div>
                       </td>
@@ -1726,27 +1346,6 @@ Do you want to enable Auto Sync?`,
         }
       }
     }
-    
-    // Fix bulk actions to use same IDs
-    function updateBulkActions() {
-      const checked = document.querySelectorAll('.order-checkbox:checked').length;
-      const bulkActions = document.getElementById('bulkActions');
-      const bulkCount = document.getElementById('bulkCount');
-      const bulkCount2 = document.getElementById('bulkCount2');
-      const bulkSyncBtn = document.getElementById('bulkSyncBtn');
-      const bulkSyncBtn2 = document.getElementById('bulkSyncBtn2');
-      const bulkRetryBtn = document.getElementById('bulkRetryBtn');
-      const bulkRetryBtn2 = document.getElementById('bulkRetryBtn2');
-      
-      if (bulkActions) bulkActions.classList.toggle('hidden', checked === 0);
-      if (bulkCount) bulkCount.textContent = `${checked} selected`;
-      if (bulkCount2) bulkCount2.textContent = `${checked} selected`;
-      if (bulkSyncBtn) bulkSyncBtn.disabled = checked === 0;
-      if (bulkSyncBtn2) bulkSyncBtn2.disabled = checked === 0;
-      if (bulkRetryBtn) bulkRetryBtn.disabled = checked === 0;
-      if (bulkRetryBtn2) bulkRetryBtn2.disabled = checked === 0;
-    }
-    
     // Initialize
     console.log('[App] Page loaded, shop:', shop);
     loadAppStatus();
