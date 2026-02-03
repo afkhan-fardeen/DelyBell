@@ -122,8 +122,22 @@ class ShopifyClient {
       const params = {
         limit: options.limit || 250,
         status: options.status || 'any',
-        ...options,
       };
+      
+      // Add date filters if provided
+      if (options.created_at_min) {
+        params.created_at_min = options.created_at_min;
+      }
+      if (options.created_at_max) {
+        params.created_at_max = options.created_at_max;
+      }
+      
+      // Add any other options
+      Object.keys(options).forEach(key => {
+        if (!['limit', 'status', 'created_at_min', 'created_at_max'].includes(key)) {
+          params[key] = options[key];
+        }
+      });
 
       const response = await client.get({
         path: 'orders',

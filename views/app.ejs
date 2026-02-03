@@ -856,6 +856,50 @@
       }
     }
     
+    async function fetchHistoricalOrders() {
+      if (!shop) {
+        showToast('error', 'Store Not Found', 'Could not detect your store. Please refresh the page.');
+        return;
+      }
+
+      const btn = document.getElementById('fetchHistoricalBtn');
+      const originalText = btn ? btn.innerHTML : '';
+      
+      if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<span class="material-icons-outlined text-sm animate-spin">sync</span> Fetching...';
+      }
+
+      try {
+        const response = await fetch(`/admin/api/orders/fetch-historical?shop=${encodeURIComponent(shop)}`, {
+          method: 'POST',
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+          const message = data.saved > 0 
+            ? `Found ${data.saved} new order${data.saved > 1 ? 's' : ''} from Shopify. ${data.existing} already existed.`
+            : `No new orders found. All ${data.total} orders are already in the system.`;
+          showToast('success', 'Historical Orders Fetched', message);
+          
+          // Reload orders to show the new ones
+          await loadOrders(currentPage);
+          updateOrderTabs();
+        } else {
+          showToast('error', 'Fetch Failed', data.error || 'Could not fetch historical orders. Please try again.');
+        }
+      } catch (error) {
+        console.error('Error fetching historical orders:', error);
+        showToast('error', 'Error', 'Could not fetch historical orders. Please try again.');
+      } finally {
+        if (btn) {
+          btn.disabled = false;
+          btn.innerHTML = originalText;
+        }
+      }
+    }
+    
     async function syncSingleOrder(orderId) {
       showModal(
         'Sync Order',
@@ -1184,18 +1228,27 @@
               </footer>
             `;
           }
+          
+          // Load orders and stats after rendering (non-blocking)
+          setTimeout(() => {
+            Promise.all([
+              loadOrders(1).catch(err => console.error('Error loading orders:', err)),
+              updateOrderTabs().catch(err => console.error('Error updating tabs:', err))
+            ]).catch(err => console.error('Error in post-render load:', err));
+          }, 100);
+          
           return;
         }
         
-        // Load sync mode first (defaults to manual)
+        // Load everything in parallel for faster loading
+        const [health] = await Promise.all([
+          loadConnectionHealth().catch(err => {
+            console.error('Error loading health:', err);
+            return { shopify: false, delybell: false, storeDomain: shop, lastSync: 'Unknown' };
+          })
+        ]);
         
-        // Load connection health
-        const health = await loadConnectionHealth();
-        
-        // Calculate showCheckboxes based on current sync mode
-        const showCheckboxes = currentSyncMode === 'manual';
-        
-        // Render main app
+        // Render main app (orders will load separately after render)
         if (appContent) {
           appContent.innerHTML = `
             <!-- Health Status Cards -->
@@ -1245,6 +1298,10 @@
                 <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
                   <h2 class="font-bold text-xl">Orders</h2>
                   <div class="flex flex-wrap items-center gap-3">
+                    <button class="flex items-center gap-2 px-3 py-2 border border-border-light dark:border-border-dark rounded-md text-sm font-medium hover:bg-slate-50 dark:hover:bg-slate-800" onclick="fetchHistoricalOrders()" id="fetchHistoricalBtn" title="Fetch orders placed before app installation">
+                      <span class="material-icons-outlined text-sm">download</span>
+                      Fetch Historical Orders
+                    </button>
                     <button class="flex items-center gap-2 px-3 py-2 border border-border-light dark:border-border-dark rounded-md text-sm font-medium hover:bg-slate-50 dark:hover:bg-slate-800" onclick="loadOrders(currentPage)">
                       <span class="material-icons-outlined text-sm">refresh</span>
                       Refresh
@@ -1297,9 +1354,9 @@
                     </tr>
                   </tbody>
                 </table>
-              </div>
-              
-              <!-- Pagination -->
+            </div>
+            
+            <!-- Pagination -->
               <div class="px-6 py-4 bg-slate-50 dark:bg-slate-800/50 flex items-center justify-between border-t border-border-light dark:border-border-dark">
                 <span class="text-sm text-slate-500 dark:text-slate-400" id="paginationInfo">Loading...</span>
                 <div class="flex space-x-2">
@@ -1346,24 +1403,51 @@
         }
       }
     }
-    // Initialize
+    // Initialize with error handling
     console.log('[App] Page loaded, shop:', shop);
-    loadAppStatus();
+    
+    // Wrap initialization in try-catch to prevent black screen
+    try {
+      loadAppStatus().catch(err => {
+        console.error('[App] Error initializing app:', err);
+        const appContent = document.getElementById('app-content');
+        if (appContent) {
+          appContent.innerHTML = `
+            <div class="max-w-2xl mx-auto py-20">
+              <div class="bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-900/30 rounded-lg p-6">
+                <h3 class="font-semibold text-red-900 dark:text-red-300 mb-2">Error Loading App</h3>
+                <p class="text-red-800 dark:text-red-400/80 text-sm mb-4">${err.message || 'Unknown error occurred'}</p>
+                <button onclick="location.reload()" class="px-4 py-2 bg-red-600 text-white rounded-md text-sm hover:bg-red-700">
+                  Reload Page
+                </button>
+              </div>
+            </div>
+          `;
+        }
+      });
+    } catch (err) {
+      console.error('[App] Fatal error during initialization:', err);
+    }
     
     // Auto-refresh every 15 seconds to catch new orders quickly
     setInterval(() => {
       if (shop) {
-        loadConnectionHealth();
-        loadOrders(currentPage);
-        updateOrderTabs();
+        // Parallelize refresh calls
+        Promise.all([
+          loadConnectionHealth().catch(() => {}),
+          loadOrders(currentPage).catch(() => {}),
+          updateOrderTabs().catch(() => {})
+        ]).catch(() => {}); // Silently fail to prevent breaking the interval
       }
     }, 15000);
     
     // Also refresh when tab becomes visible (user switches back to tab)
     document.addEventListener('visibilitychange', () => {
       if (!document.hidden && shop) {
-        loadOrders(currentPage);
-        updateOrderTabs();
+        Promise.all([
+          loadOrders(currentPage).catch(() => {}),
+          updateOrderTabs().catch(() => {})
+        ]).catch(() => {});
       }
     });
   </script>

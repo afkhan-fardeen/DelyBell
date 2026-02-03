@@ -1723,6 +1723,113 @@ router.get('/admin/api/shops', async (req, res) => {
 });
 
 /**
+ * Admin API - Fetch historical orders from Shopify
+ * POST /admin/api/orders/fetch-historical
+ * Fetches orders from Shopify that aren't in the database yet and saves them as pending_sync
+ */
+router.post('/admin/api/orders/fetch-historical', async (req, res) => {
+  try {
+    const { shop } = req.query;
+    if (!shop) {
+      return res.status(400).json({
+        success: false,
+        error: 'Shop parameter is required',
+      });
+    }
+
+    const { normalizeShop } = require('../utils/normalizeShop');
+    const normalizedShop = normalizeShop(shop);
+    const shopifyClient = require('../services/shopifyClient');
+    const orderProcessor = require('../services/orderProcessor');
+    const { supabase } = require('../services/db');
+
+    // Get shop session
+    const session = await shopifyClient.getSession(normalizedShop);
+    if (!session || !session.accessToken) {
+      return res.status(401).json({
+        success: false,
+        error: 'Shop not authenticated',
+      });
+    }
+
+    // Fetch recent orders from Shopify (last 30 days, limit 250)
+    console.log(`[Admin] Fetching historical orders from Shopify for shop: ${normalizedShop}`);
+    const shopifyOrders = await shopifyClient.getOrders(session, { 
+      limit: 250,
+      status: 'any',
+      created_at_min: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()
+    });
+
+    console.log(`[Admin] Found ${shopifyOrders.length} orders from Shopify`);
+
+    // Get existing order IDs from database
+    const { data: existingOrders } = await supabase
+      .from('order_logs')
+      .select('shopify_order_id')
+      .eq('shop', normalizedShop);
+
+    const existingOrderIds = new Set((existingOrders || []).map(o => o.shopify_order_id?.toString()));
+
+    // Filter out orders that already exist
+    const newOrders = shopifyOrders.filter(order => {
+      const orderId = order.id?.toString() || order.order_number?.toString();
+      return orderId && !existingOrderIds.has(orderId);
+    });
+
+    console.log(`[Admin] Found ${newOrders.length} new orders to save`);
+
+    // Save new orders as pending_sync
+    let saved = 0;
+    let errors = 0;
+
+    for (const shopifyOrder of newOrders) {
+      try {
+        const shippingAddress = shopifyOrder.shipping_address || shopifyOrder.billing_address;
+        const customerName = shippingAddress?.name || 
+          (shopifyOrder.customer?.first_name && shopifyOrder.customer?.last_name 
+            ? `${shopifyOrder.customer.first_name} ${shopifyOrder.customer.last_name}` 
+            : shopifyOrder.customer?.first_name || shopifyOrder.customer?.last_name || null);
+        const phone = shippingAddress?.phone || shopifyOrder.customer?.phone || null;
+
+        await orderProcessor.logOrder({
+          shop: normalizedShop,
+          shopifyOrderId: shopifyOrder.id?.toString() || shopifyOrder.order_number?.toString(),
+          shopifyOrderNumber: shopifyOrder.order_number || null,
+          delybellOrderId: null,
+          status: 'pending_sync',
+          errorMessage: null,
+          totalPrice: shopifyOrder.total_price ? parseFloat(shopifyOrder.total_price) : null,
+          currency: shopifyOrder.currency || 'USD',
+          customerName: customerName,
+          phone: phone,
+          shopifyOrderCreatedAt: shopifyOrder.created_at || null,
+          financialStatus: shopifyOrder.financial_status || null,
+        });
+        saved++;
+      } catch (error) {
+        console.error(`[Admin] Error saving order ${shopifyOrder.order_number}:`, error.message);
+        errors++;
+      }
+    }
+
+    res.json({
+      success: true,
+      message: `Fetched ${saved} new orders from Shopify`,
+      saved,
+      errors,
+      total: shopifyOrders.length,
+      existing: shopifyOrders.length - newOrders.length,
+    });
+  } catch (error) {
+    console.error('[Admin] Error fetching historical orders:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message,
+    });
+  }
+});
+
+/**
  * Admin API - Get shop sync mode
  * GET /admin/api/shops/:shop/sync-mode
  */
