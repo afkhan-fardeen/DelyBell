@@ -280,3 +280,40 @@
 </div>
 
 </body></html>
+
+
+
+
+App name
+
+DelyBell OS
+
+Access
+
+Redirect URLs
+
+["https://delybell.onrender.com/auth/callback"]
+
+Scopes
+
+read_orders,write_orders
+
+Use legacy install flow
+
+false
+
+App URL
+
+app_url
+
+https://delybell.onrender.com/app
+
+embedded
+
+true
+
+Webhooks
+
+api_version
+
+2025-10

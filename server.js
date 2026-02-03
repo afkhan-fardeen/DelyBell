@@ -1,5 +1,4 @@
 const express = require('express');
-const bodyParser = require('body-parser');
 const cookieParser = require('cookie-parser');
 const path = require('path');
 const config = require('./config');
@@ -25,16 +24,22 @@ app.set('trust proxy', 1);
 
 // CRITICAL: For webhooks, we need raw body for HMAC verification
 // Must be applied BEFORE any other body parsers
-app.use('/webhooks', bodyParser.raw({ 
+// Use Express built-in raw parser (more reliable than body-parser)
+app.use('/webhooks', express.raw({ 
   type: 'application/json',
   verify: (req, res, buf) => {
-    // Store raw body for HMAC verification
+    // Store raw body for HMAC verification BEFORE any modifications
     req.rawBody = buf;
+    console.log('[Server] Raw body stored for webhook:', {
+      length: buf.length,
+      type: buf.constructor.name,
+      firstBytes: buf.slice(0, 20).toString('hex'),
+    });
   }
 }));
 // Other body parsers (applied to non-webhook routes)
-app.use(bodyParser.json());
-app.use(bodyParser.urlencoded({ extended: true }));
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
 // Serve static files (public install page, legal pages, etc.)
 app.use(express.static(path.join(__dirname, 'public')));
