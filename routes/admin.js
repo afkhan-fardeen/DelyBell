@@ -1321,14 +1321,11 @@ router.get('/admin/api/stats', async (req, res) => {
 
     const { shop } = req.query;
     const { supabase } = require('../services/db');
-    const now = new Date();
-    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     
-    // Build query for today's orders
+    // Build query for ALL orders (not just today's)
     let query = supabase
       .from('order_logs')
-      .select('status, delybell_order_id')
-      .gte('created_at', todayStart.toISOString());
+      .select('status, delybell_order_id, shopify_order_id');
     
     // Filter by shop if provided
     if (shop) {
@@ -1337,26 +1334,54 @@ router.get('/admin/api/stats', async (req, res) => {
       query = query.eq('shop', normalizedShop);
     }
 
-    const { data: todayOrders, error: todayError } = await query;
+    const { data: allOrders, error: ordersError } = await query;
 
-    if (todayError) throw todayError;
+    if (ordersError) throw ordersError;
 
-    const totalToday = todayOrders?.length || 0;
-    const syncedToday = todayOrders?.filter(o => o.status === 'processed' && o.delybell_order_id).length || 0;
-    const completedToday = todayOrders?.filter(o => o.status === 'completed').length || 0;
-    const pendingSync = todayOrders?.filter(o => o.status === 'pending_sync').length || 0;
-    const failedToday = todayOrders?.filter(o => o.status === 'failed').length || 0;
-    const needsAttention = failedToday; // Orders that failed and need retry
+    // Deduplicate orders by shopify_order_id - keep the most important status
+    const orderMap = new Map();
+    (allOrders || []).forEach(order => {
+      const key = order.shopify_order_id?.toString();
+      if (!key) return;
+      
+      const existing = orderMap.get(key);
+      if (!existing) {
+        orderMap.set(key, order);
+      } else {
+        // Priority: processed > completed > failed > pending_sync
+        const statusPriority = {
+          'processed': 4,
+          'completed': 3,
+          'failed': 2,
+          'pending_sync': 1
+        };
+        const existingPriority = statusPriority[existing.status] || 0;
+        const newPriority = statusPriority[order.status] || 0;
+        
+        if (newPriority > existingPriority) {
+          orderMap.set(key, order);
+        }
+      }
+    });
+    
+    const uniqueOrders = Array.from(orderMap.values());
+    
+    const total = uniqueOrders.length;
+    const synced = uniqueOrders.filter(o => o.status === 'processed' && o.delybell_order_id).length;
+    const completed = uniqueOrders.filter(o => o.status === 'completed').length;
+    // CRITICAL: Only count pending orders that haven't been synced (no delybell_order_id)
+    const pendingSync = uniqueOrders.filter(o => o.status === 'pending_sync' && !o.delybell_order_id).length;
+    const failed = uniqueOrders.filter(o => o.status === 'failed').length;
 
     res.json({
       success: true,
       stats: {
-        totalOrdersToday: totalToday,
-        successfullySynced: syncedToday + completedToday, // Include completed in synced count
-        completed: completedToday,
-        pendingSync: pendingSync,
-        failed: failedToday,
-        needsAttention: needsAttention,
+        totalOrdersToday: total, // All orders, not just today
+        successfullySynced: synced + completed, // Include completed in synced count
+        completed: completed,
+        pendingSync: pendingSync, // Only truly pending orders (not synced)
+        failed: failed,
+        needsAttention: failed,
       },
     });
   } catch (error) {
@@ -1448,6 +1473,10 @@ router.get('/admin/api/orders', async (req, res) => {
       if (status === 'processed') {
         query = query.in('status', ['processed', 'completed']);
         countQuery = countQuery.in('status', ['processed', 'completed']);
+      } else if (status === 'pending_sync') {
+        // CRITICAL: Only show orders that are pending_sync AND don't have a delybell_order_id (not synced)
+        query = query.eq('status', 'pending_sync').is('delybell_order_id', null);
+        countQuery = countQuery.eq('status', 'pending_sync').is('delybell_order_id', null);
       } else {
         query = query.eq('status', status);
         countQuery = countQuery.eq('status', status);
@@ -1505,9 +1534,53 @@ router.get('/admin/api/orders', async (req, res) => {
         order.customer_name?.toLowerCase().includes(searchLower)
       );
     }
+    
+    // Deduplicate orders by shopify_order_id - keep the most important status
+    const orderMap = new Map();
+    filteredOrders.forEach(order => {
+      const key = order.shopify_order_id?.toString();
+      if (!key) return;
+      
+      const existing = orderMap.get(key);
+      if (!existing) {
+        orderMap.set(key, order);
+      } else {
+        // Priority: processed > completed > failed > pending_sync
+        const statusPriority = {
+          'processed': 4,
+          'completed': 3,
+          'failed': 2,
+          'pending_sync': 1
+        };
+        const existingPriority = statusPriority[existing.status] || 0;
+        const newPriority = statusPriority[order.status] || 0;
+        
+        if (newPriority > existingPriority) {
+          orderMap.set(key, order);
+        } else if (newPriority === existingPriority) {
+          const existingDate = new Date(existing.created_at || 0);
+          const newDate = new Date(order.created_at || 0);
+          if (newDate > existingDate) {
+            orderMap.set(key, order);
+          }
+        }
+      }
+    });
+    
+    let uniqueOrders = Array.from(orderMap.values());
+    
+    // CRITICAL: If filtering by pending_sync, exclude any orders that have been synced
+    if (status === 'pending_sync') {
+      uniqueOrders = uniqueOrders.filter(order => {
+        // Only show orders that are pending_sync AND don't have a delybell_order_id
+        return order.status === 'pending_sync' && !order.delybell_order_id;
+      });
+      // Update total count to reflect filtered results
+      totalCount = uniqueOrders.length;
+    }
 
     // Format orders for display
-    const formattedOrders = filteredOrders.map(order => ({
+    const formattedOrders = uniqueOrders.map(order => ({
       id: order.id,
       shop: order.shop,
       shopifyOrderId: order.shopify_order_id,

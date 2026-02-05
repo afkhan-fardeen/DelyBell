@@ -727,6 +727,18 @@
         });
         
         orders = Array.from(orderMap.values());
+        
+        // CRITICAL: If filtering by pending_sync, exclude any orders that are synced/completed
+        if (statusFilter === 'pending_sync') {
+          orders = orders.filter(order => {
+            const orderStatus = order.status;
+            const hasDelybellId = order.delybellOrderId || order.delybell_order_id;
+            // Only show truly pending orders (status is pending_sync AND no delybell_order_id)
+            return orderStatus === 'pending_sync' && !hasDelybellId;
+          });
+          // Update total count for pending tab
+          totalOrders = orders.length;
+        }
         totalOrders = data.total !== undefined ? data.total : orders.length;
         
         console.log(`[App] Loaded ${orders.length} orders (total: ${totalOrders}, filter: ${statusFilter || 'all'}, shop: ${shop})`);
@@ -777,28 +789,55 @@
     // Update order tabs with counts
     async function updateOrderTabs() {
       try {
-        const statsResponse = await fetch(`/admin/api/stats?shop=${encodeURIComponent(shop)}`);
-        const statsData = await statsResponse.json();
+        // Fetch counts for each status separately to ensure accuracy
+        const [allResponse, syncedResponse, pendingResponse, failedResponse] = await Promise.all([
+          fetch(`/admin/api/orders?shop=${encodeURIComponent(shop)}&limit=1`),
+          fetch(`/admin/api/orders?shop=${encodeURIComponent(shop)}&status=processed&limit=1`),
+          fetch(`/admin/api/orders?shop=${encodeURIComponent(shop)}&status=pending_sync&limit=1`),
+          fetch(`/admin/api/orders?shop=${encodeURIComponent(shop)}&status=failed&limit=1`)
+        ]);
         
-        if (statsData.success) {
-          const stats = statsData.stats;
-          const syncedCount = stats.successfullySynced || 0; // Includes completed
-          const pendingCount = stats.pendingSync || 0;
-          const failedCount = stats.failed || 0;
-          const totalCount = stats.totalOrdersToday || 0;
-          
-          const syncedBadge = document.getElementById('syncedBadge');
-          const pendingBadge = document.getElementById('pendingBadge');
-          const failedBadge = document.getElementById('failedBadge');
-          const allBadge = document.getElementById('allBadge');
-          
-          if (syncedBadge) syncedBadge.textContent = syncedCount;
-          if (pendingBadge) pendingBadge.textContent = pendingCount;
-          if (failedBadge) failedBadge.textContent = failedCount;
-          if (allBadge) allBadge.textContent = totalCount;
-        }
+        const allData = await allResponse.json();
+        const syncedData = await syncedResponse.json();
+        const pendingData = await pendingResponse.json();
+        const failedData = await failedResponse.json();
+        
+        const totalCount = allData.total || 0;
+        const syncedCount = syncedData.total || 0;
+        const pendingCount = pendingData.total || 0;
+        const failedCount = failedData.total || 0;
+        
+        const syncedBadge = document.getElementById('syncedBadge');
+        const pendingBadge = document.getElementById('pendingBadge');
+        const failedBadge = document.getElementById('failedBadge');
+        const allBadge = document.getElementById('allBadge');
+        
+        if (syncedBadge) syncedBadge.textContent = syncedCount;
+        if (pendingBadge) pendingBadge.textContent = pendingCount;
+        if (failedBadge) failedBadge.textContent = failedCount;
+        if (allBadge) allBadge.textContent = totalCount;
       } catch (error) {
         console.error('Error updating order tabs:', error);
+        // Fallback to stats API if individual queries fail
+        try {
+          const statsResponse = await fetch(`/admin/api/stats?shop=${encodeURIComponent(shop)}`);
+          const statsData = await statsResponse.json();
+          
+          if (statsData.success) {
+            const stats = statsData.stats;
+            const syncedBadge = document.getElementById('syncedBadge');
+            const pendingBadge = document.getElementById('pendingBadge');
+            const failedBadge = document.getElementById('failedBadge');
+            const allBadge = document.getElementById('allBadge');
+            
+            if (syncedBadge) syncedBadge.textContent = stats.successfullySynced || 0;
+            if (pendingBadge) pendingBadge.textContent = stats.pendingSync || 0;
+            if (failedBadge) failedBadge.textContent = stats.failed || 0;
+            if (allBadge) allBadge.textContent = stats.totalOrdersToday || 0;
+          }
+        } catch (fallbackError) {
+          console.error('Error in fallback stats update:', fallbackError);
+        }
       }
     }
     
