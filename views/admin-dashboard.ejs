@@ -1202,22 +1202,6 @@
         </svg>
         <span>Manual Sync lets you choose which orders to send to Delybell and when.</span>
       </div>
-      <div class="manual-sync-controls" id="manualSyncControls" style="display: none;">
-        <div class="manual-sync-buttons">
-          <button class="btn btn-primary" id="syncSelectedBtn" onclick="syncSelectedOrders()" disabled>
-            <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-            </svg>
-            Sync Selected
-          </button>
-          <button class="btn btn-secondary" id="syncAllBtn" onclick="syncAllPendingOrders()">
-            <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
-            </svg>
-            Sync All Pending
-          </button>
-        </div>
-      </div>
     </div>
     
     <!-- Filters -->
@@ -1487,7 +1471,7 @@
                 const canSync = order.status === 'pending_sync' || order.status === 'failed';
                 return `
                 <tr>
-                  ${showCheckboxes ? `<td><input type="checkbox" class="order-checkbox" value="${order.id}" ${canSync ? '' : 'disabled'} onchange="updateSyncButtons()"></td>` : ''}
+                  ${showCheckboxes ? `<td><input type="checkbox" class="order-checkbox" value="${order.id}" disabled></td>` : ''}
                   <td>
                     <div class="order-number">#${order.shopifyOrderNumber || 'N/A'}</div>
                     <div class="order-shop-label">Shopify</div>
@@ -1865,81 +1849,8 @@ ${order.errorMessage ? `Error: ${order.errorMessage}` : ''}
       document.querySelectorAll('.order-checkbox:not(:disabled)').forEach(cb => {
         cb.checked = selectAll;
       });
-      updateSyncButtons();
     }
     
-    function updateSyncButtons() {
-      const checked = document.querySelectorAll('.order-checkbox:checked').length;
-      const btn = document.getElementById('syncSelectedBtn');
-      if (btn) btn.disabled = checked === 0;
-    }
-    
-    async function syncSelectedOrders() {
-      const checked = Array.from(document.querySelectorAll('.order-checkbox:checked')).map(cb => cb.value);
-      if (checked.length === 0) {
-        alert('Please select at least one order');
-        return;
-      }
-      
-      if (!confirm(`Sync ${checked.length} selected order(s)?`)) return;
-      
-      const btn = document.getElementById('syncSelectedBtn');
-      const originalText = btn.innerHTML;
-      btn.disabled = true;
-      btn.innerHTML = '<div class="loading-spinner"></div> Syncing...';
-      
-      try {
-        const response = await fetch('/admin/api/orders/sync-selected', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ orderIds: checked }),
-        });
-        
-        const data = await response.json();
-        if (data.success) {
-          alert(`Synced ${data.synced} order(s) successfully. ${data.failed > 0 ? `${data.failed} failed.` : ''}`);
-          loadOrders();
-          loadStats();
-        } else {
-          alert('Sync failed: ' + (data.error || 'Unknown error'));
-        }
-      } catch (error) {
-        console.error('Error syncing orders:', error);
-        alert('Error syncing orders: ' + error.message);
-      } finally {
-        btn.disabled = false;
-        btn.innerHTML = originalText;
-      }
-    }
-    
-    async function syncAllPendingOrders() {
-      if (!confirm('Sync all pending orders?')) return;
-      
-      const btn = document.getElementById('syncAllBtn');
-      const originalText = btn.innerHTML;
-      btn.disabled = true;
-      btn.innerHTML = '<div class="loading-spinner"></div> Syncing...';
-      
-      try {
-        const url = currentShop ? `/admin/api/orders/sync-all?shop=${encodeURIComponent(currentShop)}` : '/admin/api/orders/sync-all';
-        const response = await fetch(url, { method: 'POST' });
-        
-        const data = await response.json();
-        if (data.success) {
-          alert(`Synced ${data.synced} order(s) successfully. ${data.failed > 0 ? `${data.failed} failed.` : ''}`);
-          loadOrders();
-          loadStats();
-        } else {
-          alert('Sync failed: ' + (data.error || 'Unknown error'));
-        }
-      } catch (error) {
-        console.error('Error syncing all orders:', error);
-        alert('Error syncing orders: ' + error.message);
-      } finally {
-        btn.disabled = false;
-        btn.innerHTML = originalText;
-      }
-    }
     
     // Sync mode radio handlers
     document.getElementById('syncModeAuto').addEventListener('change', function() {

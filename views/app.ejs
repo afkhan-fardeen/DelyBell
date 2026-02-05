@@ -736,12 +736,14 @@
             const orderStatus = order.status;
             const hasDelybellId = order.delybellOrderId || order.delybell_order_id;
             // Only show truly pending orders (status is pending_sync AND no delybell_order_id)
-            return orderStatus === 'pending_sync' && !hasDelybellId;
+            // Also exclude processed/completed orders
+            return orderStatus === 'pending_sync' && !hasDelybellId && orderStatus !== 'processed' && orderStatus !== 'completed';
           });
           // Update total count for pending tab
           totalOrders = orders.length;
+        } else {
+          totalOrders = data.total !== undefined ? data.total : orders.length;
         }
-        totalOrders = data.total !== undefined ? data.total : orders.length;
         
         console.log(`[App] Loaded ${orders.length} orders (total: ${totalOrders}, filter: ${statusFilter || 'all'}, shop: ${shop})`);
         
@@ -1501,85 +1503,60 @@
         if (!authData.authenticated) {
           if (appContent) {
             appContent.innerHTML = `
-              <div class="max-w-2xl mx-auto">
-                <!-- Hero Section -->
-                <div class="text-center py-12 mb-8">
-                  <div class="inline-flex items-center justify-center w-20 h-20 bg-primary/10 rounded-2xl mb-6">
-                    <span class="material-icons-outlined text-4xl text-primary">local_shipping</span>
+              <div class="max-w-3xl mx-auto">
+                <!-- Hero Section - Minimal -->
+                <div class="text-center py-8 mb-8">
+                  <div class="inline-flex items-center justify-center w-16 h-16 bg-[#010a8b]/10 rounded-xl mb-4">
+                    <span class="material-icons-outlined text-3xl text-[#010a8b]">local_shipping</span>
                   </div>
-                  <h1 class="text-3xl font-bold text-slate-900 dark:text-white mb-3">Welcome to Delybell Order Sync</h1>
-                  <p class="text-lg text-slate-600 dark:text-slate-400 mb-8">Automate your delivery orders seamlessly</p>
+                  <h1 class="text-2xl font-semibold text-slate-900 dark:text-white mb-2">Delybell Order Sync</h1>
+                  <p class="text-sm text-slate-500 dark:text-slate-400">Seamlessly sync your Shopify orders with Delybell</p>
                 </div>
                 
-                <!-- Features Grid -->
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-                  <div class="bg-surface-light dark:bg-surface-dark p-6 rounded-xl border border-border-light dark:border-border-dark">
-                    <div class="bg-blue-100 dark:bg-blue-900/30 w-12 h-12 rounded-lg flex items-center justify-center mb-4">
-                      <span class="material-icons-outlined text-blue-600 dark:text-blue-400">sync</span>
+                <!-- Info Cards - Minimal Flat -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-6">
+                  <div class="bg-white dark:bg-surface-dark p-4 rounded-lg border border-border-light dark:border-border-dark">
+                    <div class="w-10 h-10 rounded-md bg-[#010a8b]/10 flex items-center justify-center mb-3">
+                      <span class="material-icons-outlined text-[#010a8b] text-lg">sync</span>
                     </div>
-                    <h3 class="font-semibold text-slate-900 dark:text-white mb-2">Auto Sync</h3>
-                    <p class="text-sm text-slate-600 dark:text-slate-400">Orders sync automatically to Delybell as they come in</p>
+                    <h3 class="font-semibold text-sm text-slate-900 dark:text-white mb-1">Manual Sync</h3>
+                    <p class="text-xs text-slate-500 dark:text-slate-400">Review and sync orders when you're ready</p>
                   </div>
-                  <div class="bg-surface-light dark:bg-surface-dark p-6 rounded-xl border border-border-light dark:border-border-dark">
-                    <div class="bg-green-100 dark:bg-green-900/30 w-12 h-12 rounded-lg flex items-center justify-center mb-4">
-                      <span class="material-icons-outlined text-green-600 dark:text-green-400">check_circle</span>
+                  <div class="bg-white dark:bg-surface-dark p-4 rounded-lg border border-border-light dark:border-border-dark">
+                    <div class="w-10 h-10 rounded-md bg-[#7c3aed]/10 flex items-center justify-center mb-3">
+                      <span class="material-icons-outlined text-[#7c3aed] text-lg">check_circle</span>
                     </div>
-                    <h3 class="font-semibold text-slate-900 dark:text-white mb-2">Reliable</h3>
-                    <p class="text-sm text-slate-600 dark:text-slate-400">Track every order with real-time status updates</p>
-                  </div>
-                  <div class="bg-surface-light dark:bg-surface-dark p-6 rounded-xl border border-border-light dark:border-border-dark">
-                    <div class="bg-purple-100 dark:bg-purple-900/30 w-12 h-12 rounded-lg flex items-center justify-center mb-4">
-                      <span class="material-icons-outlined text-purple-600 dark:text-purple-400">settings</span>
-                    </div>
-                    <h3 class="font-semibold text-slate-900 dark:text-white mb-2">Easy Setup</h3>
-                    <p class="text-sm text-slate-600 dark:text-slate-400">Get started in minutes with one-click installation</p>
+                    <h3 class="font-semibold text-sm text-slate-900 dark:text-white mb-1">Track Orders</h3>
+                    <p class="text-xs text-slate-500 dark:text-slate-400">Monitor sync status and delivery progress</p>
                   </div>
                 </div>
                 
-                <!-- Installation Card -->
-                <div class="bg-surface-light dark:bg-surface-dark rounded-xl border border-border-light dark:border-border-dark p-8 mb-8">
-                  <div class="text-center">
-                    <h2 class="text-xl font-bold text-slate-900 dark:text-white mb-2">Ready to Get Started?</h2>
-                    <p class="text-slate-600 dark:text-slate-400 mb-6">Install the app to start syncing your Shopify orders with Delybell</p>
-                    <a href="/auth/install?shop=${shop}" class="inline-flex items-center px-8 py-3 bg-primary text-white rounded-lg font-semibold hover:opacity-90 transition-opacity shadow-lg">
-                      <span class="material-icons-outlined mr-2">install_mobile</span>
-                      Install Delybell Order Sync
-                    </a>
-                    <p class="text-xs text-slate-500 dark:text-slate-400 mt-4">Free to install • No credit card required</p>
-                  </div>
-                </div>
-                
-                <!-- Info Section -->
-                <div class="bg-blue-50 dark:bg-blue-900/10 border border-blue-200 dark:border-blue-900/30 rounded-xl p-6 mb-8">
-                  <div class="flex items-start space-x-3">
-                    <span class="material-icons-outlined text-blue-600 dark:text-blue-400 flex-shrink-0">info</span>
+                <!-- Info Section - Minimal -->
+                <div class="bg-white dark:bg-surface-dark rounded-lg border border-border-light dark:border-border-dark p-5 mb-6">
+                  <div class="flex items-start gap-3">
+                    <span class="material-icons-outlined text-[#010a8b] flex-shrink-0 text-lg">info</span>
                     <div>
-                      <h3 class="font-semibold text-blue-900 dark:text-blue-300 mb-1">What happens after installation?</h3>
-                      <ul class="text-sm text-blue-800 dark:text-blue-400/80 space-y-1 list-disc list-inside">
-                        <li>Your Shopify store will be connected to Delybell</li>
-                        <li>New orders will automatically sync (or you can choose manual sync)</li>
-                        <li>Track order status directly from your Shopify admin</li>
-                        <li>Get real-time updates on delivery progress</li>
+                      <h3 class="font-semibold text-sm text-slate-900 dark:text-white mb-2">How It Works</h3>
+                      <ul class="text-xs text-slate-600 dark:text-slate-400 space-y-1.5 list-disc list-inside">
+                        <li>Install the app from Shopify App Store</li>
+                        <li>Your store connects to Delybell automatically</li>
+                        <li>New orders appear in the dashboard</li>
+                        <li>Sync orders manually when ready</li>
+                        <li>Track delivery status in real-time</li>
                       </ul>
                     </div>
                   </div>
                 </div>
-              </div>
-              
-              <!-- Footer -->
-              <footer class="mt-16 pt-8 border-t border-border-light dark:border-border-dark">
-                <div class="flex flex-col md:flex-row justify-between items-center gap-4 text-sm text-slate-500 dark:text-slate-400">
-                  <div class="flex items-center gap-6 flex-wrap">
-                    <span class="font-semibold text-slate-700 dark:text-slate-300">Delybell Order Sync</span>
-                    <a href="/app/help-center" class="hover:text-primary transition-colors">Help Center</a>
-                    <a href="/privacy" class="hover:text-primary transition-colors">Privacy Policy</a>
-                    <a href="/terms" class="hover:text-primary transition-colors">Terms of Service</a>
-                  </div>
-                  <div>
-                    <p>&copy; ${new Date().getFullYear()} Delybell. All rights reserved.</p>
-                  </div>
+                
+                <!-- CTA -->
+                <div class="text-center">
+                  <a href="/auth/install?shop=${shop}" class="inline-flex items-center px-6 py-2.5 bg-[#010a8b] text-white rounded-md text-sm font-semibold hover:opacity-90 transition-opacity">
+                    <span class="material-icons-outlined text-base mr-2">install_mobile</span>
+                    Install App
+                  </a>
+                  <p class="text-xs text-slate-400 mt-3">Free to install • No credit card required</p>
                 </div>
-              </footer>
+              </div>
             `;
           }
           
