@@ -15,18 +15,19 @@
     }
     
     :root {
-      --color-bg: #f8fafc;
+      --color-bg: #fafafa;
       --color-surface: #ffffff;
       --color-surface-solid: #ffffff;
-      --color-surface-hover: #f1f5f9;
-      --color-border: #e2e8f0;
-      --color-border-light: #f1f5f9;
-      --color-text-primary: #0f172a;
-      --color-text-secondary: #475569;
-      --color-text-tertiary: #94a3b8;
-      --color-primary: #6366f1;
-      --color-primary-hover: #4f46e5;
-      --color-primary-light: #eef2ff;
+      --color-surface-hover: #f5f5f5;
+      --color-border: #e5e5e5;
+      --color-border-light: #f5f5f5;
+      --color-text-primary: #111827;
+      --color-text-secondary: #6b7280;
+      --color-text-tertiary: #9ca3af;
+      --color-primary: #010a8b;
+      --color-primary-purple: #7c3aed;
+      --color-primary-hover: #00087a;
+      --color-primary-light: rgba(1, 10, 139, 0.1);
       --color-success: #10b981;
       --color-success-light: #d1fae5;
       --color-error: #ef4444;
@@ -34,8 +35,8 @@
       --color-warning: #f59e0b;
       --color-warning-light: #fef3c7;
       --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-      --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-      --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+      --shadow-md: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+      --shadow-lg: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
       --radius-sm: 6px;
       --radius-md: 8px;
       --radius-lg: 12px;
@@ -61,31 +62,26 @@
       left: 0;
       right: 0;
       bottom: 0;
-      background: 
-        radial-gradient(circle at 20% 30%, rgba(99, 102, 241, 0.03) 0%, transparent 50%),
-        radial-gradient(circle at 80% 70%, rgba(139, 92, 246, 0.03) 0%, transparent 50%);
+      background: transparent;
       pointer-events: none;
       z-index: 0;
     }
     
-    /* Top Bar */
+    /* Top Bar - Minimal */
     .top-bar {
       background: var(--color-surface);
-      backdrop-filter: blur(20px);
-      -webkit-backdrop-filter: blur(20px);
       border-bottom: 1px solid var(--color-border);
-      padding: 16px 24px;
+      padding: 12px 20px;
       display: flex;
       justify-content: space-between;
       align-items: center;
       position: sticky;
       top: 0;
       z-index: 100;
-      box-shadow: var(--shadow-sm);
     }
     
     .top-bar-title {
-      font-size: 14px;
+      font-size: 13px;
       font-weight: 600;
       color: var(--color-text-primary);
       letter-spacing: -0.01em;
@@ -101,11 +97,12 @@
     
     .brand-name {
       font-weight: 600;
-      color: var(--color-text-primary);
+      color: var(--color-primary);
+      font-size: 13px;
     }
     
     .brand-tag {
-      font-size: 11px;
+      font-size: 10px;
       color: var(--color-text-tertiary);
       font-weight: 400;
       text-transform: uppercase;
@@ -235,32 +232,27 @@
       border-color: rgba(239, 68, 68, 0.3);
     }
     
-    /* Content */
+    /* Content - Minimal */
     .content-wrapper {
-      padding: 24px;
+      padding: 20px;
       position: relative;
       z-index: 1;
-      max-width: 1600px;
+      max-width: 1800px;
       margin: 0 auto;
-      padding-bottom: 100px;
+      padding-bottom: 60px;
     }
     
-    /* Summary Cards */
+    /* Summary Cards - Minimal */
     .stats-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-      gap: 16px;
-      margin-bottom: 24px;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 12px;
+      margin-bottom: 20px;
     }
     
-    /* Sync Mode Card */
+    /* Sync Mode Card - Hidden (sync removed from admin) */
     .sync-mode-card {
-      background: var(--color-surface);
-      border: 1px solid var(--color-border);
-      border-radius: var(--radius-md);
-      padding: 20px;
-      margin-bottom: 24px;
-      box-shadow: var(--shadow-sm);
+      display: none !important;
     }
     
     .sync-mode-header {
@@ -350,12 +342,10 @@
     .stat-card {
       background: var(--color-surface);
       border: 1px solid var(--color-border);
-      border-radius: var(--radius-md);
-      padding: 20px;
-      transition: all 0.2s ease;
+      border-radius: var(--radius-sm);
+      padding: 16px;
+      transition: all 0.15s ease;
       position: relative;
-      overflow: hidden;
-      box-shadow: var(--shadow-sm);
     }
     
     .stat-card::before {
@@ -363,14 +353,12 @@
       position: absolute;
       top: 0;
       left: 0;
-      width: 4px;
+      width: 3px;
       height: 100%;
       background: var(--color-primary);
     }
     
     .stat-card:hover {
-      box-shadow: var(--shadow-md);
-      transform: translateY(-2px);
       border-color: var(--color-primary);
     }
     
@@ -396,21 +384,20 @@
     }
     
     .stat-value {
-      font-size: 24px;
-      font-weight: 700;
+      font-size: 20px;
+      font-weight: 600;
       color: var(--color-text-primary);
       line-height: 1.2;
-      letter-spacing: -0.02em;
+      letter-spacing: -0.01em;
     }
     
-    /* Filters */
+    /* Filters - Minimal */
     .filters-card {
       background: var(--color-surface);
       border: 1px solid var(--color-border);
-      border-radius: var(--radius-md);
-      padding: 20px;
-      margin-bottom: 24px;
-      box-shadow: var(--shadow-sm);
+      border-radius: var(--radius-sm);
+      padding: 16px;
+      margin-bottom: 20px;
     }
     
     .filters-header {
@@ -477,19 +464,19 @@
     .orders-card {
       background: var(--color-surface);
       border: 1px solid var(--color-border);
-      border-radius: var(--radius-md);
+      border-radius: var(--radius-sm);
       overflow: hidden;
-      box-shadow: var(--shadow-sm);
+      margin-bottom: 20px;
     }
     
     .card-header {
-      padding: 16px 20px;
+      padding: 12px 16px;
       border-bottom: 1px solid var(--color-border);
       background: var(--color-surface);
     }
     
     .card-title {
-      font-size: 12px;
+      font-size: 11px;
       font-weight: 600;
       color: var(--color-text-primary);
       letter-spacing: -0.01em;
@@ -511,20 +498,21 @@
     }
     
     th {
-      padding: 12px 16px;
+      padding: 10px 14px;
       text-align: left;
-      font-size: 11px;
+      font-size: 10px;
       font-weight: 600;
       color: var(--color-text-secondary);
       text-transform: uppercase;
       letter-spacing: 0.05em;
-      border-bottom: 2px solid var(--color-border);
+      border-bottom: 1px solid var(--color-border);
+      background: var(--color-surface);
     }
     
     td {
-      padding: 14px 16px;
+      padding: 12px 14px;
       border-bottom: 1px solid var(--color-border-light);
-      font-size: 13px;
+      font-size: 12px;
       color: var(--color-text-primary);
     }
     
@@ -560,14 +548,14 @@
     }
     
     .shop-link:hover {
-      color: #818cf8;
+      color: var(--color-primary-purple);
     }
     
     .status-badge {
       display: inline-flex;
       align-items: center;
-      padding: 3px 8px;
-      border-radius: var(--radius-sm);
+      padding: 2px 6px;
+      border-radius: 4px;
       font-size: 10px;
       font-weight: 500;
       text-transform: uppercase;
@@ -575,21 +563,21 @@
     }
     
     .status-synced {
-      background: var(--color-success-light);
-      color: var(--color-success);
-      border: 1px solid rgba(16, 185, 129, 0.2);
+      background: rgba(1, 10, 139, 0.1);
+      color: var(--color-primary);
+      border: none;
     }
     
     .status-failed {
       background: var(--color-error-light);
       color: var(--color-error);
-      border: 1px solid rgba(239, 68, 68, 0.2);
+      border: none;
     }
     
     .status-pending {
       background: var(--color-warning-light);
       color: #d97706;
-      border: 1px solid rgba(245, 158, 11, 0.2);
+      border: none;
     }
     
     .payment-badge {
@@ -1241,7 +1229,7 @@
     </div>
     
     <!-- Problem Reports Section -->
-    <div class="orders-card" style="margin-bottom: 24px;">
+    <div class="orders-card">
       <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
         <div class="card-title">Problem Reports</div>
         <div style="display: flex; gap: 8px;">

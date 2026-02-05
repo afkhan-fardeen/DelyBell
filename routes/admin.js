@@ -1448,14 +1448,23 @@ router.get('/admin/api/orders', async (req, res) => {
       .select('*', { count: 'exact', head: true });
 
     // Build query for fetching data
-    // Order by shopify_order_created_at (when order was placed) for better ordering
-    // Fallback to created_at if shopify_order_created_at is null
+    // For processed orders, order by synced_at or updated_at (most recent sync first)
+    // For other statuses, order by shopify_order_created_at (when order was placed)
     let query = supabase
       .from('order_logs')
-      .select('*')
-      .order('shopify_order_created_at', { ascending: false, nullsFirst: false })
-      .order('created_at', { ascending: false })
-      .range(parseInt(offset), parseInt(offset) + parseInt(limit) - 1);
+      .select('*');
+    
+    if (status === 'processed') {
+      // For synced orders, order by when they were synced (most recent first)
+      query = query.order('updated_at', { ascending: false, nullsFirst: false })
+                   .order('created_at', { ascending: false });
+    } else {
+      // For other statuses, order by when order was placed
+      query = query.order('shopify_order_created_at', { ascending: false, nullsFirst: false })
+                   .order('created_at', { ascending: false });
+    }
+    
+    query = query.range(parseInt(offset), parseInt(offset) + parseInt(limit) - 1);
 
     // Apply filters to both queries
     if (shop) {
@@ -1574,8 +1583,15 @@ router.get('/admin/api/orders', async (req, res) => {
     // CRITICAL: If filtering by pending_sync, exclude any orders that have been synced
     if (status === 'pending_sync') {
       uniqueOrders = uniqueOrders.filter(order => {
-        // Only show orders that are pending_sync AND don't have a delybell_order_id
-        return order.status === 'pending_sync' && !order.delybell_order_id;
+        // Only show orders that are:
+        // 1. Status is 'pending_sync'
+        // 2. Don't have a delybell_order_id (not synced)
+        // 3. Status is NOT 'processed' or 'completed' (double check)
+        const isPending = order.status === 'pending_sync';
+        const isNotSynced = !order.delybell_order_id;
+        const isNotProcessed = order.status !== 'processed' && order.status !== 'completed';
+        
+        return isPending && isNotSynced && isNotProcessed;
       });
       // Update total count to reflect filtered results
       totalCount = uniqueOrders.length;
@@ -1595,7 +1611,7 @@ router.get('/admin/api/orders', async (req, res) => {
       currency: order.currency || 'USD',
       financialStatus: order.financial_status || null, // Use stored value, don't infer
       createdAt: order.shopify_order_created_at || order.created_at,
-      syncedAt: order.synced_at || order.created_at,
+      syncedAt: order.status === 'processed' && order.delybell_order_id ? (order.updated_at || order.synced_at || order.created_at) : null,
       errorMessage: order.error_message,
     }));
 

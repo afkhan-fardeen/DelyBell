@@ -638,11 +638,39 @@
           console.warn('Delybell health check failed:', e);
         }
         
-        const statsResponse = await fetch(`/admin/api/stats?shop=${encodeURIComponent(shop)}`);
-        const statsData = await statsResponse.json();
-        const lastSync = statsData.success && statsData.stats.successfullySynced > 0 
-          ? 'Just now' 
-          : null;
+        // Get actual last sync time from most recently synced order
+        let lastSync = null;
+        try {
+          const lastSyncResponse = await fetch(`/admin/api/orders?shop=${encodeURIComponent(shop)}&status=processed&limit=1`);
+          const lastSyncData = await lastSyncResponse.json();
+          if (lastSyncData.success && lastSyncData.orders && lastSyncData.orders.length > 0) {
+            const mostRecentOrder = lastSyncData.orders[0];
+            // Use syncedAt if available, otherwise fall back to createdAt
+            const syncedAt = mostRecentOrder.syncedAt || mostRecentOrder.createdAt;
+            if (syncedAt) {
+              const syncDate = new Date(syncedAt);
+              const now = new Date();
+              const diffMs = now.getTime() - syncDate.getTime();
+              const diffMins = Math.floor(diffMs / 60000);
+              const diffHours = Math.floor(diffMs / 3600000);
+              const diffDays = Math.floor(diffMs / 86400000);
+              
+              if (diffMins < 1) {
+                lastSync = 'Just now';
+              } else if (diffMins < 60) {
+                lastSync = `${diffMins} min ago`;
+              } else if (diffHours < 24) {
+                lastSync = `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
+              } else if (diffDays < 7) {
+                lastSync = `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
+              } else {
+                lastSync = syncDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+              }
+            }
+          }
+        } catch (e) {
+          console.warn('Error fetching last sync time:', e);
+        }
         
         return {
           shopify: shopifyConnected,
@@ -734,10 +762,21 @@
         if (statusFilter === 'pending_sync') {
           orders = orders.filter(order => {
             const orderStatus = order.status;
-            const hasDelybellId = order.delybellOrderId || order.delybell_order_id;
-            // Only show truly pending orders (status is pending_sync AND no delybell_order_id)
-            // Also exclude processed/completed orders
-            return orderStatus === 'pending_sync' && !hasDelybellId && orderStatus !== 'processed' && orderStatus !== 'completed';
+            // Check for delybell_order_id in multiple possible field names (camelCase from API)
+            const delybellId = order.delybellOrderId || order.delybell_order_id;
+            const hasDelybellId = !!delybellId;
+            
+            // Only show truly pending orders:
+            // 1. Status must be 'pending_sync'
+            // 2. Must NOT have a delybell_order_id (not synced)
+            if (orderStatus !== 'pending_sync') {
+              return false; // Not pending status
+            }
+            if (hasDelybellId) {
+              return false; // Has been synced (has delybell_order_id)
+            }
+            
+            return true; // Truly pending (status is pending_sync and no delybell_order_id)
           });
           // Update total count for pending tab
           totalOrders = orders.length;
