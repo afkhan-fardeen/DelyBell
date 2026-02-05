@@ -1508,7 +1508,7 @@ router.get('/admin/api/orders', async (req, res) => {
     }
     
     // Get total count and orders
-    const [{ count: totalCount, error: countError }, { data: orders, error: ordersError }] = await Promise.all([
+    const [{ count: initialTotalCount, error: countError }, { data: orders, error: ordersError }] = await Promise.all([
       countQuery,
       query
     ]);
@@ -1522,7 +1522,9 @@ router.get('/admin/api/orders', async (req, res) => {
       throw ordersError;
     }
     
-    console.log(`[Admin API] Found ${orders?.length || 0} orders (total count: ${totalCount || 0}) for shop: ${shop}`);
+    let totalCount = initialTotalCount || 0;
+    
+    console.log(`[Admin API] Found ${orders?.length || 0} orders (total count: ${totalCount}) for shop: ${shop}`);
     
     // Filter by phone/customer name if search is text and not a number
     let filteredOrders = orders || [];

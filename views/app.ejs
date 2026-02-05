@@ -28,13 +28,14 @@
       theme: {
         extend: {
           colors: {
-            primary: "#008060", // Shopify Polaris Green
-            "background-light": "#f8fafc",
-            "background-dark": "#0f172a",
+            primary: "#010a8b", // Delybell Blue
+            "primary-purple": "#7c3aed", // Delybell Purple
+            "background-light": "#fafafa",
+            "background-dark": "#0a0a0a",
             "surface-light": "#ffffff",
-            "surface-dark": "#1e293b",
-            "border-light": "#e2e8f0",
-            "border-dark": "#334155",
+            "surface-dark": "#1a1a1a",
+            "border-light": "#e5e5e5",
+            "border-dark": "#2a2a2a",
           },
           fontFamily: {
             display: ["Inter", "sans-serif"],
@@ -86,7 +87,7 @@
     
     .orders-table th,
     .orders-table td {
-      padding: 16px 20px;
+      padding: 12px 16px;
       text-align: left;
       vertical-align: middle;
       white-space: nowrap;
@@ -106,11 +107,11 @@
       background: rgba(255,255,255,0.95);
       backdrop-filter: blur(10px);
       font-weight: 600;
-      font-size: 11px;
+      font-size: 10px;
       text-transform: uppercase;
       letter-spacing: 0.05em;
       color: #6b7280;
-      padding: 14px 20px;
+      padding: 10px 16px;
     }
     
     .dark .orders-table th {
@@ -132,24 +133,25 @@
     
     .orders-table td {
       white-space: normal;
-      font-size: 14px;
+      font-size: 13px;
     }
     
     .orders-table td:first-child,
     .orders-table th:first-child {
-      padding-left: 24px;
+      padding-left: 16px;
     }
     
     .orders-table td:last-child,
     .orders-table th:last-child {
-      padding-right: 24px;
+      padding-right: 16px;
     }
     
     .orders-table .col-order-number {
-      min-width: 100px;
+      min-width: 90px;
       white-space: nowrap;
       font-weight: 600;
       color: #111827;
+      font-size: 13px;
     }
     
     .dark .orders-table .col-order-number {
@@ -157,10 +159,10 @@
     }
     
     .orders-table .col-date {
-      min-width: 160px;
+      min-width: 140px;
       white-space: nowrap;
       color: #6b7280;
-      font-size: 13px;
+      font-size: 12px;
     }
     
     .dark .orders-table .col-date {
@@ -177,9 +179,9 @@
     }
     
     .orders-table .col-delybell-id {
-      min-width: 150px;
+      min-width: 130px;
       font-family: 'SF Mono', 'Monaco', 'Menlo', monospace;
-      font-size: 12px;
+      font-size: 11px;
       color: #6b7280;
     }
     
@@ -240,7 +242,7 @@
       border-color: #3e3e3e;
     }
     
-    .toast.success { border-left-color: #008060; }
+    .toast.success { border-left-color: #010a8b; }
     .toast.error { border-left-color: #d72c0d; }
     .toast.warning { border-left-color: #f59e0b; }
     
@@ -289,24 +291,24 @@
     }
   </style>
 </head>
-<body class="bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 min-h-screen transition-colors duration-200">
-  <div class="max-w-[1800px] mx-auto px-8 py-10">
+<body class="bg-[#fafafa] dark:bg-[#0a0a0a] text-slate-900 dark:text-slate-100 min-h-screen transition-colors duration-200">
+  <div class="max-w-[1800px] mx-auto px-6 py-6">
     <!-- Toast Container -->
     <div class="toast-container" id="toastContainer"></div>
     
-    <!-- Header - Framer style -->
-    <header class="mb-10 flex justify-between items-start">
+    <!-- Header - Minimal Flat Style -->
+    <header class="mb-6 flex justify-between items-start">
       <div>
-        <h1 class="text-3xl font-bold text-slate-900 dark:text-white mb-2 tracking-tight">Orders</h1>
-        <p class="text-slate-500 dark:text-slate-400 text-[15px]">Manage and sync your Shopify orders with Delybell</p>
+        <h1 class="text-2xl font-semibold text-slate-900 dark:text-white mb-1 tracking-tight">Orders</h1>
+        <p class="text-slate-500 dark:text-slate-400 text-sm">Manage and sync orders</p>
       </div>
       <div class="flex gap-2">
-        <button class="px-4 py-2 bg-white dark:bg-surface-dark border border-border-light dark:border-border-dark rounded-lg font-medium text-sm hover:bg-slate-50 dark:hover:bg-slate-800 transition-all inline-flex items-center gap-2 shadow-sm hover:shadow" onclick="showReportProblemModal()">
-          <span class="material-icons-outlined text-base">bug_report</span>
-          Report Issue
+        <button class="px-3 py-1.5 bg-white dark:bg-surface-dark border border-border-light dark:border-border-dark rounded-md font-medium text-xs hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors inline-flex items-center gap-1.5" onclick="showReportProblemModal()">
+          <span class="material-icons-outlined text-sm">bug_report</span>
+          Report
         </button>
-        <a href="/app/help-center" class="px-4 py-2 bg-white dark:bg-surface-dark border border-border-light dark:border-border-dark rounded-lg font-medium text-sm hover:bg-slate-50 dark:hover:bg-slate-800 transition-all inline-flex items-center gap-2 shadow-sm hover:shadow">
-          <span class="material-icons-outlined text-base">help_outline</span>
+        <a href="/app/help-center" class="px-3 py-1.5 bg-white dark:bg-surface-dark border border-border-light dark:border-border-dark rounded-md font-medium text-xs hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors inline-flex items-center gap-1.5">
+          <span class="material-icons-outlined text-sm">help_outline</span>
           Help
         </a>
       </div>
@@ -775,7 +777,7 @@
         if (ordersContainer) {
           ordersContainer.innerHTML = `
             <tr>
-              <td colspan="6" class="px-6 py-8 text-center text-red-600 dark:text-red-400">
+              <td colspan="7" class="px-6 py-8 text-center text-red-600 dark:text-red-400">
                 <span class="material-icons-outlined text-4xl mb-2 block">error</span>
                 <div class="font-semibold">Error loading orders</div>
                 <div class="text-sm mt-1">${error.message}</div>
@@ -889,56 +891,42 @@
       
       function getStatusBadge(status, errorMessage) {
         if (status === 'processed') {
-          return `<span class="inline-flex items-center px-2 py-0.5 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 text-[11px] font-semibold rounded-full">
-            <span class="w-1.5 h-1.5 bg-green-500 rounded-full mr-1.5"></span> Synced
-          </span>`;
+          return `<span class="inline-flex items-center px-1.5 py-0.5 bg-[#010a8b]/10 text-[#010a8b] text-[10px] font-semibold rounded">Synced</span>`;
         }
         if (status === 'completed') {
-          return `<span class="inline-flex items-center px-2 py-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 text-[11px] font-semibold rounded-full">
-            <span class="w-1.5 h-1.5 bg-blue-500 rounded-full mr-1.5"></span> Completed
-          </span>`;
+          return `<span class="inline-flex items-center px-1.5 py-0.5 bg-[#7c3aed]/10 text-[#7c3aed] text-[10px] font-semibold rounded">Completed</span>`;
         }
         if (status === 'pending_sync') {
-          return `<span class="inline-flex items-center px-2 py-0.5 bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400 text-[11px] font-semibold rounded-full">
-            <span class="w-1.5 h-1.5 bg-yellow-500 rounded-full mr-1.5"></span> Pending
-          </span>`;
+          return `<span class="inline-flex items-center px-1.5 py-0.5 bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400 text-[10px] font-semibold rounded">Pending</span>`;
         }
         if (status === 'failed') {
           const hasError = errorMessage ? `
-            <button class="text-[10px] text-blue-600 dark:text-blue-400 hover:underline mt-1 text-left" onclick="toggleErrorDetails('error-${orders.indexOf(orders.find(o => o.status === 'failed'))}')">Show details</button>
+            <button class="text-[9px] text-[#010a8b] dark:text-[#7c3aed] hover:underline mt-1 text-left" onclick="toggleErrorDetails('error-${orders.indexOf(orders.find(o => o.status === 'failed'))}')">Show details</button>
           ` : '';
           return `<div class="flex flex-col">
-            <span class="inline-flex items-center px-2 py-0.5 w-fit bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 text-[11px] font-semibold rounded-full">
-              <span class="w-1.5 h-1.5 bg-red-500 rounded-full mr-1.5"></span> Failed
-            </span>
+            <span class="inline-flex items-center px-1.5 py-0.5 w-fit bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 text-[10px] font-semibold rounded">Failed</span>
             ${hasError}
           </div>`;
         }
-        return `<span class="inline-flex items-center px-2 py-0.5 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 text-[11px] font-semibold rounded-full">${status}</span>`;
+        return `<span class="inline-flex items-center px-1.5 py-0.5 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 text-[10px] font-semibold rounded">${status}</span>`;
       }
       
       function getPaymentBadge(financialStatus) {
-        if (!financialStatus) return '<span class="text-slate-400">—</span>';
+        if (!financialStatus) return '<span class="text-slate-400 text-xs">—</span>';
         
         const status = financialStatus.toLowerCase();
         
         if (status === 'paid') {
-          return `<span class="inline-flex items-center px-2 py-1 bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 text-[10px] font-bold rounded border border-green-200 dark:border-green-900/50">
-            <span class="material-icons-outlined text-[12px] mr-1">credit_card</span> PAID
-          </span>`;
+          return `<span class="inline-flex items-center px-1.5 py-0.5 bg-[#010a8b]/10 text-[#010a8b] text-[10px] font-semibold rounded">PAID</span>`;
         }
         
         // COD or pending payment
         if (status === 'pending' || status === 'authorized' || status === 'partially_paid') {
-          return `<span class="inline-flex items-center px-2 py-1 bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 text-[10px] font-bold rounded border border-amber-200 dark:border-amber-900/50">
-            <span class="material-icons-outlined text-[12px] mr-1">payments</span> COD
-          </span>`;
+          return `<span class="inline-flex items-center px-1.5 py-0.5 bg-[#7c3aed]/10 text-[#7c3aed] text-[10px] font-semibold rounded">COD</span>`;
         }
         
         // Other statuses
-        return `<span class="inline-flex items-center px-2 py-1 bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-400 text-[10px] font-bold rounded border border-slate-200 dark:border-slate-700">
-          <span class="material-icons-outlined text-[12px] mr-1">payment</span> ${financialStatus.toUpperCase()}
-        </span>`;
+        return `<span class="inline-flex items-center px-1.5 py-0.5 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 text-[10px] font-semibold rounded">${financialStatus.toUpperCase()}</span>`;
       }
       
       if (ordersContainer) {
@@ -957,18 +945,18 @@
               <td class="col-delybell-id font-mono text-xs text-slate-600 dark:text-slate-400">${order.delybellOrderId || '—'}</td>
               <td class="col-action text-right" style="padding-right: 24px;">
                 ${order.status === 'processed' || order.status === 'completed' ? `
-                  <button class="inline-flex items-center px-3 py-1.5 bg-white dark:bg-surface-dark border border-border-light dark:border-border-dark rounded-lg text-xs font-semibold hover:border-primary hover:text-primary dark:hover:text-primary transition-all shadow-sm hover:shadow" onclick="viewOrderDetails('${order.id}')">
-                    <span class="material-icons-outlined text-sm mr-1.5">visibility</span> View
+                  <button class="inline-flex items-center px-2.5 py-1 bg-white dark:bg-surface-dark border border-border-light dark:border-border-dark rounded-md text-xs font-semibold hover:border-[#010a8b] hover:text-[#010a8b] dark:hover:text-[#010a8b] transition-colors" onclick="viewOrderDetails('${order.id}')">
+                    <span class="material-icons-outlined text-sm mr-1">visibility</span> View
                   </button>
                 ` : ''}
                 ${order.status === 'failed' ? `
-                  <button class="inline-flex items-center px-3 py-1.5 bg-white dark:bg-surface-dark border border-border-light dark:border-border-dark rounded-lg text-xs font-semibold hover:border-primary hover:text-primary dark:hover:text-primary transition-all shadow-sm hover:shadow" onclick="retryOrder('${order.id}')">
-                    <span class="material-icons-outlined text-sm mr-1.5">refresh</span> Retry
+                  <button class="inline-flex items-center px-2.5 py-1 bg-white dark:bg-surface-dark border border-border-light dark:border-border-dark rounded-md text-xs font-semibold hover:border-[#010a8b] hover:text-[#010a8b] dark:hover:text-[#010a8b] transition-colors" onclick="retryOrder('${order.id}')">
+                    <span class="material-icons-outlined text-sm mr-1">refresh</span> Retry
                   </button>
                 ` : ''}
                 ${order.status === 'pending_sync' ? `
-                  <button class="inline-flex items-center px-3 py-1.5 bg-primary text-white rounded-lg text-xs font-semibold hover:opacity-90 transition-all shadow-sm hover:shadow" onclick="syncSingleOrder('${order.id}')">
-                    <span class="material-icons-outlined text-sm mr-1.5">sync</span> Sync
+                  <button class="inline-flex items-center px-2.5 py-1 bg-[#010a8b] text-white rounded-md text-xs font-semibold hover:opacity-90 transition-opacity" onclick="syncSingleOrder('${order.id}')">
+                    <span class="material-icons-outlined text-sm mr-1">sync</span> Sync
                   </button>
                 ` : ''}
               </td>
@@ -1617,97 +1605,92 @@
         // Render main app (orders will load separately after render)
         if (appContent) {
           appContent.innerHTML = `
-            <!-- Health Status Cards - Framer style -->
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 mb-8">
-              <div class="bg-white dark:bg-surface-dark p-5 rounded-2xl border border-border-light dark:border-border-dark flex items-center space-x-4 hover:shadow-sm transition-shadow">
-                <div class="bg-green-50 dark:bg-green-900/20 p-3 rounded-xl">
-                  <span class="material-icons-outlined text-green-600 dark:text-green-400 text-xl">check_circle</span>
+            <!-- Health Status Cards - Minimal Flat -->
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-2 mb-6">
+              <div class="bg-white dark:bg-surface-dark p-3 rounded-lg border border-border-light dark:border-border-dark flex items-center gap-3">
+                <div class="w-8 h-8 rounded-md flex items-center justify-center ${health.shopify ? 'bg-[#010a8b]/10' : 'bg-slate-100 dark:bg-slate-800'}">
+                  <span class="material-icons-outlined text-sm ${health.shopify ? 'text-[#010a8b]' : 'text-slate-400'}">check_circle</span>
                 </div>
-                <div>
-                  <p class="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">Shopify</p>
-                  <p class="font-bold text-lg text-slate-900 dark:text-white">${health.shopify ? 'Connected' : 'Disconnected'}</p>
-                </div>
-              </div>
-              <div class="bg-white dark:bg-surface-dark p-5 rounded-2xl border border-border-light dark:border-border-dark flex items-center space-x-4 hover:shadow-sm transition-shadow">
-                <div class="bg-green-50 dark:bg-green-900/20 p-3 rounded-xl">
-                  <span class="material-icons-outlined text-green-600 dark:text-green-400 text-xl">check_circle</span>
-                </div>
-                <div>
-                  <p class="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">Delybell</p>
-                  <p class="font-bold text-lg text-slate-900 dark:text-white">${health.delybell ? 'Connected' : 'Disconnected'}</p>
+                <div class="min-w-0">
+                  <p class="text-[10px] font-medium text-slate-400 uppercase tracking-wide">Shopify</p>
+                  <p class="font-semibold text-sm text-slate-900 dark:text-white truncate">${health.shopify ? 'Connected' : 'Offline'}</p>
                 </div>
               </div>
-              <div class="bg-white dark:bg-surface-dark p-5 rounded-2xl border border-border-light dark:border-border-dark flex items-center space-x-4 hover:shadow-sm transition-shadow">
-                <div class="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-xl">
-                  <span class="material-icons-outlined text-blue-600 dark:text-blue-400 text-xl">storefront</span>
+              <div class="bg-white dark:bg-surface-dark p-3 rounded-lg border border-border-light dark:border-border-dark flex items-center gap-3">
+                <div class="w-8 h-8 rounded-md flex items-center justify-center ${health.delybell ? 'bg-[#7c3aed]/10' : 'bg-slate-100 dark:bg-slate-800'}">
+                  <span class="material-icons-outlined text-sm ${health.delybell ? 'text-[#7c3aed]' : 'text-slate-400'}">check_circle</span>
                 </div>
-                <div class="overflow-hidden flex-1 min-w-0">
-                  <p class="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">Store</p>
-                  <p class="font-bold text-lg text-slate-900 dark:text-white truncate">${(health.storeDomain || shop).replace('.myshopify.com', '')}</p>
+                <div class="min-w-0">
+                  <p class="text-[10px] font-medium text-slate-400 uppercase tracking-wide">Delybell</p>
+                  <p class="font-semibold text-sm text-slate-900 dark:text-white truncate">${health.delybell ? 'Connected' : 'Offline'}</p>
                 </div>
               </div>
-              <div class="bg-white dark:bg-surface-dark p-5 rounded-2xl border border-border-light dark:border-border-dark flex items-center space-x-4 hover:shadow-sm transition-shadow">
-                <div class="bg-slate-100 dark:bg-slate-800 p-3 rounded-xl">
-                  <span class="material-icons-outlined text-slate-600 dark:text-slate-400 text-xl">schedule</span>
+              <div class="bg-white dark:bg-surface-dark p-3 rounded-lg border border-border-light dark:border-border-dark flex items-center gap-3">
+                <div class="w-8 h-8 rounded-md flex items-center justify-center bg-[#010a8b]/10">
+                  <span class="material-icons-outlined text-sm text-[#010a8b]">storefront</span>
                 </div>
-                <div>
-                  <p class="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">Last Sync</p>
-                  <p class="font-bold text-lg text-slate-900 dark:text-white">${health.lastSync || 'Never'}</p>
+                <div class="min-w-0 flex-1">
+                  <p class="text-[10px] font-medium text-slate-400 uppercase tracking-wide">Store</p>
+                  <p class="font-semibold text-sm text-slate-900 dark:text-white truncate">${(health.storeDomain || shop).replace('.myshopify.com', '')}</p>
+                </div>
+              </div>
+              <div class="bg-white dark:bg-surface-dark p-3 rounded-lg border border-border-light dark:border-border-dark flex items-center gap-3">
+                <div class="w-8 h-8 rounded-md flex items-center justify-center bg-slate-100 dark:bg-slate-800">
+                  <span class="material-icons-outlined text-sm text-slate-400">schedule</span>
+                </div>
+                <div class="min-w-0">
+                  <p class="text-[10px] font-medium text-slate-400 uppercase tracking-wide">Last Sync</p>
+                  <p class="font-semibold text-sm text-slate-900 dark:text-white truncate">${health.lastSync || 'Never'}</p>
                 </div>
               </div>
             </div>
             
             
-            <!-- Orders Card - Framer style -->
-            <div class="bg-white dark:bg-surface-dark rounded-2xl border border-border-light dark:border-border-dark overflow-hidden shadow-sm">
-              <div class="p-6 border-b border-border-light dark:border-border-dark bg-slate-50/50 dark:bg-slate-900/30">
-                <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                  <div>
-                    <h2 class="font-bold text-xl text-slate-900 dark:text-white mb-1">Order Management</h2>
-                    <p class="text-sm text-slate-500 dark:text-slate-400">Sync orders to Delybell for delivery</p>
-                  </div>
-                  <div class="flex flex-wrap items-center gap-2">
-                    <button class="flex items-center gap-2 px-4 py-2 bg-white dark:bg-surface-dark border border-border-light dark:border-border-dark rounded-lg text-sm font-medium hover:bg-slate-50 dark:hover:bg-slate-800 transition-all shadow-sm hover:shadow" onclick="fetchHistoricalOrders()" id="fetchHistoricalBtn" title="Fetch orders placed before app installation">
-                      <span class="material-icons-outlined text-base">download</span>
-                      Fetch Historical
-                    </button>
-                    <button class="flex items-center gap-2 px-4 py-2 bg-white dark:bg-surface-dark border border-border-light dark:border-border-dark rounded-lg text-sm font-medium hover:bg-slate-50 dark:hover:bg-slate-800 transition-all shadow-sm hover:shadow" onclick="loadOrders(currentPage)">
-                      <span class="material-icons-outlined text-base">refresh</span>
-                      Refresh
-                    </button>
-                  </div>
+            <!-- Orders Card - Minimal Flat -->
+            <div class="bg-white dark:bg-surface-dark rounded-lg border border-border-light dark:border-border-dark overflow-hidden">
+              <div class="p-4 border-b border-border-light dark:border-border-dark flex items-center justify-between">
+                <h2 class="font-semibold text-base text-slate-900 dark:text-white">Orders</h2>
+                <div class="flex items-center gap-1.5">
+                  <button class="flex items-center gap-1.5 px-2.5 py-1.5 bg-white dark:bg-surface-dark border border-border-light dark:border-border-dark rounded-md text-xs font-medium hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors" onclick="fetchHistoricalOrders()" id="fetchHistoricalBtn" title="Fetch orders placed before app installation">
+                    <span class="material-icons-outlined text-sm">download</span>
+                    Fetch
+                  </button>
+                  <button class="flex items-center gap-1.5 px-2.5 py-1.5 bg-white dark:bg-surface-dark border border-border-light dark:border-border-dark rounded-md text-xs font-medium hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors" onclick="loadOrders(currentPage)">
+                    <span class="material-icons-outlined text-sm">refresh</span>
+                    Refresh
+                  </button>
                 </div>
               </div>
               
-              <!-- Order Tabs - Framer style -->
-              <div class="flex items-center space-x-1 px-6 pt-4 pb-0 border-b border-border-light dark:border-border-dark bg-white dark:bg-surface-dark">
-                <button class="order-tab pb-4 px-3 border-b-2 border-primary text-primary font-semibold text-sm flex items-center space-x-2 transition-all" id="tab-all" onclick="switchTab('all')">
+              <!-- Order Tabs - Minimal Flat -->
+              <div class="flex items-center gap-0.5 px-4 pt-3 pb-0 border-b border-border-light dark:border-border-dark bg-white dark:bg-surface-dark">
+                <button class="order-tab pb-3 px-3 border-b-2 border-[#010a8b] text-[#010a8b] font-semibold text-xs flex items-center gap-1.5 transition-all" id="tab-all" onclick="switchTab('all')">
                   <span>All</span>
-                  <span class="bg-primary/10 text-primary px-2 py-0.5 rounded-full text-[11px] font-semibold" id="allBadge">0</span>
+                  <span class="bg-[#010a8b]/10 text-[#010a8b] px-1.5 py-0.5 rounded text-[10px] font-semibold" id="allBadge">0</span>
                 </button>
-                <button class="order-tab pb-4 px-3 border-b-2 border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 font-medium text-sm flex items-center space-x-2 transition-all" id="tab-synced" onclick="switchTab('synced')">
+                <button class="order-tab pb-3 px-3 border-b-2 border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 font-medium text-xs flex items-center gap-1.5 transition-all" id="tab-synced" onclick="switchTab('synced')">
                   <span>Synced</span>
-                  <span class="bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 px-2 py-0.5 rounded-full text-[11px] font-semibold" id="syncedBadge">0</span>
+                  <span class="bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 px-1.5 py-0.5 rounded text-[10px] font-semibold" id="syncedBadge">0</span>
                 </button>
-                <button class="order-tab pb-4 px-3 border-b-2 border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 font-medium text-sm flex items-center space-x-2 transition-all" id="tab-pending" onclick="switchTab('pending')">
+                <button class="order-tab pb-3 px-3 border-b-2 border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 font-medium text-xs flex items-center gap-1.5 transition-all" id="tab-pending" onclick="switchTab('pending')">
                   <span>Pending</span>
-                  <span class="bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-500 px-2 py-0.5 rounded-full text-[11px] font-semibold" id="pendingBadge">0</span>
+                  <span class="bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-500 px-1.5 py-0.5 rounded text-[10px] font-semibold" id="pendingBadge">0</span>
                 </button>
-                <button class="order-tab pb-4 px-3 border-b-2 border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 font-medium text-sm flex items-center space-x-2 transition-all" id="tab-failed" onclick="switchTab('failed')">
+                <button class="order-tab pb-3 px-3 border-b-2 border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 font-medium text-xs flex items-center gap-1.5 transition-all" id="tab-failed" onclick="switchTab('failed')">
                   <span>Failed</span>
-                  <span class="bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 px-2 py-0.5 rounded-full text-[11px] font-semibold" id="failedBadge">0</span>
+                  <span class="bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 px-1.5 py-0.5 rounded text-[10px] font-semibold" id="failedBadge">0</span>
                 </button>
               </div>
               
-              <!-- Bulk Actions - Framer style -->
-              <div id="bulkActions" class="hidden px-6 py-4 bg-slate-50/80 dark:bg-slate-900/50 border-b border-border-light dark:border-border-dark flex items-center gap-3 flex-wrap backdrop-blur-sm">
-                <span class="text-sm font-medium text-slate-700 dark:text-slate-300" id="bulkCount">0 selected</span>
-                <div class="flex items-center gap-2 ml-auto">
-                  <button class="inline-flex items-center px-4 py-2 bg-primary text-white rounded-lg text-sm font-semibold hover:opacity-90 transition-all shadow-sm hover:shadow disabled:opacity-50 disabled:cursor-not-allowed" id="bulkSyncBtn" onclick="syncSelectedOrders()" disabled>
-                    <span class="material-icons-outlined text-base mr-1.5">sync</span> Sync Selected
+              <!-- Bulk Actions - Minimal Flat -->
+              <div id="bulkActions" class="hidden px-4 py-2.5 bg-slate-50 dark:bg-slate-900/30 border-b border-border-light dark:border-border-dark flex items-center gap-2 flex-wrap">
+                <span class="text-xs font-medium text-slate-600 dark:text-slate-400" id="bulkCount">0 selected</span>
+                <div class="flex items-center gap-1.5 ml-auto">
+                  <button class="inline-flex items-center px-3 py-1.5 bg-[#010a8b] text-white rounded-md text-xs font-semibold hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed" id="bulkSyncBtn" onclick="syncSelectedOrders()" disabled>
+                    <span class="material-icons-outlined text-sm mr-1">sync</span> Sync
                   </button>
-                  <button class="inline-flex items-center px-4 py-2 bg-white dark:bg-surface-dark border border-border-light dark:border-border-dark rounded-lg text-sm font-semibold hover:border-primary hover:text-primary transition-all shadow-sm hover:shadow disabled:opacity-50 disabled:cursor-not-allowed" id="bulkRetryBtn" onclick="retryFailedOrders()" disabled>
-                    <span class="material-icons-outlined text-base mr-1.5">refresh</span> Retry Failed
+                  <button class="inline-flex items-center px-3 py-1.5 bg-white dark:bg-surface-dark border border-border-light dark:border-border-dark rounded-md text-xs font-semibold hover:border-[#010a8b] hover:text-[#010a8b] transition-colors disabled:opacity-50 disabled:cursor-not-allowed" id="bulkRetryBtn" onclick="retryFailedOrders()" disabled>
+                    <span class="material-icons-outlined text-sm mr-1">refresh</span> Retry
                   </button>
                 </div>
               </div>
