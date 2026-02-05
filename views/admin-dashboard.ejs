@@ -3,487 +3,242 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title><%= title || 'Delybell Order Sync' %></title>
+  <title><%= title || 'Delybell Admin' %></title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet">
   <style>
     * {
       margin: 0;
       padding: 0;
       box-sizing: border-box;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
     }
     
     :root {
       --color-bg: #fafafa;
       --color-surface: #ffffff;
-      --color-surface-solid: #ffffff;
-      --color-surface-hover: #f5f5f5;
       --color-border: #e5e5e5;
-      --color-border-light: #f5f5f5;
       --color-text-primary: #111827;
       --color-text-secondary: #6b7280;
       --color-text-tertiary: #9ca3af;
       --color-primary: #010a8b;
       --color-primary-purple: #7c3aed;
-      --color-primary-hover: #00087a;
-      --color-primary-light: rgba(1, 10, 139, 0.1);
       --color-success: #10b981;
-      --color-success-light: #d1fae5;
       --color-error: #ef4444;
-      --color-error-light: #fee2e2;
       --color-warning: #f59e0b;
-      --color-warning-light: #fef3c7;
-      --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-      --shadow-md: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
-      --shadow-lg: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-      --radius-sm: 6px;
-      --radius-md: 8px;
-      --radius-lg: 12px;
+      --radius: 8px;
     }
     
     body {
-      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
       background: var(--color-bg);
       color: var(--color-text-primary);
-      line-height: 1.5;
-      min-height: 100vh;
-      -webkit-font-smoothing: antialiased;
-      -moz-osx-font-smoothing: grayscale;
-      position: relative;
-      overflow-x: hidden;
       font-size: 13px;
+      line-height: 1.5;
     }
     
-    body::before {
-      content: '';
-      position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background: transparent;
-      pointer-events: none;
-      z-index: 0;
-    }
-    
-    /* Top Bar - Minimal */
-    .top-bar {
+    /* Header */
+    .header {
       background: var(--color-surface);
       border-bottom: 1px solid var(--color-border);
       padding: 12px 20px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
       position: sticky;
       top: 0;
       z-index: 100;
     }
     
-    .top-bar-title {
-      font-size: 13px;
-      font-weight: 600;
-      color: var(--color-text-primary);
-      letter-spacing: -0.01em;
+    .header-content {
+      max-width: 1800px;
+      margin: 0 auto;
       display: flex;
+      justify-content: space-between;
       align-items: center;
-      gap: 8px;
     }
     
-    .top-bar-title a {
-      text-decoration: none;
-      color: inherit;
-    }
-    
-    .brand-name {
+    .header-title {
+      font-size: 14px;
       font-weight: 600;
       color: var(--color-primary);
-      font-size: 13px;
     }
     
-    .brand-tag {
-      font-size: 10px;
-      color: var(--color-text-tertiary);
-      font-weight: 400;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-    }
-    
-    .top-bar-actions {
+    .header-actions {
       display: flex;
       align-items: center;
       gap: 12px;
-    }
-    
-    .top-bar-meta {
       font-size: 11px;
       color: var(--color-text-tertiary);
     }
     
-    .profile-menu {
-      position: relative;
-    }
-    
-    .profile-button {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      padding: 6px 12px;
-      background: var(--color-surface);
-      border: 1px solid var(--color-border);
-      border-radius: var(--radius-sm);
-      font-size: 12px;
-      color: var(--color-text-primary);
-      cursor: pointer;
-      transition: all 0.15s ease;
-    }
-    
-    .profile-button:hover {
-      background: var(--color-surface-hover);
-      border-color: var(--color-primary);
-    }
-    
-    .profile-avatar {
-      width: 24px;
-      height: 24px;
-      border-radius: 50%;
-      background: var(--color-primary);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 10px;
-      font-weight: 600;
-      color: #ffffff;
-    }
-    
-    .profile-dropdown {
-      position: absolute;
-      top: calc(100% + 8px);
-      right: 0;
-      background: var(--color-surface);
-      backdrop-filter: blur(20px);
-      -webkit-backdrop-filter: blur(20px);
-      border: 1px solid var(--color-border);
-      border-radius: var(--radius-md);
-      min-width: 160px;
-      box-shadow: var(--shadow-lg);
-      opacity: 0;
-      visibility: hidden;
-      transform: translateY(-8px);
-      transition: all 0.15s ease;
-      z-index: 1000;
-    }
-    
-    .profile-dropdown.active {
-      opacity: 1;
-      visibility: visible;
-      transform: translateY(0);
-    }
-    
-    .profile-dropdown-item {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      padding: 10px 12px;
-      font-size: 12px;
-      color: var(--color-text-primary);
-      cursor: pointer;
-      transition: background 0.15s ease;
-      border-bottom: 1px solid var(--color-border);
-    }
-    
-    .profile-dropdown-item:last-child {
-      border-bottom: none;
-    }
-    
-    .profile-dropdown-item:hover {
-      background: var(--color-surface-hover);
-    }
-    
-    .profile-dropdown-item.logout {
-      color: var(--color-error);
-    }
-    
-    .profile-dropdown-item.logout:hover {
-      background: var(--color-error-light);
-    }
-    
-    .profile-dropdown-icon {
-      width: 16px;
-      height: 16px;
-      flex-shrink: 0;
-    }
-    
-    .btn-logout {
-      padding: 6px 12px;
-      background: rgba(239, 68, 68, 0.1);
-      border: 1px solid rgba(239, 68, 68, 0.2);
-      border-radius: var(--radius-sm);
-      font-size: 12px;
-      font-weight: 500;
-      color: #fca5a5;
-      cursor: pointer;
-      transition: all 0.15s ease;
-      font-family: inherit;
-    }
-    
-    .btn-logout:hover {
-      background: rgba(239, 68, 68, 0.2);
-      border-color: rgba(239, 68, 68, 0.3);
-    }
-    
-    /* Content - Minimal */
-    .content-wrapper {
-      padding: 20px;
-      position: relative;
-      z-index: 1;
+    /* Main Container */
+    .container {
       max-width: 1800px;
       margin: 0 auto;
-      padding-bottom: 60px;
+      padding: 20px;
     }
     
-    /* Summary Cards - Minimal */
-    .stats-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-      gap: 12px;
+    /* Tabs */
+    .tabs {
+      display: flex;
+      gap: 4px;
+      border-bottom: 1px solid var(--color-border);
       margin-bottom: 20px;
+      background: var(--color-surface);
+      padding: 0 4px;
     }
     
-    /* Sync Mode Card - Hidden (sync removed from admin) */
-    .sync-mode-card {
-      display: none !important;
-    }
-    
-    .sync-mode-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 12px;
-    }
-    
-    .sync-mode-title {
-      font-size: 14px;
-      font-weight: 600;
-      color: var(--color-text-primary);
-    }
-    
-    .sync-mode-toggle {
-      display: flex;
-      gap: 8px;
-      background: var(--color-bg);
-      border-radius: var(--radius-sm);
-      padding: 4px;
-    }
-    
-    .toggle-switch {
-      display: flex;
-      align-items: center;
-      cursor: pointer;
-      padding: 6px 12px;
-      border-radius: var(--radius-sm);
-      transition: all 0.2s ease;
+    .tab {
+      padding: 10px 16px;
       font-size: 12px;
       font-weight: 500;
       color: var(--color-text-secondary);
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      transition: all 0.15s;
+      position: relative;
+      top: 1px;
     }
     
-    .toggle-switch input[type="radio"] {
-      display: none;
+    .tab:hover {
+      color: var(--color-text-primary);
     }
     
-    .toggle-switch input[type="radio"]:checked + span {
+    .tab.active {
       color: var(--color-primary);
+      border-bottom-color: var(--color-primary);
+      font-weight: 600;
     }
     
-    .toggle-switch:has(input[type="radio"]:checked) {
-      background: var(--color-surface);
-      color: var(--color-primary);
-      box-shadow: var(--shadow-sm);
+    .tab-badge {
+      display: inline-block;
+      padding: 2px 6px;
+      background: var(--color-text-tertiary);
+      color: white;
+      border-radius: 10px;
+      font-size: 10px;
+      font-weight: 600;
+      margin-left: 6px;
     }
     
-    .sync-mode-help {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      color: var(--color-text-secondary);
-      font-size: 12px;
-      margin-top: 12px;
+    .tab.active .tab-badge {
+      background: var(--color-primary);
     }
     
-    .help-icon {
-      width: 16px;
-      height: 16px;
-      flex-shrink: 0;
-    }
-    
-    .manual-sync-controls {
-      margin-top: 16px;
-      padding-top: 16px;
-      border-top: 1px solid var(--color-border);
-    }
-    
-    .manual-sync-buttons {
-      display: flex;
+    /* Stats Grid */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
       gap: 12px;
-    }
-    
-    .manual-sync-buttons .btn {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-    }
-    
-    .manual-sync-buttons .btn:disabled {
-      opacity: 0.5;
-      cursor: not-allowed;
+      margin-bottom: 20px;
     }
     
     .stat-card {
       background: var(--color-surface);
       border: 1px solid var(--color-border);
-      border-radius: var(--radius-sm);
+      border-radius: var(--radius);
       padding: 16px;
-      transition: all 0.15s ease;
-      position: relative;
+      border-left: 3px solid var(--color-primary);
     }
     
-    .stat-card::before {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 3px;
-      height: 100%;
-      background: var(--color-primary);
+    .stat-card.success {
+      border-left-color: var(--color-success);
     }
     
-    .stat-card:hover {
-      border-color: var(--color-primary);
+    .stat-card.error {
+      border-left-color: var(--color-error);
     }
     
-    .stat-card.success::before {
-      background: var(--color-success);
-    }
-    
-    .stat-card.failed::before {
-      background: var(--color-error);
-    }
-    
-    .stat-card.attention::before {
-      background: var(--color-warning);
+    .stat-card.warning {
+      border-left-color: var(--color-warning);
     }
     
     .stat-label {
-      font-size: 11px;
+      font-size: 10px;
+      font-weight: 600;
       color: var(--color-text-secondary);
-      font-weight: 500;
-      margin-bottom: 6px;
       text-transform: uppercase;
       letter-spacing: 0.05em;
+      margin-bottom: 8px;
     }
     
     .stat-value {
-      font-size: 20px;
+      font-size: 24px;
       font-weight: 600;
       color: var(--color-text-primary);
       line-height: 1.2;
-      letter-spacing: -0.01em;
     }
     
-    /* Filters - Minimal */
-    .filters-card {
+    /* Card */
+    .card {
       background: var(--color-surface);
       border: 1px solid var(--color-border);
-      border-radius: var(--radius-sm);
-      padding: 16px;
+      border-radius: var(--radius);
       margin-bottom: 20px;
     }
     
-    .filters-header {
+    .card-header {
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--color-border);
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 16px;
     }
     
-    .filters-title {
+    .card-title {
       font-size: 12px;
       font-weight: 600;
       color: var(--color-text-primary);
-      letter-spacing: -0.01em;
       text-transform: uppercase;
       letter-spacing: 0.05em;
     }
     
-    .filters-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    .card-body {
+      padding: 16px;
+    }
+    
+    /* Filters */
+    .filters {
+      display: flex;
       gap: 12px;
+      flex-wrap: wrap;
+      margin-bottom: 16px;
     }
     
     .filter-group {
       display: flex;
       flex-direction: column;
+      gap: 4px;
     }
     
     .filter-label {
       font-size: 10px;
+      font-weight: 600;
       color: var(--color-text-secondary);
-      margin-bottom: 6px;
-      font-weight: 500;
       text-transform: uppercase;
       letter-spacing: 0.05em;
     }
     
     .filter-input,
     .filter-select {
-      padding: 10px 12px;
-      background: var(--color-surface);
+      padding: 6px 10px;
       border: 1px solid var(--color-border);
-      border-radius: var(--radius-sm);
+      border-radius: 6px;
       font-size: 12px;
-      color: var(--color-text-primary);
-      transition: all 0.15s ease;
       font-family: inherit;
-    }
-    
-    .filter-input::placeholder {
-      color: var(--color-text-tertiary);
+      background: var(--color-surface);
+      color: var(--color-text-primary);
+      min-width: 150px;
     }
     
     .filter-input:focus,
     .filter-select:focus {
       outline: none;
-      background: var(--color-surface);
       border-color: var(--color-primary);
-      box-shadow: 0 0 0 3px var(--color-primary-light);
     }
     
-    /* Orders Table */
-    .orders-card {
-      background: var(--color-surface);
-      border: 1px solid var(--color-border);
-      border-radius: var(--radius-sm);
-      overflow: hidden;
-      margin-bottom: 20px;
-    }
-    
-    .card-header {
-      padding: 12px 16px;
-      border-bottom: 1px solid var(--color-border);
-      background: var(--color-surface);
-    }
-    
-    .card-title {
-      font-size: 11px;
-      font-weight: 600;
-      color: var(--color-text-primary);
-      letter-spacing: -0.01em;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-    }
-    
+    /* Table */
     .table-container {
       overflow-x: auto;
     }
@@ -493,12 +248,8 @@
       border-collapse: collapse;
     }
     
-    thead {
-      background: var(--color-surface-hover);
-    }
-    
     th {
-      padding: 10px 14px;
+      padding: 10px 12px;
       text-align: left;
       font-size: 10px;
       font-weight: 600;
@@ -507,147 +258,88 @@
       letter-spacing: 0.05em;
       border-bottom: 1px solid var(--color-border);
       background: var(--color-surface);
+      white-space: nowrap;
     }
     
     td {
-      padding: 12px 14px;
-      border-bottom: 1px solid var(--color-border-light);
+      padding: 12px;
+      border-bottom: 1px solid var(--color-border);
       font-size: 12px;
       color: var(--color-text-primary);
-    }
-    
-    tbody tr {
-      transition: background 0.15s ease;
     }
     
     tbody tr:hover {
-      background: var(--color-surface-hover);
+      background: rgba(1, 10, 139, 0.02);
     }
     
-    .order-number {
-      font-weight: 600;
-      color: var(--color-text-primary);
-      font-size: 12px;
-    }
-    
-    .order-shop-label {
+    /* Badges */
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 3px 8px;
+      border-radius: 4px;
       font-size: 10px;
-      color: var(--color-text-tertiary);
-      margin-top: 2px;
+      font-weight: 600;
       text-transform: uppercase;
       letter-spacing: 0.05em;
     }
     
-    .shop-link {
-      color: var(--color-primary);
-      text-decoration: none;
-      cursor: pointer;
-      font-weight: 500;
-      transition: color 0.15s ease;
-      font-size: 12px;
+    .badge-success {
+      background: rgba(16, 185, 129, 0.1);
+      color: var(--color-success);
     }
     
-    .shop-link:hover {
+    .badge-error {
+      background: rgba(239, 68, 68, 0.1);
+      color: var(--color-error);
+    }
+    
+    .badge-warning {
+      background: rgba(245, 158, 11, 0.1);
+      color: #d97706;
+    }
+    
+    .badge-primary {
+      background: rgba(1, 10, 139, 0.1);
+      color: var(--color-primary);
+    }
+    
+    .badge-purple {
+      background: rgba(124, 58, 237, 0.1);
       color: var(--color-primary-purple);
     }
     
-    .status-badge {
-      display: inline-flex;
-      align-items: center;
-      padding: 2px 6px;
-      border-radius: 4px;
-      font-size: 10px;
-      font-weight: 500;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-    }
-    
-    .status-synced {
-      background: rgba(1, 10, 139, 0.1);
-      color: var(--color-primary);
-      border: none;
-    }
-    
-    .status-failed {
-      background: var(--color-error-light);
-      color: var(--color-error);
-      border: none;
-    }
-    
-    .status-pending {
-      background: var(--color-warning-light);
-      color: #d97706;
-      border: none;
-    }
-    
-    .payment-badge {
-      display: inline-flex;
-      align-items: center;
-      padding: 4px 10px;
-      border-radius: var(--radius-sm);
-      font-size: 11px;
-      font-weight: 500;
-      letter-spacing: 0.05em;
-    }
-    
-    .payment-paid {
-      background: var(--color-success-light);
-      color: var(--color-success);
-      border: 1px solid rgba(16, 185, 129, 0.2);
-    }
-    
-    .payment-cod {
-      background: var(--color-warning-light);
-      color: #d97706;
-      border: 1px solid rgba(245, 158, 11, 0.2);
-    }
-    
-    .payment-unknown,
-    .payment-other {
-      background: #f1f5f9;
-      color: #64748b;
-      border: 1px solid #e2e8f0;
-    }
-    
-    .time-ago {
-      color: var(--color-text-secondary);
-      font-size: 11px;
-    }
-    
+    /* Buttons */
     .btn {
       padding: 6px 12px;
-      border: none;
-      border-radius: var(--radius-sm);
+      border: 1px solid var(--color-border);
+      border-radius: 6px;
       font-size: 11px;
       font-weight: 500;
       cursor: pointer;
-      transition: all 0.15s ease;
+      transition: all 0.15s;
       display: inline-flex;
       align-items: center;
-      gap: 4px;
+      gap: 6px;
       font-family: inherit;
+      background: var(--color-surface);
+      color: var(--color-text-primary);
+    }
+    
+    .btn:hover {
+      border-color: var(--color-primary);
+      color: var(--color-primary);
     }
     
     .btn-primary {
       background: var(--color-primary);
-      color: #ffffff;
-      border: 1px solid var(--color-primary);
+      color: white;
+      border-color: var(--color-primary);
     }
     
     .btn-primary:hover {
-      background: var(--color-primary-hover);
-      border-color: var(--color-primary-hover);
-    }
-    
-    .btn-secondary {
-      background: var(--color-surface);
-      color: var(--color-text-primary);
-      border: 1px solid var(--color-border);
-    }
-    
-    .btn-secondary:hover {
-      background: var(--color-surface-hover);
-      border-color: var(--color-primary);
+      opacity: 0.9;
+      color: white;
     }
     
     .btn:disabled {
@@ -655,11 +347,7 @@
       cursor: not-allowed;
     }
     
-    .action-buttons {
-      display: flex;
-      gap: 6px;
-    }
-    
+    /* Loading */
     .loading {
       text-align: center;
       padding: 40px 20px;
@@ -668,20 +356,20 @@
     
     .loading-spinner {
       display: inline-block;
-      width: 24px;
-      height: 24px;
-      border: 2px solid var(--color-border-light);
-      border-top: 2px solid var(--color-primary);
+      width: 20px;
+      height: 20px;
+      border: 2px solid var(--color-border);
+      border-top-color: var(--color-primary);
       border-radius: 50%;
-      animation: spin 0.8s linear infinite;
+      animation: spin 0.6s linear infinite;
       margin-bottom: 12px;
     }
     
     @keyframes spin {
-      0% { transform: rotate(0deg); }
-      100% { transform: rotate(360deg); }
+      to { transform: rotate(360deg); }
     }
     
+    /* Empty State */
     .empty-state {
       text-align: center;
       padding: 60px 20px;
@@ -689,60 +377,9 @@
     }
     
     .empty-state-icon {
-      width: 48px;
-      height: 48px;
-      margin: 0 auto 12px;
-      opacity: 0.3;
+      font-size: 48px;
       color: var(--color-text-tertiary);
-    }
-    
-    .empty-state-title {
-      font-size: 13px;
-      font-weight: 600;
-      color: var(--color-text-primary);
-      margin-bottom: 6px;
-    }
-    
-    /* Footer */
-    .footer {
-      position: fixed;
-      bottom: 0;
-      left: 0;
-      right: 0;
-      background: var(--color-surface);
-      backdrop-filter: blur(20px);
-      -webkit-backdrop-filter: blur(20px);
-      border-top: 1px solid var(--color-border);
-      padding: 12px 24px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      z-index: 100;
-      font-size: 11px;
-      color: var(--color-text-tertiary);
-      box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.05);
-    }
-    
-    .footer-left {
-      display: flex;
-      align-items: center;
-      gap: 16px;
-    }
-    
-    .footer-right {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-    }
-    
-    .footer-link {
-      color: var(--color-text-secondary);
-      text-decoration: none;
-      transition: color 0.15s ease;
-    }
-    
-    .footer-link:hover {
-      color: var(--color-text-primary);
+      margin-bottom: 16px;
     }
     
     /* Modal */
@@ -751,15 +388,12 @@
       position: fixed;
       top: 0;
       left: 0;
-      width: 100%;
-      height: 100%;
+      right: 0;
+      bottom: 0;
       background: rgba(0, 0, 0, 0.5);
-      z-index: 2000;
+      z-index: 1000;
       align-items: center;
       justify-content: center;
-      backdrop-filter: blur(4px);
-      -webkit-backdrop-filter: blur(4px);
-      padding: 20px;
     }
     
     .modal.active {
@@ -768,65 +402,47 @@
     
     .modal-content {
       background: var(--color-surface);
-      border: 1px solid var(--color-border);
-      border-radius: var(--radius-lg);
-      padding: 0;
-      max-width: 700px;
-      width: 100%;
+      border-radius: var(--radius);
+      max-width: 600px;
+      width: 90%;
       max-height: 90vh;
-      overflow: hidden;
-      box-shadow: var(--shadow-lg);
-      display: flex;
-      flex-direction: column;
+      overflow-y: auto;
     }
     
     .modal-header {
+      padding: 16px;
+      border-bottom: 1px solid var(--color-border);
       display: flex;
       justify-content: space-between;
       align-items: center;
-      padding: 20px;
-      border-bottom: 1px solid var(--color-border);
-      background: var(--color-surface);
     }
     
     .modal-title {
-      font-size: 16px;
+      font-size: 14px;
       font-weight: 600;
-      color: var(--color-text-primary);
-      letter-spacing: -0.01em;
     }
     
     .modal-close {
-      background: var(--color-surface);
-      border: 1px solid var(--color-border);
-      font-size: 18px;
+      background: none;
+      border: none;
+      font-size: 20px;
       cursor: pointer;
       color: var(--color-text-secondary);
       padding: 0;
-      width: 32px;
-      height: 32px;
+      width: 24px;
+      height: 24px;
       display: flex;
       align-items: center;
       justify-content: center;
-      border-radius: var(--radius-sm);
-      transition: all 0.15s ease;
-    }
-    
-    .modal-close:hover {
-      background: var(--color-surface-hover);
-      color: var(--color-text-primary);
-      border-color: var(--color-primary);
     }
     
     .modal-body {
-      padding: 20px;
-      overflow-y: auto;
-      flex: 1;
+      padding: 16px;
     }
     
     .detail-row {
       display: flex;
-      padding: 12px 0;
+      padding: 10px 0;
       border-bottom: 1px solid var(--color-border);
     }
     
@@ -850,474 +466,266 @@
       font-size: 12px;
     }
     
-    .detail-value code {
-      background: var(--color-surface-hover);
-      padding: 4px 8px;
-      border-radius: var(--radius-sm);
-      font-family: 'Monaco', 'Menlo', 'Courier New', monospace;
-      font-size: 11px;
-      border: 1px solid var(--color-border);
-      color: var(--color-text-primary);
+    /* Shop List */
+    .shop-list {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 12px;
     }
     
-    .error-message {
-      background: var(--color-error-light);
-      border: 1px solid rgba(239, 68, 68, 0.3);
-      color: var(--color-error);
-      padding: 14px;
-      border-radius: var(--radius-sm);
-      margin-top: 16px;
-      font-size: 12px;
-    }
-    
-    .logs-section {
-      margin-top: 20px;
-      padding-top: 20px;
-      border-top: 2px solid var(--color-border);
-    }
-    
-    .logs-toggle {
+    .shop-card {
       background: var(--color-surface);
       border: 1px solid var(--color-border);
-      padding: 10px 14px;
-      border-radius: var(--radius-sm);
-      cursor: pointer;
-      font-size: 12px;
-      color: var(--color-text-secondary);
-      transition: all 0.15s ease;
-      width: 100%;
-      text-align: left;
-      font-weight: 500;
-      font-family: inherit;
+      border-radius: var(--radius);
+      padding: 14px;
+      transition: all 0.15s;
     }
     
-    .logs-toggle:hover {
-      background: var(--color-surface-hover);
-      color: var(--color-text-primary);
+    .shop-card:hover {
       border-color: var(--color-primary);
     }
     
-    .logs-content {
-      display: none;
-      margin-top: 12px;
-      padding: 14px;
-      background: var(--color-surface-hover);
-      border-radius: var(--radius-sm);
-      font-family: 'Monaco', 'Menlo', 'Courier New', monospace;
+    .shop-name {
+      font-weight: 600;
+      font-size: 13px;
+      margin-bottom: 8px;
+      color: var(--color-primary);
+    }
+    
+    .shop-meta {
       font-size: 11px;
-      color: var(--color-text-primary);
-      white-space: pre-wrap;
-      max-height: 300px;
-      overflow-y: auto;
-      border: 1px solid var(--color-border);
-    }
-    
-    .logs-content.active {
-      display: block;
-    }
-    
-    /* Icons */
-    .icon {
-      width: 16px;
-      height: 16px;
-      display: inline-block;
-      vertical-align: middle;
+      color: var(--color-text-secondary);
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
     }
     
     /* Responsive */
-    @media (max-width: 1200px) {
-      .content-wrapper {
-        padding: 20px;
-      }
-      
-      .stats-grid {
-        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-        gap: 12px;
-      }
-    }
-    
-    @media (max-width: 1024px) {
-      .content-wrapper {
-        padding: 16px;
-      }
-      
-      .top-bar {
-        padding: 12px 16px;
-      }
-      
-      .filters-grid {
-        grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-      }
-      
-      table {
-        font-size: 12px;
-      }
-      
-      th, td {
-        padding: 10px 12px;
-      }
-    }
-    
     @media (max-width: 768px) {
-      .top-bar {
-        padding: 12px 16px;
-        flex-wrap: wrap;
-      }
-      
-      .top-bar-title {
-        font-size: 13px;
-      }
-      
-      .content-wrapper {
-        padding: 16px 12px;
-        padding-bottom: 100px;
+      .container {
+        padding: 12px;
       }
       
       .stats-grid {
         grid-template-columns: 1fr;
-        gap: 12px;
       }
       
-      .stat-card {
-        padding: 16px;
-      }
-      
-      .filters-card {
-        padding: 16px;
-      }
-      
-      .filters-grid {
-        grid-template-columns: 1fr;
-        gap: 12px;
-      }
-      
-      .table-container {
-        overflow-x: auto;
-        -webkit-overflow-scrolling: touch;
-      }
-      
-      table {
-        min-width: 800px;
-        font-size: 11px;
-      }
-      
-      th, td {
-        padding: 10px 8px;
-        white-space: nowrap;
-      }
-      
-      .action-buttons {
+      .filters {
         flex-direction: column;
-        gap: 6px;
       }
       
-      .btn {
+      .filter-input,
+      .filter-select {
         width: 100%;
-        justify-content: center;
-      }
-      
-      .modal {
-        padding: 10px;
-      }
-      
-      .modal-content {
-        width: 100%;
-        max-height: 95vh;
-        border-radius: var(--radius-md);
-      }
-      
-      .modal-header {
-        padding: 16px;
-      }
-      
-      .modal-body {
-        padding: 16px;
-      }
-      
-      .detail-row {
-        flex-direction: column;
-        gap: 6px;
-      }
-      
-      .detail-label {
-        width: 100%;
-      }
-      
-      .footer {
-        flex-direction: column;
-        gap: 8px;
-        padding: 12px 16px;
-        text-align: center;
-      }
-      
-      .footer-left,
-      .footer-right {
-        flex-direction: column;
-        gap: 4px;
-      }
-    }
-    
-    @media (max-width: 480px) {
-      .top-bar {
-        padding: 10px 12px;
-      }
-      
-      .top-bar-title {
-        font-size: 12px;
-      }
-      
-      .brand-tag {
-        font-size: 10px;
-      }
-      
-      .content-wrapper {
-        padding: 12px 8px;
-      }
-      
-      .stat-value {
-        font-size: 20px;
-      }
-      
-      .filters-card {
-        padding: 12px;
-      }
-      
-      .card-header {
-        padding: 12px;
-      }
-      
-      table {
-        min-width: 700px;
-        font-size: 10px;
-      }
-      
-      th, td {
-        padding: 8px 6px;
-      }
-    }
-      
-      .btn {
-        width: 100%;
-        justify-content: center;
-      }
-      
-      .footer {
-        flex-direction: column;
-        gap: 8px;
-        padding: 10px 16px;
       }
     }
   </style>
 </head>
 <body>
-  <!-- Top Bar -->
-  <div class="top-bar">
-    <div class="top-bar-title">
-      <span class="brand-name">Delybell</span>
-      <span class="brand-tag">Order Sync</span>
-    </div>
-    <div class="top-bar-actions">
-      <a href="/admin/help-center" class="top-bar-meta" style="text-decoration: none; color: inherit; cursor: pointer; padding: 6px 12px; border-radius: var(--radius-sm); transition: background 0.15s ease;" onmouseover="this.style.background='var(--color-surface-hover)'" onmouseout="this.style.background='transparent'">
-        Help Center
-      </a>
-      <div class="top-bar-meta">Last updated: <span id="lastUpdated">-</span></div>
-      <div class="profile-menu">
-        <button class="profile-button" onclick="toggleProfileMenu(event)">
-          <div class="profile-avatar">A</div>
-          <span>Admin</span>
-          <svg class="profile-dropdown-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="margin-left: 4px;">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
-          </svg>
-        </button>
-        <div class="profile-dropdown" id="profileDropdown">
-          <div class="profile-dropdown-item">
-            <svg class="profile-dropdown-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
-            </svg>
-            <span>Admin</span>
-          </div>
-          <div class="profile-dropdown-item logout" onclick="handleLogout()">
-            <svg class="profile-dropdown-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path>
-            </svg>
-            <span>Logout</span>
-          </div>
-        </div>
+  <!-- Header -->
+  <div class="header">
+    <div class="header-content">
+      <div class="header-title">Delybell Admin</div>
+      <div class="header-actions">
+        <span>Last updated: <span id="lastUpdated">-</span></span>
+        <button class="btn" onclick="handleLogout()" style="font-size: 11px;">Logout</button>
       </div>
     </div>
   </div>
   
-  <!-- Content -->
-  <div class="content-wrapper">
-    <!-- Summary Stats -->
-    <div class="stats-grid" id="statsGrid">
-      <div class="stat-card">
-        <div class="stat-label">Total Orders Today</div>
-        <div class="stat-value" id="totalOrders">-</div>
+  <!-- Main Container -->
+  <div class="container">
+    <!-- Tabs -->
+    <div class="tabs">
+      <div class="tab active" onclick="switchTab('overview')">
+        Overview
       </div>
-      <div class="stat-card success">
-        <div class="stat-label">Successfully Synced</div>
-        <div class="stat-value" id="syncedOrders">-</div>
+      <div class="tab" onclick="switchTab('orders')">
+        Orders <span class="tab-badge" id="ordersBadge">0</span>
       </div>
-      <div class="stat-card failed">
-        <div class="stat-label">Failed</div>
-        <div class="stat-value" id="failedOrders">-</div>
+      <div class="tab" onclick="switchTab('shops')">
+        Shops <span class="tab-badge" id="shopsBadge">0</span>
       </div>
-      <div class="stat-card attention">
-        <div class="stat-label">Needs Attention</div>
-        <div class="stat-value" id="needsAttention">-</div>
+      <div class="tab" onclick="switchTab('reports')">
+        Reports <span class="tab-badge" id="reportsBadge">0</span>
       </div>
     </div>
     
-    <!-- Sync Mode Toggle -->
-    <div class="sync-mode-card" id="syncModeCard" style="display: none;">
-      <div class="sync-mode-header">
-        <div class="sync-mode-title">Order Sync Mode</div>
-        <div class="sync-mode-toggle">
-          <label class="toggle-switch">
-            <input type="radio" name="syncMode" value="auto" id="syncModeAuto" checked>
-            <span>Live Sync (Recommended)</span>
-          </label>
-          <label class="toggle-switch">
-            <input type="radio" name="syncMode" value="manual" id="syncModeManual">
-            <span>Manual Sync</span>
-          </label>
+    <!-- Overview Tab -->
+    <div id="tab-overview" class="tab-content">
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-label">Total Orders</div>
+          <div class="stat-value" id="totalOrders">-</div>
+        </div>
+        <div class="stat-card success">
+          <div class="stat-label">Synced</div>
+          <div class="stat-value" id="syncedOrders">-</div>
+        </div>
+        <div class="stat-card error">
+          <div class="stat-label">Failed</div>
+          <div class="stat-value" id="failedOrders">-</div>
+        </div>
+        <div class="stat-card warning">
+          <div class="stat-label">Pending</div>
+          <div class="stat-value" id="pendingOrders">-</div>
         </div>
       </div>
-      <div class="sync-mode-help">
-        <svg class="help-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-        </svg>
-        <span>Manual Sync lets you choose which orders to send to Delybell and when.</span>
-      </div>
-    </div>
-    
-    <!-- Filters -->
-    <div class="filters-card">
-      <div class="filters-header">
-        <div class="filters-title">Filters</div>
-      </div>
-      <div class="filters-grid">
-        <div class="filter-group">
-          <label class="filter-label">Shop</label>
-          <select class="filter-select" id="filterShop">
-            <option value="">All Shops</option>
-          </select>
+      
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Recent Orders</div>
+          <button class="btn" onclick="switchTab('orders')">View All</button>
         </div>
-        <div class="filter-group">
-          <label class="filter-label">Status</label>
-          <select class="filter-select" id="filterStatus">
-            <option value="">All Status</option>
-            <option value="processed">Synced</option>
-            <option value="pending_sync">Pending Sync</option>
-            <option value="failed">Failed</option>
-          </select>
-        </div>
-        <div class="filter-group">
-          <label class="filter-label">Search</label>
-          <input type="text" class="filter-input" id="filterSearch" placeholder="Order #, Phone, Delybell ID">
-        </div>
-        <div class="filter-group">
-          <label class="filter-label">Date From</label>
-          <input type="date" class="filter-input" id="filterDateFrom">
-        </div>
-        <div class="filter-group">
-          <label class="filter-label">Date To</label>
-          <input type="date" class="filter-input" id="filterDateTo">
+        <div class="card-body">
+          <div class="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th>Order #</th>
+                  <th>Shop</th>
+                  <th>Status</th>
+                  <th>Time</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody id="recentOrdersTable">
+                <tr>
+                  <td colspan="5" class="loading">
+                    <div class="loading-spinner"></div>
+                    <div>Loading...</div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
     </div>
     
-    <!-- Problem Reports Section -->
-    <div class="orders-card">
-      <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
-        <div class="card-title">Problem Reports</div>
-        <div style="display: flex; gap: 8px;">
-          <select class="filter-select" id="reportStatusFilter" style="width: auto; padding: 6px 12px; font-size: 11px;">
-            <option value="">All Status</option>
-            <option value="open">Open</option>
-            <option value="in_progress">In Progress</option>
-            <option value="resolved">Resolved</option>
-            <option value="closed">Closed</option>
-          </select>
-          <button class="btn btn-secondary" onclick="loadProblemReports()" style="padding: 6px 12px; font-size: 11px;">
-            <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
-            </svg>
-            Refresh
-          </button>
+    <!-- Orders Tab -->
+    <div id="tab-orders" class="tab-content" style="display: none;">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Orders</div>
         </div>
-      </div>
-      <div class="table-container">
-        <table>
-          <thead>
-            <tr>
-              <th>Reported At</th>
-              <th>Shop</th>
-              <th>Order #</th>
-              <th>Subject</th>
-              <th>Status</th>
-              <th>Action</th>
-            </tr>
-          </thead>
-          <tbody id="problemReportsTableBody">
-            <tr>
-              <td colspan="6" class="loading">
-                <div class="loading-spinner"></div>
-                <div>Loading reports...</div>
-              </td>
-            </tr>
-          </tbody>
-        </table>
+        <div class="card-body">
+          <div class="filters">
+            <div class="filter-group">
+              <label class="filter-label">Shop</label>
+              <select class="filter-select" id="filterShop">
+                <option value="">All Shops</option>
+              </select>
+            </div>
+            <div class="filter-group">
+              <label class="filter-label">Status</label>
+              <select class="filter-select" id="filterStatus">
+                <option value="">All</option>
+                <option value="processed">Synced</option>
+                <option value="pending_sync">Pending</option>
+                <option value="failed">Failed</option>
+              </select>
+            </div>
+            <div class="filter-group">
+              <label class="filter-label">Search</label>
+              <input type="text" class="filter-input" id="filterSearch" placeholder="Order #, Phone, Delybell ID">
+            </div>
+            <div class="filter-group">
+              <label class="filter-label">From</label>
+              <input type="date" class="filter-input" id="filterDateFrom">
+            </div>
+            <div class="filter-group">
+              <label class="filter-label">To</label>
+              <input type="date" class="filter-input" id="filterDateTo">
+            </div>
+          </div>
+          
+          <div class="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th>Order #</th>
+                  <th>Shop</th>
+                  <th>Amount</th>
+                  <th>Payment</th>
+                  <th>Delybell ID</th>
+                  <th>Status</th>
+                  <th>Time</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody id="ordersTable">
+                <tr>
+                  <td colspan="8" class="loading">
+                    <div class="loading-spinner"></div>
+                    <div>Loading orders...</div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
       </div>
     </div>
     
-    <!-- Orders Table -->
-    <div class="orders-card">
-      <div class="card-header">
-        <div class="card-title">Orders</div>
-      </div>
-      <div class="table-container">
-        <table>
-          <thead>
-            <tr>
-              <th id="selectAllTh" style="display: none;">
-                <input type="checkbox" id="selectAllCheckbox" onchange="toggleSelectAll()">
-              </th>
-              <th>Order</th>
-              <th>Shop</th>
-              <th>Amount</th>
-              <th>Payment</th>
-              <th>Delybell</th>
-              <th>Status</th>
-              <th>Time</th>
-              <th>Action</th>
-            </tr>
-          </thead>
-          <tbody id="ordersTableBody">
-            <tr>
-              <td colspan="8" class="loading">
-                <div class="loading-spinner"></div>
-                <div>Loading orders...</div>
-              </td>
-            </tr>
-          </tbody>
-        </table>
+    <!-- Shops Tab -->
+    <div id="tab-shops" class="tab-content" style="display: none;">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Connected Shops</div>
+        </div>
+        <div class="card-body">
+          <div class="shop-list" id="shopsList">
+            <div class="loading">
+              <div class="loading-spinner"></div>
+              <div>Loading shops...</div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
-  </div>
-  
-  <!-- Footer -->
-  <div class="footer">
-    <div class="footer-left">
-      <span>Delybell Order Sync</span>
-      <span>•</span>
-      <span>v1.0.0</span>
-    </div>
-    <div class="footer-right">
-      <a href="#" class="footer-link">Documentation</a>
-      <span>•</span>
-      <a href="#" class="footer-link">Support</a>
+    
+    <!-- Reports Tab -->
+    <div id="tab-reports" class="tab-content" style="display: none;">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Problem Reports</div>
+          <div style="display: flex; gap: 8px;">
+            <select class="filter-select" id="reportStatusFilter" style="width: auto;">
+              <option value="">All</option>
+              <option value="open">Open</option>
+              <option value="in_progress">In Progress</option>
+              <option value="resolved">Resolved</option>
+              <option value="closed">Closed</option>
+            </select>
+            <button class="btn" onclick="loadProblemReports()">Refresh</button>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th>Reported</th>
+                  <th>Shop</th>
+                  <th>Order #</th>
+                  <th>Subject</th>
+                  <th>Status</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody id="reportsTable">
+                <tr>
+                  <td colspan="6" class="loading">
+                    <div class="loading-spinner"></div>
+                    <div>Loading reports...</div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
   
@@ -1326,70 +734,70 @@
     <div class="modal-content">
       <div class="modal-header">
         <div class="modal-title">Order Details</div>
-        <button class="modal-close" onclick="closeModal()">
-          <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-          </svg>
-        </button>
+        <button class="modal-close" onclick="closeModal()">×</button>
       </div>
-      <div class="modal-body" id="modalBody">
-        <!-- Details will be loaded here -->
+      <div class="modal-body" id="orderModalBody">
+        <!-- Details loaded here -->
       </div>
     </div>
   </div>
   
-  <!-- Problem Report Details Modal -->
+  <!-- Report Details Modal -->
   <div class="modal" id="reportModal">
     <div class="modal-content">
       <div class="modal-header">
-        <div class="modal-title">Problem Report Details</div>
-        <button class="modal-close" onclick="closeReportModal()">
-          <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-          </svg>
-        </button>
+        <div class="modal-title">Report Details</div>
+        <button class="modal-close" onclick="closeReportModal()">×</button>
       </div>
       <div class="modal-body" id="reportModalBody">
-        <!-- Report details will be loaded here -->
+        <!-- Details loaded here -->
       </div>
     </div>
   </div>
   
   <script>
-    // Check authentication
+    // Auth check
     if (sessionStorage.getItem('adminAuthenticated') !== 'true') {
       window.location.href = '/admin/login';
     }
     
-    function handleLogout() {
-      sessionStorage.removeItem('adminAuthenticated');
-      sessionStorage.removeItem('adminLoginTime');
-      window.location.href = '/admin/login';
-    }
-    
-    function toggleProfileMenu(event) {
-      event.stopPropagation();
-      const dropdown = document.getElementById('profileDropdown');
-      dropdown.classList.toggle('active');
-    }
-    
-    // Close dropdown when clicking outside
-    document.addEventListener('click', (event) => {
-      const profileMenu = document.querySelector('.profile-menu');
-      const dropdown = document.getElementById('profileDropdown');
-      
-      if (profileMenu && !profileMenu.contains(event.target)) {
-        dropdown.classList.remove('active');
-      }
-    });
-    
+    let currentTab = 'overview';
     let currentFilters = {
       shop: '',
       status: '',
       search: '',
       dateFrom: '',
-      dateTo: '',
+      dateTo: ''
     };
+    
+    // Tab switching
+    function switchTab(tab) {
+      currentTab = tab;
+      
+      // Update tab UI
+      document.querySelectorAll('.tab').forEach(t => {
+        t.classList.remove('active');
+      });
+      event.target.classList.add('active');
+      
+      // Show/hide content
+      document.querySelectorAll('.tab-content').forEach(c => {
+        c.style.display = 'none';
+      });
+      document.getElementById(`tab-${tab}`).style.display = 'block';
+      
+      // Load data for tab
+      if (tab === 'overview') {
+        loadStats();
+        loadRecentOrders();
+      } else if (tab === 'orders') {
+        loadOrders();
+      } else if (tab === 'shops') {
+        loadShops();
+      } else if (tab === 'reports') {
+        loadProblemReports();
+      }
+    }
     
     // Load stats
     async function loadStats() {
@@ -1397,10 +805,11 @@
         const response = await fetch('/admin/api/stats');
         const data = await response.json();
         if (data.success) {
-          document.getElementById('totalOrders').textContent = data.stats.totalOrdersToday;
-          document.getElementById('syncedOrders').textContent = data.stats.successfullySynced;
-          document.getElementById('failedOrders').textContent = data.stats.failed;
-          document.getElementById('needsAttention').textContent = data.stats.needsAttention;
+          document.getElementById('totalOrders').textContent = data.stats.totalOrdersToday || 0;
+          document.getElementById('syncedOrders').textContent = data.stats.successfullySynced || 0;
+          document.getElementById('failedOrders').textContent = data.stats.failed || 0;
+          document.getElementById('pendingOrders').textContent = data.stats.pendingSync || 0;
+          document.getElementById('ordersBadge').textContent = data.stats.totalOrdersToday || 0;
         }
         updateLastUpdated();
       } catch (error) {
@@ -1408,33 +817,35 @@
       }
     }
     
-    // Load shops
-    async function loadShops() {
+    // Load recent orders
+    async function loadRecentOrders() {
       try {
-        const response = await fetch('/admin/api/shops');
+        const response = await fetch('/admin/api/orders?limit=10');
         const data = await response.json();
-        if (data.success) {
-          const select = document.getElementById('filterShop');
-          select.innerHTML = '<option value="">All Shops</option>';
-          data.shops.forEach(shopObj => {
-            const option = document.createElement('option');
-            const shopDomain = shopObj.shop || shopObj; // Handle both object and string formats
-            option.value = shopDomain;
-            option.textContent = shopDomain;
-            select.appendChild(option);
-          });
+        const tbody = document.getElementById('recentOrdersTable');
+        
+        if (data.success && data.orders && data.orders.length > 0) {
+          tbody.innerHTML = data.orders.slice(0, 10).map(order => `
+            <tr>
+              <td><strong>#${order.shopifyOrderNumber || 'N/A'}</strong></td>
+              <td><span style="font-size: 11px; color: var(--color-text-secondary);">${order.shop || 'N/A'}</span></td>
+              <td><span class="badge ${getStatusClass(order.status)}">${getStatusText(order.status)}</span></td>
+              <td><span style="font-size: 11px; color: var(--color-text-secondary);">${timeAgo(order.createdAt)}</span></td>
+              <td><button class="btn" onclick="viewOrderDetails('${order.id}')">View</button></td>
+            </tr>
+          `).join('');
+        } else {
+          tbody.innerHTML = '<tr><td colspan="5" class="empty-state">No orders found</td></tr>';
         }
       } catch (error) {
-        console.error('Error loading shops:', error);
+        console.error('Error loading recent orders:', error);
       }
     }
     
     // Load orders
     async function loadOrders() {
-      const tbody = document.getElementById('ordersTableBody');
-      const showCheckboxes = currentSyncMode === 'manual';
-      const totalCols = showCheckboxes ? 9 : 8;
-      tbody.innerHTML = `<tr><td colspan="${totalCols}" class="loading"><div class="loading-spinner"></div><div>Loading orders...</div></td></tr>`;
+      const tbody = document.getElementById('ordersTable');
+      tbody.innerHTML = '<tr><td colspan="8" class="loading"><div class="loading-spinner"></div><div>Loading...</div></td></tr>';
       
       try {
         const params = new URLSearchParams();
@@ -1443,56 +854,100 @@
         if (currentFilters.search) params.append('search', currentFilters.search);
         if (currentFilters.dateFrom) params.append('dateFrom', currentFilters.dateFrom);
         if (currentFilters.dateTo) params.append('dateTo', currentFilters.dateTo);
-        params.append('limit', '50');
+        params.append('limit', '100');
         
         const response = await fetch(`/admin/api/orders?${params}`);
         const data = await response.json();
         
         if (data.success) {
-          const showCheckboxes = currentSyncMode === 'manual';
-          const totalCols = showCheckboxes ? 9 : 8;
-          
           if (data.orders.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="${totalCols}" class="empty-state"><div class="empty-state-icon"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"></path></svg></div><div class="empty-state-title">No orders found</div><div>Try adjusting your filters</div></td></tr>`;
+            tbody.innerHTML = '<tr><td colspan="8" class="empty-state">No orders found</td></tr>';
           } else {
-            tbody.innerHTML = data.orders.map(order => {
-                const canSync = order.status === 'pending_sync' || order.status === 'failed';
-                return `
-                <tr>
-                  ${showCheckboxes ? `<td><input type="checkbox" class="order-checkbox" value="${order.id}" disabled></td>` : ''}
-                  <td>
-                    <div class="order-number">#${order.shopifyOrderNumber || 'N/A'}</div>
-                    <div class="order-shop-label">Shopify</div>
-                  </td>
-                  <td>
-                    <a href="#" class="shop-link" onclick="filterByShop('${order.shop}'); return false;">${order.shop}</a>
-                  </td>
-                  <td>${formatCurrency(order.amount, order.currency)}</td>
-                  <td>
-                    <span class="payment-badge ${getPaymentClass(order.financialStatus)}">${formatPaymentStatus(order.financialStatus)}</span>
-                  </td>
-                  <td>${order.delybellOrderId ? `<span style="font-family: monospace; font-size: 11px;">${order.delybellOrderId}</span>` : '<span style="color: var(--color-error);">Not Created</span>'}</td>
-                  <td>
-                    <span class="status-badge ${getStatusClass(order.status)}">${getStatusText(order.status)}</span>
-                  </td>
-                  <td>
-                    <span class="time-ago" title="${order.createdAt ? new Date(order.createdAt).toLocaleString('en-US', { dateStyle: 'full', timeStyle: 'short' }) : 'N/A'}">${order.createdAt ? timeAgo(order.createdAt) : 'N/A'}</span>
-                  </td>
-                  <td>
-                    <div class="action-buttons">
-                      ${order.status === 'failed' ? `<button class="btn btn-primary" onclick="retryOrder('${order.id}')"><svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>Retry</button>` : ''}
-                      <button class="btn btn-secondary" onclick="viewOrderDetails('${order.id}')"><svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>Details</button>
-                    </div>
-                  </td>
-                </tr>
+            tbody.innerHTML = data.orders.map(order => `
+              <tr>
+                <td><strong>#${order.shopifyOrderNumber || 'N/A'}</strong></td>
+                <td><span style="font-size: 11px;">${order.shop || 'N/A'}</span></td>
+                <td>${formatCurrency(order.amount, order.currency)}</td>
+                <td><span class="badge ${getPaymentClass(order.financialStatus)}">${formatPaymentStatus(order.financialStatus)}</span></td>
+                <td><span style="font-family: monospace; font-size: 11px;">${order.delybellOrderId || '—'}</span></td>
+                <td><span class="badge ${getStatusClass(order.status)}">${getStatusText(order.status)}</span></td>
+                <td><span style="font-size: 11px; color: var(--color-text-secondary);">${timeAgo(order.createdAt)}</span></td>
+                <td>
+                  <button class="btn" onclick="viewOrderDetails('${order.id}')">View</button>
+                  ${order.status === 'failed' ? `<button class="btn btn-primary" onclick="retryOrder('${order.id}')" style="margin-left: 4px;">Retry</button>` : ''}
+                </td>
+              </tr>
+            `).join('');
+          }
+        }
+      } catch (error) {
+        tbody.innerHTML = `<tr><td colspan="8" class="empty-state" style="color: var(--color-error);">Error: ${error.message}</td></tr>`;
+      }
+    }
+    
+    // Load shops
+    async function loadShops() {
+      try {
+        const response = await fetch('/admin/api/shops');
+        const data = await response.json();
+        const container = document.getElementById('shopsList');
+        
+        if (data.success && data.shops) {
+          document.getElementById('shopsBadge').textContent = data.shops.length;
+          
+          if (data.shops.length === 0) {
+            container.innerHTML = '<div class="empty-state">No shops connected</div>';
+          } else {
+            container.innerHTML = data.shops.map(shop => {
+              const shopDomain = shop.shop || shop;
+              return `
+                <div class="shop-card">
+                  <div class="shop-name">${shopDomain.replace('.myshopify.com', '')}</div>
+                  <div class="shop-meta">
+                    <span>Domain: ${shopDomain}</span>
+                    <span>Status: ${shop.registered ? 'Active' : 'Inactive'}</span>
+                  </div>
+                </div>
               `;
             }).join('');
           }
         }
       } catch (error) {
-        const showCheckboxes = currentSyncMode === 'manual';
-        const totalCols = showCheckboxes ? 9 : 8;
-        tbody.innerHTML = `<tr><td colspan="${totalCols}" class="empty-state"><div style="color: var(--color-error);">Error loading orders: ${error.message}</div></td></tr>`;
+        console.error('Error loading shops:', error);
+      }
+    }
+    
+    // Load problem reports
+    async function loadProblemReports() {
+      const tbody = document.getElementById('reportsTable');
+      tbody.innerHTML = '<tr><td colspan="6" class="loading"><div class="loading-spinner"></div><div>Loading...</div></td></tr>';
+      
+      try {
+        const statusFilter = document.getElementById('reportStatusFilter').value;
+        const params = statusFilter ? `?status=${statusFilter}` : '';
+        const response = await fetch(`/admin/api/problem-reports${params}`);
+        const data = await response.json();
+        
+        if (data.success) {
+          document.getElementById('reportsBadge').textContent = data.reports?.length || 0;
+          
+          if (data.reports.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="6" class="empty-state">No reports found</td></tr>';
+          } else {
+            tbody.innerHTML = data.reports.map(report => `
+              <tr>
+                <td>${timeAgo(report.reported_at)}</td>
+                <td><span style="font-size: 11px;">${report.shop || 'N/A'}</span></td>
+                <td>#${report.shopify_order_number || 'N/A'}</td>
+                <td>${report.subject || 'N/A'}</td>
+                <td><span class="badge ${getReportStatusClass(report.status)}">${report.status || 'open'}</span></td>
+                <td><button class="btn" onclick="viewReportDetails('${report.id}')">View</button></td>
+              </tr>
+            `).join('');
+          }
+        }
+      } catch (error) {
+        tbody.innerHTML = `<tr><td colspan="6" class="empty-state" style="color: var(--color-error);">Error: ${error.message}</td></tr>`;
       }
     }
     
@@ -1504,24 +959,14 @@
         
         if (data.success) {
           const order = data.order;
-          const modalBody = document.getElementById('modalBody');
-          
-          modalBody.innerHTML = `
+          document.getElementById('orderModalBody').innerHTML = `
             <div class="detail-row">
-              <div class="detail-label">Shopify Order ID</div>
-              <div class="detail-value"><code>${order.shopifyOrderId}</code></div>
-            </div>
-            <div class="detail-row">
-              <div class="detail-label">Shopify Order #</div>
+              <div class="detail-label">Order #</div>
               <div class="detail-value">#${order.shopifyOrderNumber || 'N/A'}</div>
             </div>
             <div class="detail-row">
-              <div class="detail-label">Delybell Order ID</div>
-              <div class="detail-value">${order.delybellOrderId ? `<code>${order.delybellOrderId}</code>` : '<span style="color: var(--color-error);">Not Created</span>'}</div>
-            </div>
-            <div class="detail-row">
               <div class="detail-label">Shop</div>
-              <div class="detail-value">${order.shop}</div>
+              <div class="detail-value">${order.shop || 'N/A'}</div>
             </div>
             <div class="detail-row">
               <div class="detail-label">Amount</div>
@@ -1529,62 +974,91 @@
             </div>
             <div class="detail-row">
               <div class="detail-label">Payment</div>
-              <div class="detail-value"><span class="payment-badge ${getPaymentClass(order.financialStatus)}">${formatPaymentStatus(order.financialStatus)}</span></div>
+              <div class="detail-value"><span class="badge ${getPaymentClass(order.financialStatus)}">${formatPaymentStatus(order.financialStatus)}</span></div>
             </div>
             <div class="detail-row">
               <div class="detail-label">Status</div>
-              <div class="detail-value"><span class="status-badge ${getStatusClass(order.status)}">${getStatusText(order.status)}</span></div>
+              <div class="detail-value"><span class="badge ${getStatusClass(order.status)}">${getStatusText(order.status)}</span></div>
             </div>
             <div class="detail-row">
-              <div class="detail-label">Order Placed</div>
-              <div class="detail-value">${order.createdAt ? new Date(order.createdAt).toLocaleString('en-US', { dateStyle: 'full', timeStyle: 'short' }) : 'N/A'}</div>
+              <div class="detail-label">Delybell ID</div>
+              <div class="detail-value"><span style="font-family: monospace;">${order.delybellOrderId || 'Not synced'}</span></div>
             </div>
             <div class="detail-row">
-              <div class="detail-label">Synced At</div>
-              <div class="detail-value">${order.syncedAt ? new Date(order.syncedAt).toLocaleString('en-US', { dateStyle: 'full', timeStyle: 'short' }) : 'N/A'}</div>
+              <div class="detail-label">Created</div>
+              <div class="detail-value">${order.createdAt ? new Date(order.createdAt).toLocaleString() : 'N/A'}</div>
+            </div>
+            <div class="detail-row">
+              <div class="detail-label">Synced</div>
+              <div class="detail-value">${order.syncedAt ? new Date(order.syncedAt).toLocaleString() : 'Not synced'}</div>
             </div>
             ${order.errorMessage ? `
-              <div class="error-message">
-                <strong>Error:</strong> ${formatErrorMessage(order.errorMessage)}
+              <div class="detail-row">
+                <div class="detail-label">Error</div>
+                <div class="detail-value" style="color: var(--color-error);">${order.errorMessage}</div>
               </div>
             ` : ''}
-            <div class="logs-section">
-              <button class="logs-toggle" onclick="toggleLogs(this)">Show technical logs</button>
-              <div class="logs-content">
-Order ID: ${order.id}
-Status: ${order.status}
-Shopify Order ID: ${order.shopifyOrderId}
-Shopify Order #: ${order.shopifyOrderNumber || 'N/A'}
-Delybell Order ID: ${order.delybellOrderId || 'N/A'}
-Amount: ${formatCurrency(order.amount, order.currency)}
-Created: ${new Date(order.createdAt).toISOString()}
-${order.errorMessage ? `Error: ${order.errorMessage}` : ''}
-              </div>
-            </div>
           `;
-          
           document.getElementById('orderModal').classList.add('active');
         }
       } catch (error) {
-        alert('Error loading order details: ' + error.message);
+        alert('Error loading order: ' + error.message);
+      }
+    }
+    
+    // View report details
+    async function viewReportDetails(reportId) {
+      try {
+        const response = await fetch(`/admin/api/problem-reports/${reportId}`);
+        const data = await response.json();
+        
+        if (data.success) {
+          const report = data.report;
+          document.getElementById('reportModalBody').innerHTML = `
+            <div class="detail-row">
+              <div class="detail-label">Reported</div>
+              <div class="detail-value">${new Date(report.reported_at).toLocaleString()}</div>
+            </div>
+            <div class="detail-row">
+              <div class="detail-label">Shop</div>
+              <div class="detail-value">${report.shop || 'N/A'}</div>
+            </div>
+            <div class="detail-row">
+              <div class="detail-label">Order #</div>
+              <div class="detail-value">#${report.shopify_order_number || 'N/A'}</div>
+            </div>
+            <div class="detail-row">
+              <div class="detail-label">Subject</div>
+              <div class="detail-value"><strong>${report.subject || 'N/A'}</strong></div>
+            </div>
+            <div class="detail-row">
+              <div class="detail-label">Message</div>
+              <div class="detail-value">${report.message || 'N/A'}</div>
+            </div>
+            <div class="detail-row">
+              <div class="detail-label">Status</div>
+              <div class="detail-value"><span class="badge ${getReportStatusClass(report.status)}">${report.status || 'open'}</span></div>
+            </div>
+            ${report.admin_notes ? `
+              <div class="detail-row">
+                <div class="detail-label">Admin Notes</div>
+                <div class="detail-value">${report.admin_notes}</div>
+              </div>
+            ` : ''}
+          `;
+          document.getElementById('reportModal').classList.add('active');
+        }
+      } catch (error) {
+        alert('Error loading report: ' + error.message);
       }
     }
     
     // Retry order
     async function retryOrder(orderId) {
-      if (!confirm('Retry syncing this order to Delybell?\n\nA new order ID will be generated to avoid duplicates.')) {
-        return;
-      }
-      
-      const btn = event.target.closest('.btn');
-      const originalHTML = btn.innerHTML;
-      btn.disabled = true;
-      btn.innerHTML = '<svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>Retrying...';
+      if (!confirm('Retry syncing this order?')) return;
       
       try {
-        const response = await fetch(`/admin/api/orders/${orderId}/retry`, {
-          method: 'POST',
-        });
+        const response = await fetch(`/admin/api/orders/${orderId}/retry`, { method: 'POST' });
         const data = await response.json();
         
         if (data.success) {
@@ -1592,151 +1066,94 @@ ${order.errorMessage ? `Error: ${order.errorMessage}` : ''}
           loadOrders();
           loadStats();
         } else {
-          alert('Retry failed: ' + data.error);
+          alert('Error: ' + (data.error || 'Unknown error'));
         }
       } catch (error) {
-        alert('Error retrying order: ' + error.message);
-      } finally {
-        btn.disabled = false;
-        btn.innerHTML = originalHTML;
+        alert('Error: ' + error.message);
       }
     }
     
     // Helper functions
     function formatCurrency(amount, currency) {
       if (!amount && amount !== 0) return 'N/A';
-      const currencyCode = currency || 'USD';
       return new Intl.NumberFormat('en-US', {
         style: 'currency',
-        currency: currencyCode,
+        currency: currency || 'USD'
       }).format(parseFloat(amount));
     }
     
     function timeAgo(date) {
       if (!date) return 'N/A';
+      const then = new Date(date);
+      if (isNaN(then.getTime())) return 'N/A';
       
-      const now = new Date();
-      let then;
-      
-      // Handle both string and Date objects
-      if (typeof date === 'string') {
-        then = new Date(date);
-      } else if (date instanceof Date) {
-        then = date;
-      } else {
-        return 'N/A';
-      }
-      
-      // Check if date is valid
-      if (isNaN(then.getTime())) {
-        return 'N/A';
-      }
-      
-      // Use getTime() for accurate calculation
-      const diffMs = now.getTime() - then.getTime();
-      
-      // Handle future dates (shouldn't happen, but handle gracefully)
-      if (diffMs < 0) {
-        return 'Just now';
-      }
-      
-      const diffSecs = Math.floor(diffMs / 1000);
+      const diffMs = Date.now() - then.getTime();
       const diffMins = Math.floor(diffMs / 60000);
       const diffHours = Math.floor(diffMs / 3600000);
       const diffDays = Math.floor(diffMs / 86400000);
       
-      // Show exact time if less than 1 minute
-      if (diffSecs < 60) {
-        return diffSecs < 10 ? 'Just now' : `${diffSecs} sec ago`;
-      }
-      
-      // Show minutes if less than 1 hour
-      if (diffMins < 60) {
-        return `${diffMins} min ago`;
-      }
-      
-      // Show hours if less than 24 hours
-      if (diffHours < 24) {
-        return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
-      }
-      
-      // Show days if less than 7 days
-      if (diffDays < 7) {
-        return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
-      }
-      
-      // Show date for older items
-      return then.toLocaleDateString('en-US', { 
-        month: 'short', 
-        day: 'numeric',
-        year: then.getFullYear() !== now.getFullYear() ? 'numeric' : undefined
-      });
+      if (diffMins < 1) return 'Just now';
+      if (diffMins < 60) return `${diffMins} min ago`;
+      if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
+      if (diffDays < 7) return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
+      return then.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
     }
     
     function getStatusClass(status) {
-      if (status === 'processed') return 'status-synced';
-      if (status === 'failed') return 'status-failed';
-      if (status === 'pending_sync') return 'status-pending';
-      return 'status-pending';
+      if (status === 'processed') return 'badge-success';
+      if (status === 'failed') return 'badge-error';
+      if (status === 'pending_sync') return 'badge-warning';
+      return 'badge-warning';
     }
     
     function getStatusText(status) {
       if (status === 'processed') return 'Synced';
       if (status === 'failed') return 'Failed';
-      if (status === 'pending_sync') return 'Pending Sync';
+      if (status === 'pending_sync') return 'Pending';
       return 'Pending';
     }
     
-    function formatPaymentStatus(financialStatus) {
-      if (!financialStatus) return 'Unknown';
-      const status = financialStatus.toLowerCase();
-      if (status === 'paid') return 'Paid';
-      if (status === 'pending' || status === 'authorized') return 'Cash on Delivery';
-      if (status === 'partially_paid') return 'Partially Paid';
-      if (status === 'refunded') return 'Refunded';
-      if (status === 'voided') return 'Voided';
-      return financialStatus.charAt(0).toUpperCase() + financialStatus.slice(1);
+    function getPaymentClass(status) {
+      if (!status) return 'badge-primary';
+      const s = status.toLowerCase();
+      if (s === 'paid') return 'badge-success';
+      if (s === 'pending' || s === 'authorized') return 'badge-purple';
+      return 'badge-primary';
     }
     
-    function getPaymentClass(financialStatus) {
-      if (!financialStatus) return 'payment-unknown';
-      const status = financialStatus.toLowerCase();
-      if (status === 'paid') return 'payment-paid';
-      if (status === 'pending' || status === 'authorized') return 'payment-cod';
-      return 'payment-other';
+    function formatPaymentStatus(status) {
+      if (!status) return 'Unknown';
+      const s = status.toLowerCase();
+      if (s === 'paid') return 'Paid';
+      if (s === 'pending' || s === 'authorized') return 'COD';
+      return status.charAt(0).toUpperCase() + status.slice(1);
     }
     
-    function formatErrorMessage(error) {
-      if (error.includes('already exists')) {
-        return 'Order could not be created because the same order ID was already used.';
-      }
-      if (error.includes('Block')) {
-        return 'Order could not be created because the delivery address is missing required Block information.';
-      }
-      return error;
-    }
-    
-    function filterByShop(shop) {
-      document.getElementById('filterShop').value = shop;
-      currentFilters.shop = shop;
-      loadOrders();
+    function getReportStatusClass(status) {
+      if (status === 'open') return 'badge-error';
+      if (status === 'in_progress') return 'badge-warning';
+      if (status === 'resolved' || status === 'closed') return 'badge-success';
+      return 'badge-primary';
     }
     
     function closeModal() {
       document.getElementById('orderModal').classList.remove('active');
     }
     
-    function toggleLogs(button) {
-      const logsContent = button.nextElementSibling;
-      logsContent.classList.toggle('active');
-      button.textContent = logsContent.classList.contains('active') ? 'Hide technical logs' : 'Show technical logs';
+    function closeReportModal() {
+      document.getElementById('reportModal').classList.remove('active');
+    }
+    
+    function handleLogout() {
+      sessionStorage.removeItem('adminAuthenticated');
+      window.location.href = '/admin/login';
     }
     
     function updateLastUpdated() {
       document.getElementById('lastUpdated').textContent = new Date().toLocaleTimeString();
     }
     
-    // Filter event listeners
+    // Filter listeners
     document.getElementById('filterShop').addEventListener('change', (e) => {
       currentFilters.shop = e.target.value;
       loadOrders();
@@ -1748,9 +1165,11 @@ ${order.errorMessage ? `Error: ${order.errorMessage}` : ''}
     });
     
     document.getElementById('filterSearch').addEventListener('input', (e) => {
-      currentFilters.search = e.target.value;
       clearTimeout(window.searchTimeout);
-      window.searchTimeout = setTimeout(() => loadOrders(), 500);
+      window.searchTimeout = setTimeout(() => {
+        currentFilters.search = e.target.value;
+        loadOrders();
+      }, 500);
     });
     
     document.getElementById('filterDateFrom').addEventListener('change', (e) => {
@@ -1763,339 +1182,46 @@ ${order.errorMessage ? `Error: ${order.errorMessage}` : ''}
       loadOrders();
     });
     
-    // Close modal on outside click
-    document.getElementById('orderModal').addEventListener('click', (e) => {
-      if (e.target.id === 'orderModal') {
-        closeModal();
-      }
+    document.getElementById('reportStatusFilter').addEventListener('change', () => {
+      loadProblemReports();
     });
     
-    // Sync Mode Management
-    let currentSyncMode = 'auto';
-    let currentShop = '';
-    
-    async function loadSyncMode(shop) {
-      if (!shop) {
-        document.getElementById('syncModeCard').style.display = 'none';
-        return;
-      }
-      
+    // Load shops for filter
+    async function loadShopsForFilter() {
       try {
-        const response = await fetch(`/admin/api/shops/${encodeURIComponent(shop)}/sync-mode`);
+        const response = await fetch('/admin/api/shops');
         const data = await response.json();
         if (data.success) {
-          currentSyncMode = data.sync_mode || 'auto';
-          currentShop = shop;
-          updateSyncModeUI();
+          const select = document.getElementById('filterShop');
+          select.innerHTML = '<option value="">All Shops</option>';
+          data.shops.forEach(shop => {
+            const option = document.createElement('option');
+            const shopDomain = shop.shop || shop;
+            option.value = shopDomain;
+            option.textContent = shopDomain.replace('.myshopify.com', '');
+            select.appendChild(option);
+          });
         }
       } catch (error) {
-        console.error('Error loading sync mode:', error);
+        console.error('Error loading shops:', error);
       }
     }
-    
-    function updateSyncModeUI() {
-      const syncModeCard = document.getElementById('syncModeCard');
-      const manualControls = document.getElementById('manualSyncControls');
-      const selectAllTh = document.getElementById('selectAllTh');
-      
-      syncModeCard.style.display = 'block';
-      document.getElementById('syncModeAuto').checked = currentSyncMode === 'auto';
-      document.getElementById('syncModeManual').checked = currentSyncMode === 'manual';
-      manualControls.style.display = currentSyncMode === 'manual' ? 'block' : 'none';
-      if (selectAllTh) selectAllTh.style.display = currentSyncMode === 'manual' ? 'table-cell' : 'none';
-      loadOrders();
-    }
-    
-    async function updateSyncMode(mode) {
-      if (!currentShop) {
-        alert('Please select a shop first');
-        return;
-      }
-      
-      try {
-        const response = await fetch(`/admin/api/shops/${encodeURIComponent(currentShop)}/sync-mode`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ sync_mode: mode }),
-        });
-        
-        const data = await response.json();
-        if (data.success) {
-          currentSyncMode = mode;
-          updateSyncModeUI();
-        } else {
-          alert('Failed to update sync mode: ' + (data.error || 'Unknown error'));
-        }
-      } catch (error) {
-        console.error('Error updating sync mode:', error);
-        alert('Error updating sync mode: ' + error.message);
-      }
-    }
-    
-    function toggleSelectAll() {
-      const selectAll = document.getElementById('selectAllCheckbox').checked;
-      document.querySelectorAll('.order-checkbox:not(:disabled)').forEach(cb => {
-        cb.checked = selectAll;
-      });
-    }
-    
-    
-    // Sync mode radio handlers
-    document.getElementById('syncModeAuto').addEventListener('change', function() {
-      if (this.checked) updateSyncMode('auto');
-    });
-    
-    document.getElementById('syncModeManual').addEventListener('change', function() {
-      if (this.checked) updateSyncMode('manual');
-    });
-    
-    // Update shop filter change handler
-    const shopSelect = document.getElementById('filterShop');
-    if (shopSelect) {
-      shopSelect.addEventListener('change', function() {
-        const shop = this.value;
-        if (shop) {
-          loadSyncMode(shop);
-        } else {
-          document.getElementById('syncModeCard').style.display = 'none';
-        }
-      });
-    }
-    
-    // Problem Reports Functions
-    async function loadProblemReports() {
-      const tbody = document.getElementById('problemReportsTableBody');
-      if (!tbody) return;
-      
-      tbody.innerHTML = '<tr><td colspan="6" class="loading"><div class="loading-spinner"></div><div>Loading reports...</div></td></tr>';
-      
-      try {
-        const statusFilter = document.getElementById('reportStatusFilter')?.value || '';
-        const shopFilter = currentFilters.shop;
-        
-        const params = new URLSearchParams();
-        if (shopFilter) params.append('shop', shopFilter);
-        if (statusFilter) params.append('status', statusFilter);
-        params.append('limit', '50');
-        
-        const response = await fetch(`/admin/api/problem-reports?${params}`);
-        const data = await response.json();
-        
-        if (data.success) {
-          if (data.reports.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="6" class="empty-state"><div class="empty-state-icon"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg></div><div class="empty-state-title">No reports found</div></td></tr>';
-          } else {
-            tbody.innerHTML = data.reports.map(report => {
-              const statusClass = report.status === 'open' ? 'status-pending' : 
-                                 report.status === 'in_progress' ? 'status-pending' :
-                                 report.status === 'resolved' ? 'status-synced' : 'status-failed';
-              const statusText = report.status === 'open' ? 'Open' :
-                                report.status === 'in_progress' ? 'In Progress' :
-                                report.status === 'resolved' ? 'Resolved' : 'Closed';
-              
-              return `
-                <tr>
-                  <td>
-                    <div class="order-number">${new Date(report.reported_at).toLocaleString('en-US', { dateStyle: 'short', timeStyle: 'short' })}</div>
-                    <div class="time-ago">${timeAgo(report.reported_at)}</div>
-                  </td>
-                  <td>
-                    <a href="#" class="shop-link" onclick="filterByShop('${report.shop}'); return false;">${report.shop}</a>
-                  </td>
-                  <td>${report.shopify_order_number ? `#${report.shopify_order_number}` : '—'}</td>
-                  <td>
-                    <div class="order-number" style="max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${report.subject}">${report.subject}</div>
-                  </td>
-                  <td>
-                    <span class="status-badge ${statusClass}">${statusText}</span>
-                  </td>
-                  <td>
-                    <button class="btn btn-secondary" onclick="viewReportDetails('${report.id}')">
-                      <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
-                      </svg>
-                      View
-                    </button>
-                  </td>
-                </tr>
-              `;
-            }).join('');
-          }
-        }
-      } catch (error) {
-        tbody.innerHTML = `<tr><td colspan="6" class="empty-state"><div style="color: var(--color-error);">Error loading reports: ${error.message}</div></td></tr>`;
-      }
-    }
-    
-    async function viewReportDetails(reportId) {
-      try {
-        const response = await fetch(`/admin/api/problem-reports`);
-        const data = await response.json();
-        
-        if (data.success) {
-          const report = data.reports.find(r => r.id === reportId);
-          if (!report) {
-            alert('Report not found');
-            return;
-          }
-          
-          const modalBody = document.getElementById('reportModalBody');
-          const statusClass = report.status === 'open' ? 'status-pending' : 
-                             report.status === 'in_progress' ? 'status-pending' :
-                             report.status === 'resolved' ? 'status-synced' : 'status-failed';
-          const statusText = report.status === 'open' ? 'Open' :
-                            report.status === 'in_progress' ? 'In Progress' :
-                            report.status === 'resolved' ? 'Resolved' : 'Closed';
-          
-          modalBody.innerHTML = `
-            <div class="detail-row">
-              <div class="detail-label">Reported At</div>
-              <div class="detail-value">${new Date(report.reported_at).toLocaleString('en-US', { dateStyle: 'full', timeStyle: 'short' })}</div>
-            </div>
-            <div class="detail-row">
-              <div class="detail-label">Shop</div>
-              <div class="detail-value">${report.shop}</div>
-            </div>
-            ${report.shopify_order_number ? `
-              <div class="detail-row">
-                <div class="detail-label">Order #</div>
-                <div class="detail-value">#${report.shopify_order_number}</div>
-              </div>
-            ` : ''}
-            <div class="detail-row">
-              <div class="detail-label">Subject</div>
-              <div class="detail-value"><strong>${report.subject}</strong></div>
-            </div>
-            <div class="detail-row">
-              <div class="detail-label">Status</div>
-              <div class="detail-value"><span class="status-badge ${statusClass}">${statusText}</span></div>
-            </div>
-            <div class="detail-row">
-              <div class="detail-label">Message</div>
-              <div class="detail-value" style="white-space: pre-wrap; line-height: 1.6;">${report.message}</div>
-            </div>
-            ${report.admin_notes ? `
-              <div class="detail-row">
-                <div class="detail-label">Admin Notes</div>
-                <div class="detail-value" style="white-space: pre-wrap; line-height: 1.6;">${report.admin_notes}</div>
-              </div>
-            ` : ''}
-            ${report.resolved_at ? `
-              <div class="detail-row">
-                <div class="detail-label">Resolved At</div>
-                <div class="detail-value">${new Date(report.resolved_at).toLocaleString('en-US', { dateStyle: 'full', timeStyle: 'short' })}</div>
-              </div>
-            ` : ''}
-            <div style="margin-top: 20px; padding-top: 20px; border-top: 2px solid var(--color-border);">
-              <div class="detail-label" style="margin-bottom: 12px;">Update Status</div>
-              <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px;">
-                <button class="btn btn-primary" onclick="updateReportStatus('${report.id}', 'open')" ${report.status === 'open' ? 'disabled' : ''}>Mark as Open</button>
-                <button class="btn btn-primary" onclick="updateReportStatus('${report.id}', 'in_progress')" ${report.status === 'in_progress' ? 'disabled' : ''}>Mark as In Progress</button>
-                <button class="btn btn-primary" onclick="updateReportStatus('${report.id}', 'resolved')" ${report.status === 'resolved' ? 'disabled' : ''}>Mark as Resolved</button>
-                <button class="btn btn-secondary" onclick="updateReportStatus('${report.id}', 'closed')" ${report.status === 'closed' ? 'disabled' : ''}>Close</button>
-              </div>
-              <div>
-                <label class="detail-label">Add Admin Notes</label>
-                <textarea id="adminNotesInput" rows="3" class="filter-input" style="width: 100%; margin-top: 8px;" placeholder="Add notes about this report...">${report.admin_notes || ''}</textarea>
-                <button class="btn btn-primary" onclick="saveAdminNotes('${report.id}')" style="margin-top: 8px;">Save Notes</button>
-              </div>
-            </div>
-          `;
-          
-          document.getElementById('reportModal').classList.add('active');
-        }
-      } catch (error) {
-        alert('Error loading report details: ' + error.message);
-      }
-    }
-    
-    function closeReportModal() {
-      document.getElementById('reportModal').classList.remove('active');
-    }
-    
-    async function updateReportStatus(reportId, status) {
-      try {
-        const response = await fetch(`/admin/api/problem-reports/${reportId}`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ status }),
-        });
-        
-        const data = await response.json();
-        if (data.success) {
-          alert(`Report status updated to ${status}`);
-          closeReportModal();
-          loadProblemReports();
-        } else {
-          alert('Failed to update status: ' + (data.error || 'Unknown error'));
-        }
-      } catch (error) {
-        alert('Error updating status: ' + error.message);
-      }
-    }
-    
-    async function saveAdminNotes(reportId) {
-      const notes = document.getElementById('adminNotesInput').value;
-      
-      try {
-        const response = await fetch(`/admin/api/problem-reports/${reportId}`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ admin_notes: notes }),
-        });
-        
-        const data = await response.json();
-        if (data.success) {
-          alert('Notes saved successfully');
-          viewReportDetails(reportId); // Reload to show updated notes
-        } else {
-          alert('Failed to save notes: ' + (data.error || 'Unknown error'));
-        }
-      } catch (error) {
-        alert('Error saving notes: ' + error.message);
-      }
-    }
-    
-    // Close report modal on outside click
-    document.addEventListener('DOMContentLoaded', () => {
-      const reportModal = document.getElementById('reportModal');
-      if (reportModal) {
-        reportModal.addEventListener('click', (e) => {
-          if (e.target.id === 'reportModal') {
-            closeReportModal();
-          }
-        });
-      }
-      
-      // Report status filter change handler
-      const reportStatusFilter = document.getElementById('reportStatusFilter');
-      if (reportStatusFilter) {
-        reportStatusFilter.addEventListener('change', () => {
-          loadProblemReports();
-        });
-      }
-    });
     
     // Initialize
     loadStats();
-    loadShops();
-    loadOrders();
-    loadProblemReports();
+    loadRecentOrders();
+    loadShopsForFilter();
     
-    // Load sync mode after shops are loaded
-    setTimeout(() => {
-      const shopSelect = document.getElementById('filterShop');
-      if (shopSelect && shopSelect.value) {
-        loadSyncMode(shopSelect.value);
-      }
-    }, 500);
-    
-    // Refresh stats every 30 seconds
+    // Auto-refresh
     setInterval(() => {
-      loadStats();
-      loadOrders();
-      loadProblemReports();
+      if (currentTab === 'overview') {
+        loadStats();
+        loadRecentOrders();
+      } else if (currentTab === 'orders') {
+        loadOrders();
+      } else if (currentTab === 'reports') {
+        loadProblemReports();
+      }
     }, 30000);
   </script>
 </body>

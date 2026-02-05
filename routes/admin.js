@@ -1448,7 +1448,7 @@ router.get('/admin/api/orders', async (req, res) => {
       .select('*', { count: 'exact', head: true });
 
     // Build query for fetching data
-    // For processed orders, order by synced_at or updated_at (most recent sync first)
+    // For processed orders, order by synced_at (most recent sync first)
     // For other statuses, order by shopify_order_created_at (when order was placed)
     let query = supabase
       .from('order_logs')
@@ -1456,7 +1456,7 @@ router.get('/admin/api/orders', async (req, res) => {
     
     if (status === 'processed') {
       // For synced orders, order by when they were synced (most recent first)
-      query = query.order('updated_at', { ascending: false, nullsFirst: false })
+      query = query.order('synced_at', { ascending: false, nullsFirst: false })
                    .order('created_at', { ascending: false });
     } else {
       // For other statuses, order by when order was placed
@@ -1611,7 +1611,7 @@ router.get('/admin/api/orders', async (req, res) => {
       currency: order.currency || 'USD',
       financialStatus: order.financial_status || null, // Use stored value, don't infer
       createdAt: order.shopify_order_created_at || order.created_at,
-      syncedAt: order.status === 'processed' && order.delybell_order_id ? (order.updated_at || order.synced_at || order.created_at) : null,
+      syncedAt: order.status === 'processed' && order.delybell_order_id ? (order.synced_at || order.created_at) : null,
       errorMessage: order.error_message,
     }));
 
