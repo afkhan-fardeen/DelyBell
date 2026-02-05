@@ -1798,9 +1798,10 @@ router.get('/admin/api/shops', async (req, res) => {
 
     const { supabase } = require('../services/db');
 
+    // Select shop, sync_mode, and access_token (to determine if shop is active)
     const { data: shops, error } = await supabase
       .from('shops')
-      .select('shop, sync_mode')
+      .select('shop, sync_mode, access_token, installed_at')
       .order('shop', { ascending: true });
 
     if (error) throw error;
@@ -1809,7 +1810,9 @@ router.get('/admin/api/shops', async (req, res) => {
       success: true,
       shops: (shops || []).map(s => ({
         shop: s.shop,
-        sync_mode: s.sync_mode || 'auto',
+        sync_mode: s.sync_mode || 'manual',
+        registered: !!(s.access_token && s.access_token.trim().length > 0), // Active if has access_token
+        installed_at: s.installed_at || null,
       })),
     });
   } catch (error) {
@@ -2383,6 +2386,58 @@ router.get('/admin/api/problem-reports', async (req, res) => {
     });
   } catch (error) {
     console.error('[Admin] Error fetching problem reports:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message,
+    });
+  }
+});
+
+/**
+ * Admin API - Get Single Problem Report
+ * GET /admin/api/problem-reports/:id
+ */
+router.get('/admin/api/problem-reports/:id', async (req, res) => {
+  try {
+    if (!process.env.SUPABASE_URL) {
+      return res.status(503).json({
+        success: false,
+        error: 'Supabase not configured',
+      });
+    }
+    
+    const { id } = req.params;
+    const { supabase } = require('../services/db');
+    
+    const { data: report, error } = await supabase
+      .from('problem_reports')
+      .select('*')
+      .eq('id', id)
+      .single();
+    
+    if (error) {
+      if (error.code === 'PGRST116') {
+        return res.status(404).json({
+          success: false,
+          error: 'Report not found',
+        });
+      }
+      throw error;
+    }
+    
+    if (!report) {
+      return res.status(404).json({
+        success: false,
+        error: 'Report not found',
+      });
+    }
+    
+    res.json({
+      success: true,
+      report: report,
+    });
+  } catch (error) {
+    console.error('[Admin] Error fetching problem report:', error);
     res.status(500).json({
       success: false,
       error: error.message,
