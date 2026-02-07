@@ -697,10 +697,31 @@ router.post('/app/uninstalled', express.raw({ type: 'application/json' }), verif
  * @see https://shopify.dev/apps/store/data-protection/gdpr-requirements
  * Raw body parsing and HMAC verification are handled inline
  */
+/**
+ * GDPR Compliance Webhook: Customer Data Request
+ * Required for public apps - customer requests their data
+ * 
+ * ✅ CRITICAL SHOPIFY REQUIREMENT:
+ * - MUST return plain text "OK" (NOT JSON, NOT object)
+ * - NO logging after response
+ * - NO middleware after response
+ * - Response must be EXACTLY: res.status(200).send('OK');
+ * 
+ * ⚠️ SHOPIFY INTERNAL REQUIREMENT (Not Well Documented):
+ * - Shopify sends HEAD request to verify reachability before POST
+ * - HEAD handler MUST return 200 OK (no body needed)
+ * - If HEAD fails → instant ❌ in review
+ */
+router.head('/customers/data_request', (req, res) => {
+  // Shopify sends HEAD to verify webhook reachability
+  // Return 200 OK (no body needed for HEAD requests)
+  return res.status(200).send();
+});
+
 router.post('/customers/data_request', express.raw({ type: 'application/json' }), verifyWebhookHMAC, (req, res) => {
-  // HMAC already verified by middleware - just respond
-  // Shopify allows slow responses, but NOT unverifiable ones
-  res.status(200).send('OK');
+  // HMAC already verified by middleware - just respond with plain text "OK"
+  // ⚠️ CRITICAL: Must be plain text, NOT JSON
+  return res.status(200).send('OK');
 });
 
 /**
@@ -714,7 +735,17 @@ router.post('/customers/data_request', express.raw({ type: 'application/json' })
  * - Returns 200 OK with plain text "OK" (NOT JSON)
  * - Actually deletes customer-related data if stored
  * - NO respondQuickly() pattern - respond after verification
+ * 
+ * ⚠️ SHOPIFY INTERNAL REQUIREMENT (Not Well Documented):
+ * - Shopify sends HEAD request to verify reachability before POST
+ * - HEAD handler MUST return 200 OK (no body needed)
  */
+router.head('/customers/redact', (req, res) => {
+  // Shopify sends HEAD to verify webhook reachability
+  // Return 200 OK (no body needed for HEAD requests)
+  return res.status(200).send();
+});
+
 router.post('/customers/redact', express.raw({ type: 'application/json' }), verifyWebhookHMAC, async (req, res) => {
   // HMAC already verified by middleware - now process redaction
   try {
@@ -749,12 +780,16 @@ router.post('/customers/redact', express.raw({ type: 'application/json' }), veri
       console.warn('[Webhook] Could not parse customer redaction body:', parseError.message);
     }
     
-    // CRITICAL: Shopify requires plain text "OK", not JSON
-    res.status(200).send('OK');
+    // ✅ CRITICAL: Shopify requires plain text "OK", NOT JSON
+    // ⚠️ NO logging after this line
+    // ⚠️ NO middleware after this line
+    // Response must be EXACTLY: res.status(200).send('OK');
+    return res.status(200).send('OK');
   } catch (error) {
     // Always respond 200 OK - never block Shopify
+    // Even on error, return plain text "OK" (NOT JSON)
     console.error('[Webhook] Customer redaction error:', error.message);
-    res.status(200).send('OK');
+    return res.status(200).send('OK');
   }
 });
 
@@ -771,7 +806,17 @@ router.post('/customers/redact', express.raw({ type: 'application/json' }), veri
  * - NO respondQuickly() pattern - respond after verification
  * 
  * Note: This is typically called 48 hours after app uninstall
+ * 
+ * ⚠️ SHOPIFY INTERNAL REQUIREMENT (Not Well Documented):
+ * - Shopify sends HEAD request to verify reachability before POST
+ * - HEAD handler MUST return 200 OK (no body needed)
  */
+router.head('/shop/redact', (req, res) => {
+  // Shopify sends HEAD to verify webhook reachability
+  // Return 200 OK (no body needed for HEAD requests)
+  return res.status(200).send();
+});
+
 router.post('/shop/redact', express.raw({ type: 'application/json' }), verifyWebhookHMAC, async (req, res) => {
   // HMAC already verified by middleware - now process deletion
   try {
@@ -802,12 +847,16 @@ router.post('/shop/redact', express.raw({ type: 'application/json' }), verifyWeb
       }
     }
     
-    // CRITICAL: Shopify requires plain text "OK", not JSON
-    res.status(200).send('OK');
+    // ✅ CRITICAL: Shopify requires plain text "OK", NOT JSON
+    // ⚠️ NO logging after this line
+    // ⚠️ NO middleware after this line
+    // Response must be EXACTLY: res.status(200).send('OK');
+    return res.status(200).send('OK');
   } catch (error) {
     // Always respond 200 OK - never block Shopify
+    // Even on error, return plain text "OK" (NOT JSON)
     console.error('[Webhook] Shop redaction error:', error.message);
-    res.status(200).send('OK');
+    return res.status(200).send('OK');
   }
 });
 
