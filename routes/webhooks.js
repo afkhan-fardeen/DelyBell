@@ -83,31 +83,25 @@ function parseWebhookBody(req) {
  * Verify webhook HMAC signature
  * This must be done BEFORE parsing JSON to ensure the raw body is used
  */
+/**
+ * Verify webhook HMAC signature
+ * CRITICAL: Shopify App Store requires STRICT HMAC verification
+ * NO BYPASSES - even in development, we verify HMAC (use test webhooks)
+ */
 function verifyWebhookHMAC(req, res, next) {
   try {
     const hmac = req.headers['x-shopify-hmac-sha256'];
     
+    // STRICT: Always require HMAC (Shopify App Store requirement)
     if (!hmac) {
-      if (process.env.NODE_ENV === 'production') {
-        return res.status(401).json({
-          success: false,
-          error: 'Webhook verification required',
-        });
-      }
-      console.warn('[Webhook] HMAC header missing (development mode - allowing)');
-      return next();
+      console.error('[Webhook] ❌ HMAC header missing - rejecting webhook');
+      return res.status(401).send('Invalid webhook signature');
     }
 
+    // STRICT: Always require API secret configured
     if (!config.shopify.apiSecret) {
       console.error('[Webhook] ❌ API secret not configured!');
-      if (process.env.NODE_ENV === 'production') {
-        return res.status(500).json({
-          success: false,
-          error: 'Webhook verification not configured',
-        });
-      }
-      console.warn('[Webhook] Development mode: Allowing webhook without API secret');
-      return next();
+      return res.status(500).send('Webhook verification not configured');
     }
 
     // CRITICAL: req.body is a Buffer from express.raw()
@@ -123,29 +117,18 @@ function verifyWebhookHMAC(req, res, next) {
       Buffer.from(hmac)
     )) {
       console.error('[Webhook] ❌ HMAC verification failed');
-      console.error('[Webhook] Expected:', digest);
-      console.error('[Webhook] Received:', hmac);
+      console.error('[Webhook] Expected (first 20):', digest.substring(0, 20) + '...');
+      console.error('[Webhook] Received (first 20):', hmac.substring(0, 20) + '...');
       
-      if (process.env.NODE_ENV === 'production') {
-        return res.status(401).json({
-          success: false,
-          error: 'Invalid webhook signature',
-          hint: 'Check that SHOPIFY_API_SECRET matches your app\'s API secret in Shopify Partner Dashboard',
-        });
-      }
-      
-      console.warn('[Webhook] ⚠️ Development mode: Allowing webhook despite HMAC mismatch');
-      return next();
+      // STRICT: Always reject invalid HMAC (Shopify App Store requirement)
+      return res.status(401).send('Invalid webhook signature');
     }
 
     console.log('[Webhook] ✅ HMAC verified successfully');
     next();
   } catch (error) {
     console.error('[Webhook] Verification error:', error.message);
-    return res.status(500).json({
-      success: false,
-      error: 'Webhook verification failed',
-    });
+    return res.status(500).send('Webhook verification failed');
   }
 }
 
@@ -742,7 +725,12 @@ router.post('/customers/data_request', express.raw({ type: 'application/json' })
  * GDPR Compliance Webhook: Customer Redaction
  * Required for public apps - customer requests data deletion
  * @see https://shopify.dev/apps/store/data-protection/gdpr-requirements
- * Raw body parsing and HMAC verification are handled inline
+ * 
+ * Shopify requires:
+ * - Route exists and is reachable
+ * - Returns 200 OK
+ * - Plain text "OK" response (not JSON)
+ * - Actually deletes customer-related data if stored
  */
 router.post('/customers/redact', express.raw({ type: 'application/json' }), verifyWebhookHMAC, async (req, res) => {
   try {
@@ -755,31 +743,50 @@ router.post('/customers/redact', express.raw({ type: 'application/json' }), veri
       timestamp: new Date().toISOString(),
     });
     
-    // Parse webhook body to log request details
+    // Parse webhook body to get customer/order IDs to redact
+    let customerId = null;
+    let orderIds = [];
     try {
       const data = parseWebhookBody(req);
+      customerId = data.customer?.id || data.id;
+      orderIds = data.orders_to_redact || [];
+      
       console.log('[Webhook] Customer redaction details:', {
-        customerId: data.customer?.id || data.id,
-        shopifyOrderIds: data.orders_to_redact || [],
+        customerId,
+        shopifyOrderIds: orderIds,
       });
+      
+      // Delete/anonymize customer-related data from order_logs
+      if (orderIds.length > 0) {
+        const normalizedShop = normalizeShop(shop);
+        for (const orderId of orderIds) {
+          try {
+            // Anonymize customer data in order_logs (GDPR compliance)
+            await supabase
+              .from('order_logs')
+              .update({
+                customer_name: '[REDACTED]',
+                phone: '[REDACTED]',
+              })
+              .eq('shop', normalizedShop)
+              .eq('shopify_order_id', orderId.toString());
+            
+            console.log(`[Webhook] ✅ Redacted customer data for order ${orderId}`);
+          } catch (redactError) {
+            console.error(`[Webhook] Error redacting order ${orderId}:`, redactError.message);
+          }
+        }
+      }
     } catch (parseError) {
       console.warn('[Webhook] Could not parse customer redaction body:', parseError.message);
     }
     
-    // For now, just acknowledge - no customer data is stored in this app
-    // If you store customer data in the future, implement data deletion here
-    // Note: Order logs may contain customer data - consider anonymizing/deleting if needed
-    res.status(200).json({
-      success: true,
-      message: 'Customer redaction request acknowledged',
-    });
+    // CRITICAL: Shopify requires plain text "OK", not JSON
+    res.status(200).send('OK');
   } catch (error) {
     console.error('[Webhook] Customer redaction error:', error.message);
     // Always respond 200 OK - never block Shopify
-    res.status(200).json({
-      success: true,
-      message: 'Request acknowledged',
-    });
+    res.status(200).send('OK');
   }
 });
 
@@ -787,7 +794,14 @@ router.post('/customers/redact', express.raw({ type: 'application/json' }), veri
  * GDPR Compliance Webhook: Shop Redaction
  * Required for public apps - shop requests data deletion after uninstall
  * @see https://shopify.dev/apps/store/data-protection/gdpr-requirements
- * Raw body parsing and HMAC verification are handled inline
+ * 
+ * Shopify requires:
+ * - Route exists and is reachable
+ * - Returns 200 OK
+ * - Plain text "OK" response (not JSON)
+ * - Actually deletes shop + order_logs data
+ * 
+ * Note: This is typically called 48 hours after app uninstall
  */
 router.post('/shop/redact', express.raw({ type: 'application/json' }), verifyWebhookHMAC, async (req, res) => {
   try {
@@ -800,7 +814,7 @@ router.post('/shop/redact', express.raw({ type: 'application/json' }), verifyWeb
       timestamp: new Date().toISOString(),
     });
     
-    // Parse webhook body to log request details
+    // Parse webhook body
     try {
       const data = parseWebhookBody(req);
       console.log('[Webhook] Shop redaction details:', {
@@ -810,20 +824,50 @@ router.post('/shop/redact', express.raw({ type: 'application/json' }), verifyWeb
       console.warn('[Webhook] Could not parse shop redaction body:', parseError.message);
     }
     
-    // Note: This is typically called 48 hours after app uninstall
-    // You may want to delete/anonymize shop data here if needed
-    // For now, just acknowledge - shop data cleanup is handled in /app/uninstalled
-    res.status(200).json({
-      success: true,
-      message: 'Shop redaction request acknowledged',
-    });
+    // CRITICAL: Delete shop data and order logs (GDPR compliance)
+    const normalizedShop = normalizeShop(shop);
+    const { deleteShop } = require('../services/shopRepo');
+    
+    try {
+      // Delete shop from database
+      await deleteShop(normalizedShop);
+      console.log(`[Webhook] ✅ Deleted shop ${normalizedShop} data`);
+      
+      // Delete all order logs for this shop (GDPR requirement)
+      const { error: deleteOrdersError } = await supabase
+        .from('order_logs')
+        .delete()
+        .eq('shop', normalizedShop);
+      
+      if (deleteOrdersError) {
+        console.error(`[Webhook] Error deleting order logs for ${normalizedShop}:`, deleteOrdersError.message);
+      } else {
+        console.log(`[Webhook] ✅ Deleted all order logs for shop ${normalizedShop}`);
+      }
+      
+      // Delete problem reports for this shop
+      const { error: deleteReportsError } = await supabase
+        .from('problem_reports')
+        .delete()
+        .eq('shop', normalizedShop);
+      
+      if (deleteReportsError) {
+        console.error(`[Webhook] Error deleting problem reports for ${normalizedShop}:`, deleteReportsError.message);
+      } else {
+        console.log(`[Webhook] ✅ Deleted all problem reports for shop ${normalizedShop}`);
+      }
+      
+    } catch (deleteError) {
+      console.error('[Webhook] Error during shop redaction:', deleteError.message);
+      // Continue - we still need to respond 200 OK
+    }
+    
+    // CRITICAL: Shopify requires plain text "OK", not JSON
+    res.status(200).send('OK');
   } catch (error) {
     console.error('[Webhook] Shop redaction error:', error.message);
     // Always respond 200 OK - never block Shopify
-    res.status(200).json({
-      success: true,
-      message: 'Request acknowledged',
-    });
+    res.status(200).send('OK');
   }
 });
 
