@@ -62,14 +62,16 @@ app.use('/webhooks', webhookRoutes);
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Serve static files (public install page, legal pages, etc.)
-app.use(express.static(path.join(__dirname, 'public')));
-
-// OAuth routes
+// OAuth routes (before admin routes to ensure proper handling)
 app.use('/auth', authRoutes);
 
-// Admin routes (embedded app interface)
+// Admin routes (embedded app interface) - MUST be before static files
+// This ensures /app and / routes are handled by admin routes, not static files
 app.use('/', adminRoutes);
+
+// Serve static files LAST (only for assets, not routes)
+// This ensures admin routes take precedence over static files
+app.use(express.static(path.join(__dirname, 'public')));
 
 // API routes
 app.use('/api', apiRoutes);

@@ -3,309 +3,92 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Install Delybell Order Sync</title>
+  <title>Delybell Order Sync</title>
   <style>
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-      background: #ffffff;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #fafafa;
       min-height: 100vh;
       display: flex;
       align-items: center;
       justify-content: center;
-      padding: 40px 20px;
-      color: #1a1a1a;
+      padding: 20px;
     }
     .container {
-      background: #ffffff;
-      border: 1px solid #e5e5e5;
-      padding: 0;
-      max-width: 600px;
-      width: 100%;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.08);
-    }
-    .header {
-      border-bottom: 1px solid #e5e5e5;
-      padding: 32px 40px;
-      background: #fafafa;
-    }
-    .header h1 {
-      font-size: 24px;
-      font-weight: 600;
-      color: #1a1a1a;
-      margin-bottom: 8px;
-      letter-spacing: -0.02em;
-    }
-    .header .subtitle {
-      color: #666666;
-      font-size: 14px;
-      font-weight: 400;
-      line-height: 1.5;
-    }
-    .content {
+      background: white;
+      border-radius: 8px;
       padding: 40px;
+      max-width: 600px;
+      text-align: center;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
     }
-    .form-section {
-      margin-bottom: 32px;
+    h1 {
+      font-size: 28px;
+      color: #010a8b;
+      margin-bottom: 16px;
     }
-    .form-group {
+    p {
+      color: #666;
+      font-size: 16px;
+      line-height: 1.6;
       margin-bottom: 24px;
     }
-    label {
-      display: block;
-      margin-bottom: 8px;
-      color: #1a1a1a;
-      font-weight: 500;
-      font-size: 13px;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-    }
-    input {
-      width: 100%;
-      padding: 12px 16px;
-      border: 1px solid #d1d1d1;
-      background: #ffffff;
-      font-size: 15px;
-      color: #1a1a1a;
-      font-family: inherit;
-      transition: border-color 0.15s ease;
-    }
-    input:focus {
-      outline: none;
-      border-color: #1a1a1a;
-    }
-    input::placeholder {
-      color: #999999;
-    }
-    .input-hint {
-      display: block;
-      margin-top: 6px;
-      color: #666666;
-      font-size: 12px;
-      font-weight: 400;
-      line-height: 1.4;
-    }
-    .button {
-      width: 100%;
-      padding: 14px 24px;
-      background: #1a1a1a;
-      color: #ffffff;
-      border: 1px solid #1a1a1a;
-      font-size: 14px;
-      font-weight: 500;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-      cursor: pointer;
-      transition: background-color 0.15s ease, color 0.15s ease;
-    }
-    .button:hover {
-      background: #333333;
-      border-color: #333333;
-    }
-    .button:active {
-      background: #000000;
-      border-color: #000000;
-    }
-    .button:disabled {
-      background: #cccccc;
-      border-color: #cccccc;
-      cursor: not-allowed;
-    }
-    .info-section {
-      border-top: 1px solid #e5e5e5;
-      padding-top: 24px;
-      margin-top: 32px;
+    .info {
+      background: #f5f5f5;
+      border-radius: 6px;
+      padding: 20px;
+      margin-top: 24px;
+      text-align: left;
     }
     .info-title {
-      font-size: 12px;
       font-weight: 600;
-      color: #1a1a1a;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
+      color: #333;
       margin-bottom: 12px;
     }
     .info-list {
       list-style: none;
-      padding: 0;
+      color: #666;
+      font-size: 14px;
     }
     .info-list li {
-      color: #666666;
-      font-size: 13px;
-      line-height: 1.6;
       margin-bottom: 8px;
-      padding-left: 16px;
+      padding-left: 20px;
       position: relative;
     }
     .info-list li:before {
-      content: "—";
+      content: "•";
       position: absolute;
       left: 0;
-      color: #999999;
+      color: #010a8b;
     }
-    .info-code {
-      display: inline-block;
-      padding: 2px 6px;
-      background: #f5f5f5;
-      border: 1px solid #e5e5e5;
-      font-family: 'Monaco', 'Menlo', 'Courier New', monospace;
-      font-size: 12px;
-      color: #1a1a1a;
+    a {
+      color: #010a8b;
+      text-decoration: none;
     }
-    @media (max-width: 640px) {
-      .container {
-        border-left: none;
-        border-right: none;
-      }
-      .header {
-        padding: 24px 20px;
-      }
-      .content {
-        padding: 32px 20px;
-      }
+    a:hover {
+      text-decoration: underline;
     }
   </style>
 </head>
 <body>
   <div class="container">
-    <div class="header">
-      <h1>Delybell Order Sync</h1>
-      <p class="subtitle">Connect your Shopify store to sync orders automatically</p>
+    <h1>Delybell Order Sync</h1>
+    <p>Seamlessly sync your Shopify orders with Delybell delivery management system.</p>
+    
+    <div class="info">
+      <div class="info-title">How to Install</div>
+      <ul class="info-list">
+        <li>Visit the Shopify App Store</li>
+        <li>Search for "Delybell Order Sync"</li>
+        <li>Click "Add app" to install</li>
+        <li>Authorize the app in your Shopify admin</li>
+      </ul>
     </div>
     
-    <div class="content">
-      <form onsubmit="installApp(event)" id="installForm">
-        <div class="form-section">
-          <div class="form-group">
-            <label for="shop">Shopify Store Domain</label>
-            <input 
-              type="text" 
-              id="shop" 
-              name="shop" 
-              placeholder="your-store.myshopify.com"
-              required
-              autocomplete="off"
-              autofocus
-            />
-            <span class="input-hint">Enter your custom domain (e.g., babybow.co) or Shopify domain (e.g., 782cba-5a.myshopify.com)</span>
-          </div>
-        </div>
-        
-        <button type="submit" class="button" id="submitButton">Install App</button>
-        
-        <div class="info-section">
-          <div class="info-title">Finding Your Shopify Domain</div>
-          <ul class="info-list">
-            <li>Go to your Shopify admin panel</li>
-            <li>Check the URL: <span class="info-code">admin.shopify.com/store/YOUR-STORE-NAME</span></li>
-            <li>Your Shopify domain is: <span class="info-code">YOUR-STORE-NAME.myshopify.com</span></li>
-          </ul>
-        </div>
-      </form>
-    </div>
+    <p style="margin-top: 24px; font-size: 14px; color: #999;">
+      Already installed? <a href="https://admin.shopify.com/store">Open your Shopify admin</a>
+    </p>
   </div>
-  
-  <script>
-    async function resolveShopDomain(customDomain) {
-      const domainParts = customDomain.split('.');
-      if (domainParts.length < 2) {
-        return null;
-      }
-      
-      const storeName = domainParts[0];
-      const possibleShop = storeName + '.myshopify.com';
-      
-      try {
-        const response = await fetch(`/admin/api/resolve-shop?domain=${encodeURIComponent(customDomain)}&suggested=${encodeURIComponent(possibleShop)}`);
-        const data = await response.json();
-        
-        if (data.success && data.shop) {
-          return data.shop;
-        }
-      } catch (error) {
-        console.error('Error resolving shop domain:', error);
-      }
-      
-      return possibleShop;
-    }
-    
-    async function installApp(event) {
-      event.preventDefault();
-      const form = document.getElementById('installForm');
-      const input = document.getElementById('shop');
-      const button = document.getElementById('submitButton');
-      
-      let shop = input.value.trim();
-      
-      if (!shop) {
-        input.focus();
-        return;
-      }
-      
-      shop = shop.toLowerCase();
-      shop = shop.replace(/^https?:\/\//, '');
-      shop = shop.split('/')[0];
-      
-      if (!shop.includes('.myshopify.com')) {
-        const originalText = button.textContent;
-        button.textContent = 'RESOLVING DOMAIN...';
-        button.disabled = true;
-        input.disabled = true;
-        
-        try {
-          const resolvedShop = await resolveShopDomain(shop);
-          
-          if (resolvedShop) {
-            const message = `We detected a custom domain: ${shop}\n\nWe'll use: ${resolvedShop}\n\nIf this is incorrect, click Cancel and enter your Shopify domain manually.`;
-            
-            const confirmed = confirm(message);
-            if (!confirmed) {
-              button.textContent = originalText;
-              button.disabled = false;
-              input.disabled = false;
-              input.focus();
-              return;
-            }
-            
-            shop = resolvedShop;
-          } else {
-            button.textContent = originalText;
-            button.disabled = false;
-            input.disabled = false;
-            alert(`Unable to resolve "${shop}". Please enter your Shopify domain (e.g., your-store.myshopify.com) directly.`);
-            input.focus();
-            return;
-          }
-        } catch (error) {
-          console.error('Error resolving domain:', error);
-          button.textContent = originalText;
-          button.disabled = false;
-          input.disabled = false;
-          alert('Error resolving domain. Please enter your Shopify domain directly.');
-          input.focus();
-          return;
-        } finally {
-          button.textContent = originalText;
-          button.disabled = false;
-          input.disabled = false;
-        }
-      }
-      
-      if (!shop.endsWith('.myshopify.com')) {
-        alert('Shop domain must end with .myshopify.com');
-        input.focus();
-        return;
-      }
-      
-      button.textContent = 'INSTALLING...';
-      button.disabled = true;
-      input.disabled = true;
-      
-      window.location.href = `/auth/install?shop=${encodeURIComponent(shop)}`;
-    }
-  </script>
 </body>
 </html>
