@@ -339,6 +339,31 @@ router.get('/callback', async (req, res) => {
           scopes: session.scope || config.shopify.scopes,
         });
         console.log('[Auth] ✅ Shop saved to Supabase:', normalizedShop);
+        
+        // CRITICAL: Verify the shop was saved before redirecting
+        // This ensures /app route can find the session immediately
+        const { getShop } = require('../services/shopRepo');
+        let verifyAttempts = 0;
+        const maxVerifyAttempts = 5;
+        let shopVerified = false;
+        
+        while (verifyAttempts < maxVerifyAttempts && !shopVerified) {
+          const savedShop = await getShop(normalizedShop);
+          if (savedShop && savedShop.access_token) {
+            shopVerified = true;
+            console.log(`[Auth] ✅ Verified shop saved in Supabase (attempt ${verifyAttempts + 1})`);
+          } else {
+            verifyAttempts++;
+            if (verifyAttempts < maxVerifyAttempts) {
+              console.log(`[Auth] ⏳ Shop not yet available, waiting 200ms (attempt ${verifyAttempts})...`);
+              await new Promise(resolve => setTimeout(resolve, 200));
+            }
+          }
+        }
+        
+        if (!shopVerified) {
+          console.warn('[Auth] ⚠️ Shop saved but not immediately verifiable - proceeding anyway');
+        }
       } catch (dbError) {
         console.error('[Auth] ❌ Failed to save shop to Supabase:', dbError.message);
         // Fallback to in-memory storage if Supabase not configured

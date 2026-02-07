@@ -1510,7 +1510,7 @@
         }
         
         if (!shop) {
-          // Show loading state instead of redirecting immediately
+          // Show loading state
           if (appContent) {
             appContent.innerHTML = `
               <div class="flex items-center justify-center py-20">
@@ -1527,7 +1527,15 @@
             if (shop) {
               loadAppStatus();
             } else {
-              window.location.href = '/';
+              // No shop detected - this shouldn't happen for App Store apps
+              // But handle gracefully
+              if (appContent) {
+                appContent.innerHTML = `
+                  <div class="max-w-2xl mx-auto py-20 text-center">
+                    <p class="text-slate-500 dark:text-slate-400">Unable to detect store. Please install the app from the Shopify App Store.</p>
+                  </div>
+                `;
+              }
             }
           }, 1000);
           return;
@@ -1536,37 +1544,11 @@
         // Persist shop for navigation
         sessionStorage.setItem('shopDomain', shop);
         
-        const authResponse = await fetch(`/auth/check?shop=${encodeURIComponent(shop)}`);
-        const authData = await authResponse.json();
-        
-        // CRITICAL: /app is DASHBOARD ONLY for authenticated users
-        // If not authenticated, server-side route will redirect to OAuth
-        // This view should NEVER show an install form (App Store apps don't use manual install)
-        if (!authData.authenticated) {
-          // This shouldn't happen - server should redirect to OAuth before rendering
-          // But handle gracefully just in case
-          console.warn('[App] Warning: Reached /app without authentication - server should have redirected');
-          if (appContent) {
-            appContent.innerHTML = `
-              <div class="max-w-3xl mx-auto text-center py-12">
-                <div class="inline-flex items-center justify-center w-16 h-16 bg-slate-100 dark:bg-slate-800 rounded-xl mb-4">
-                  <span class="material-icons-outlined text-3xl text-slate-400">hourglass_empty</span>
-                </div>
-                <h2 class="text-xl font-semibold text-slate-900 dark:text-white mb-2">Redirecting...</h2>
-                <p class="text-sm text-slate-500 dark:text-slate-400">Please wait while we authenticate your store.</p>
-              </div>
-            `;
-          }
-          
-          // Redirect to OAuth if shop is available
-          if (shop) {
-            setTimeout(() => {
-              window.location.href = `/auth/install?shop=${encodeURIComponent(shop)}`;
-            }, 1000);
-          }
-          
-          return;
-        }
+        // CRITICAL: Server-side route already verified authentication BEFORE rendering this page
+        // If we reach here, the user IS authenticated (server would have redirected to OAuth otherwise)
+        // Trust the server-side check - don't check again client-side
+        // This prevents race conditions and ensures smooth App Store flow
+        // Just load the dashboard directly
         
         // Load everything in parallel for faster loading
         const [health] = await Promise.all([

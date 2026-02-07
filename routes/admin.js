@@ -235,8 +235,27 @@ router.get('/app', async (req, res) => {
     console.log(`[App] Rendering embedded app dashboard for shop: ${shop}`);
     
     // Check if shop is authenticated (from Supabase - persists across devices)
-    const session = await shopifyClient.getSession(shop);
-    const isAuthenticated = session && session.accessToken;
+    // Add retry mechanism to handle race condition after OAuth callback
+    // Sometimes Supabase write hasn't propagated yet when /app loads immediately after redirect
+    let session = null;
+    let isAuthenticated = false;
+    const maxRetries = 3;
+    const retryDelay = 500; // 500ms between retries
+    
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      session = await shopifyClient.getSession(shop);
+      isAuthenticated = session && session.accessToken;
+      
+      if (isAuthenticated) {
+        console.log(`[App] Shop authenticated on attempt ${attempt}`);
+        break;
+      }
+      
+      if (attempt < maxRetries) {
+        console.log(`[App] Shop not authenticated on attempt ${attempt}, retrying in ${retryDelay}ms...`);
+        await new Promise(resolve => setTimeout(resolve, retryDelay));
+      }
+    }
     
     console.log(`[App] Shop authenticated: ${isAuthenticated}`);
     console.log(`[App] API key present: ${!!config.shopify.apiKey}`);
@@ -244,7 +263,7 @@ router.get('/app', async (req, res) => {
     if (!isAuthenticated) {
       // Shop not authenticated - redirect to OAuth (NOT install form)
       // This is the correct flow: Dashboard → OAuth → Dashboard
-      console.log(`[App] Shop ${shop} not authenticated, redirecting to OAuth`);
+      console.log(`[App] Shop ${shop} not authenticated after ${maxRetries} attempts, redirecting to OAuth`);
       const host = req.query.host;
       let oauthUrl = `/auth/install?shop=${encodeURIComponent(shop)}`;
       if (host) {
