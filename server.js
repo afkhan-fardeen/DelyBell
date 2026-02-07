@@ -37,34 +37,36 @@ app.use((req, res, next) => {
 // app.use(helmet({ frameguard: false })); // REQUIRED - Shopify uses CSP, not X-Frame-Options
 // The CSP middleware above will still work correctly
 
-// 🚨 CRITICAL: Webhook routes MUST be defined FIRST, before any body parsers
-// This ensures the raw body is preserved exactly as Shopify sends it
-// Webhook routes will use express.raw() inline for HMAC verification
+// 🚨 CRITICAL: Webhook routes MUST be registered BEFORE any body parsers
+// Shopify requires the raw request body to be untouched for HMAC verification
+// Order is: Webhooks → Body Parsers → Other Routes
 
-// Serve static files (public install page, legal pages, etc.)
-app.use(express.static(path.join(__dirname, 'public')));
-
-// Request logging
+// Request logging (non-body-modifying middleware is OK before webhooks)
 app.use((req, res, next) => {
   console.log(`${new Date().toISOString()} - ${req.method} ${req.path}`);
   next();
 });
 
-// Health check endpoint
+// Health check endpoint (GET request, no body parsing needed)
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
-// OAuth routes
-app.use('/auth', authRoutes);
-
-// 🚨 WEBHOOK ROUTES FIRST - before any body parsers
-// Webhook routes handle their own raw body parsing inline
+// 🚨 WEBHOOK ROUTES FIRST - MUST be before express.json() and express.urlencoded()
+// Webhook routes use express.raw() inline for HMAC verification
+// This ensures req.body remains a Buffer for HMAC calculation
 app.use('/webhooks', webhookRoutes);
 
-// ✅ NOW apply body parsers for all other routes
+// ✅ NOW apply body parsers for all other routes (AFTER webhooks)
+// These will NOT affect /webhooks/* routes since they're already handled above
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// Serve static files (public install page, legal pages, etc.)
+app.use(express.static(path.join(__dirname, 'public')));
+
+// OAuth routes
+app.use('/auth', authRoutes);
 
 // Admin routes (embedded app interface)
 app.use('/', adminRoutes);

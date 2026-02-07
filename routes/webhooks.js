@@ -90,6 +90,20 @@ function parseWebhookBody(req) {
  */
 function verifyWebhookHMAC(req, res, next) {
   try {
+    // 🔍 DIAGNOSTIC: Verify body type is Buffer (Shopify compliance check)
+    const isBuffer = Buffer.isBuffer(req.body);
+    const bodyType = typeof req.body;
+    console.log('[Webhook] HMAC BODY TYPE:', `isBuffer=${isBuffer}`, `typeof=${bodyType}`);
+    
+    // CRITICAL: Body MUST be a Buffer for HMAC verification
+    // If this fails, webhook routes are registered AFTER body parsers (WRONG ORDER)
+    if (!isBuffer) {
+      console.error('[Webhook] ❌ CRITICAL: req.body is NOT a Buffer!');
+      console.error('[Webhook] ❌ This means body parsers ran before webhook routes');
+      console.error('[Webhook] ❌ Fix: Move app.use("/webhooks", ...) BEFORE app.use(express.json())');
+      return res.status(500).send('Webhook verification misconfigured - body not raw');
+    }
+    
     const hmac = req.headers['x-shopify-hmac-sha256'];
     
     // STRICT: Always require HMAC (Shopify App Store requirement)
