@@ -475,11 +475,23 @@ router.get('/callback', async (req, res) => {
 });
 
 /**
- * OAuth Success Page
- * Shows success message after installation
+ * OAuth Success Page (Legacy - Not Used in App Store Flow)
+ * 
+ * ⚠️ NOTE: This route is kept for backward compatibility but is NOT used
+ * in the Shopify App Store installation flow. The OAuth callback always
+ * redirects to /app, never to /auth/success.
+ * 
+ * If you see this page, it means the OAuth callback failed to redirect properly.
  */
 router.get('/success', (req, res) => {
-  res.send('🎉 App installed successfully!');
+  // Try to redirect to /app if shop is available
+  const shop = req.query.shop || req.headers['x-shopify-shop-domain'];
+  if (shop) {
+    console.log('[Auth] /success accessed with shop, redirecting to /app');
+    return res.redirect(`/app?shop=${encodeURIComponent(shop)}`);
+  }
+  
+  res.send('🎉 App installed successfully! Please access the app from your Shopify admin.');
 });
 
 /**

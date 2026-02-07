@@ -69,12 +69,13 @@ app.use('/auth', authRoutes);
 // This ensures /app and / routes are handled by admin routes, not static files
 app.use('/', adminRoutes);
 
-// Serve static files LAST (only for assets, not routes)
-// This ensures admin routes take precedence over static files
-app.use(express.static(path.join(__dirname, 'public')));
-
-// API routes
+// API routes (BEFORE static files to prevent static fallback hijacking /api/*)
+// This prevents "HTML instead of JSON" bugs at scale
 app.use('/api', apiRoutes);
+
+// Serve static files LAST (only for assets, not routes)
+// This ensures admin routes and API routes take precedence over static files
+app.use(express.static(path.join(__dirname, 'public')));
 
 
 // Root endpoint - Handled by admin routes

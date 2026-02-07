@@ -9,9 +9,59 @@ const config = require('../config');
  * Purpose: Inform users to install from Shopify App Store
  * GET /
  */
-router.get('/', (req, res) => {
-  // Simple landing page - no install form
-  // Users should install from Shopify App Store
+/**
+ * Root Route - CRITICAL FOR SHOPIFY APP STORE REVIEW
+ * 
+ * ✅ REQUIRED RULE (Non-Negotiable):
+ * - If shop exists (query param or header) → ALWAYS redirect to /app
+ * - If no shop context → Show info page ONLY
+ * 
+ * This guarantees:
+ * - Shopify iframe NEVER lands on info page after install
+ * - Reviewers NEVER see install instructions post-install
+ * - App Store flow is clean and compliant
+ */
+router.get('/', async (req, res) => {
+  // Extract shop from multiple sources (for embedded apps)
+  let shop = req.query.shop;
+  
+  // Try Shopify headers (for embedded apps)
+  if (!shop) {
+    shop = req.headers['x-shopify-shop-domain'] || 
+           req.headers['x-shopify-shop'] ||
+           req.headers['shop'];
+  }
+  
+  // Try referer header for shop domain pattern
+  if (!shop && req.headers.referer) {
+    const refererMatch = req.headers.referer.match(/admin\.shopify\.com\/store\/([^\/\?]+)/);
+    if (refererMatch) {
+      const storeName = refererMatch[1];
+      shop = storeName + '.myshopify.com';
+    }
+  }
+  
+  // CRITICAL: If shop exists → ALWAYS redirect to embedded app
+  // This prevents Shopify iframe from landing on info page after install
+  if (shop && shop.includes('.myshopify.com')) {
+    const { normalizeShop } = require('../utils/normalizeShop');
+    try {
+      const normalizedShop = normalizeShop(shop);
+      const host = req.query.host;
+      let redirectUrl = `/app?shop=${encodeURIComponent(normalizedShop)}`;
+      if (host) {
+        redirectUrl += `&host=${encodeURIComponent(host)}`;
+      }
+      console.log(`[Root] Shop detected (${normalizedShop}), redirecting to /app`);
+      return res.redirect(redirectUrl);
+    } catch (error) {
+      console.error('[Root] Error normalizing shop:', error);
+      // Fall through to info page if normalization fails
+    }
+  }
+  
+  // Pure marketing / info page ONLY if no shop context
+  // This is for direct visits to the root URL (not from Shopify)
   res.send(`
     <!DOCTYPE html>
     <html lang="en">
@@ -144,152 +194,110 @@ router.get('/app/help-center', async (req, res) => {
   }
 });
 
+/**
+ * Embedded App Dashboard Route - THE ONLY ENTRY POINT AFTER INSTALL
+ * 
+ * ✅ REQUIRED CONTRACT (Authoritative):
+ * - If authenticated → render app.ejs (dashboard)
+ * - If NOT authenticated → redirect to /auth/install (OAuth flow)
+ * - NEVER render static HTML
+ * - NEVER render public/info page
+ * 
+ * This is the ONLY route that should be accessed after installation.
+ * Shopify will always load: /app?shop=...&host=...
+ */
 router.get('/app', async (req, res) => {
   try {
-    console.log(`[App] GET /app - Query params:`, req.query);
-    console.log(`[App] GET /app - Headers:`, {
-      referer: req.headers.referer,
-      'x-shopify-shop-domain': req.headers['x-shopify-shop-domain'],
-      'x-shopify-shop': req.headers['x-shopify-shop'],
-      host: req.headers.host,
-    });
-    
-    // Get shop from multiple sources (for embedded apps, Shopify passes it in headers)
-    let shop = req.query.shop;
-    
-    // If not in query, try Shopify headers (for embedded apps)
-    if (!shop) {
-      shop = req.headers['x-shopify-shop-domain'] || 
-             req.headers['x-shopify-shop'] ||
-             req.headers['shop'];
+    // Extract shop from multiple sources
+    const extractShop = (req) => {
+      let shop = req.query.shop;
       
-      console.log(`[App] Shop from headers: ${shop || 'not found'}`);
+      // Try Shopify headers (for embedded apps)
+      if (!shop) {
+        shop = req.headers['x-shopify-shop-domain'] || 
+               req.headers['x-shopify-shop'] ||
+               req.headers['shop'];
+      }
       
-      // Also check referer header for shop domain pattern
-      // Handles: admin.shopify.com/store/782cba-5a or admin.shopify.com/store/782cba-5a/
+      // Try referer header
       if (!shop && req.headers.referer) {
         const refererMatch = req.headers.referer.match(/admin\.shopify\.com\/store\/([^\/\?]+)/);
         if (refererMatch) {
-          const storeName = refererMatch[1];
-          shop = storeName + '.myshopify.com';
-          console.log(`[App] Extracted shop from referer: ${shop} (from store name: ${storeName})`);
+          shop = refererMatch[1] + '.myshopify.com';
         }
         
-        // Also try extracting from full Shopify admin URL pattern
-        // Handles: https://782cba-5a.myshopify.com/admin/apps/{API_KEY}/
+        // Also try full Shopify URL pattern
         if (!shop) {
           const shopifyUrlMatch = req.headers.referer.match(/https?:\/\/([^\.]+)\.myshopify\.com/);
           if (shopifyUrlMatch) {
             shop = shopifyUrlMatch[1] + '.myshopify.com';
-            console.log(`[App] Extracted shop from Shopify URL: ${shop}`);
+          }
+        }
+        
+        // Try extracting from query string in referer
+        if (!shop) {
+          const refererQueryMatch = req.headers.referer.match(/[?&]shop=([^&]+)/);
+          if (refererQueryMatch) {
+            shop = decodeURIComponent(refererQueryMatch[1]);
           }
         }
       }
       
-      // Also check if shop is in the URL path
-      if (!shop && req.url) {
-        const urlMatch = req.url.match(/[?&]shop=([^&]+)/);
-        if (urlMatch) {
-          shop = decodeURIComponent(urlMatch[1]);
-          console.log(`[App] Extracted shop from URL: ${shop}`);
-        }
-      }
-    }
-    
-    // Normalize shop domain
-    if (shop) {
-      const { normalizeShop } = require('../utils/normalizeShop');
-      shop = normalizeShop(shop);
-    }
-    
-    // CRITICAL: /app is DASHBOARD ONLY - requires authentication
-    // This is the correct flow for Shopify App Store apps
-    // No install form, no manual shop input - only authenticated dashboard
-    
-    if (!shop || !shop.includes('.myshopify.com')) {
-      // No shop parameter - this shouldn't happen for App Store apps
-      // Log detailed error for debugging
-      console.error('[App] ❌ No shop parameter found in /app route');
-      console.error('[App] Request URL:', req.url);
-      console.error('[App] Query params:', req.query);
-      console.error('[App] Headers:', {
-        referer: req.headers.referer,
-        host: req.headers.host,
-      });
-      
-      // If we have a referer, try to extract shop from it
-      if (req.headers.referer) {
-        const refererMatch = req.headers.referer.match(/[?&]shop=([^&]+)/);
-        if (refererMatch) {
-          shop = decodeURIComponent(refererMatch[1]);
-          console.log('[App] ✅ Extracted shop from referer:', shop);
+      // Normalize shop domain
+      if (shop && shop.includes('.myshopify.com')) {
+        const { normalizeShop } = require('../utils/normalizeShop');
+        try {
+          shop = normalizeShop(shop);
+        } catch (error) {
+          console.error('[App] Error normalizing shop:', error);
+          return null;
         }
       }
       
-      // If still no shop, show error
-      if (!shop || !shop.includes('.myshopify.com')) {
-        return res.status(400).send(`
-          <!DOCTYPE html>
-          <html>
-          <head>
-            <title>App Error</title>
-            <style>
-              body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; 
-                     max-width: 600px; margin: 50px auto; padding: 20px; text-align: center; }
-              .error { background: #fee; border: 1px solid #fcc; padding: 20px; border-radius: 8px; }
-              h1 { color: #d72c0d; }
-            </style>
-          </head>
-          <body>
-            <div class="error">
-              <h1>App Error</h1>
-              <p>Unable to detect shop domain. Please install the app from the Shopify App Store.</p>
-              <p style="margin-top: 16px; font-size: 12px; color: #666;">
-                If you just installed the app, please refresh the page or try accessing it from your Shopify admin.
-              </p>
-            </div>
-          </body>
-          </html>
-        `);
-      }
+      return shop && shop.includes('.myshopify.com') ? shop : null;
+    };
+    
+    const shop = extractShop(req);
+    
+    // CRITICAL: Shop is required - return error if missing
+    if (!shop) {
+      console.error('[App] ❌ Missing shop parameter');
+      return res.status(400).send('Missing shop parameter. Please install the app from the Shopify App Store.');
     }
     
-    console.log(`[App] Rendering embedded app dashboard for shop: ${shop}`);
+    console.log(`[App] Loading dashboard for shop: ${shop}`);
     
-    // Check if shop is authenticated (from Supabase - persists across devices)
-    // Add retry mechanism to handle race condition after OAuth callback
-    // Sometimes Supabase write hasn't propagated yet when /app loads immediately after redirect
+    // Check authentication with retry mechanism (handles Supabase write propagation)
+    const { getShop } = require('../services/shopRepo');
     let session = null;
     let isAuthenticated = false;
-    const maxRetries = 5; // Increased retries for better reliability
-    const retryDelay = 800; // Increased delay to allow Supabase to commit
-    
-    console.log(`[App] Checking authentication for shop: ${shop}`);
+    const maxRetries = 5;
+    const retryDelay = 800;
     
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
-      session = await shopifyClient.getSession(shop);
-      isAuthenticated = session && session.accessToken;
-      
-      if (isAuthenticated) {
+      const shopData = await getShop(shop);
+      if (shopData && shopData.access_token) {
+        // Convert to session-like object for compatibility
+        session = {
+          id: `offline_${shop}`,
+          shop: shop,
+          accessToken: shopData.access_token,
+          scope: shopData.scopes,
+        };
+        isAuthenticated = true;
         console.log(`[App] ✅ Shop authenticated on attempt ${attempt}`);
         break;
       }
       
       if (attempt < maxRetries) {
-        console.log(`[App] ⏳ Shop not authenticated on attempt ${attempt}/${maxRetries}, retrying in ${retryDelay}ms...`);
+        console.log(`[App] ⏳ Shop not authenticated on attempt ${attempt}/${maxRetries}, retrying...`);
         await new Promise(resolve => setTimeout(resolve, retryDelay));
-      } else {
-        console.log(`[App] ❌ Shop not authenticated after ${maxRetries} attempts`);
       }
     }
     
-    console.log(`[App] Shop authenticated: ${isAuthenticated}`);
-    console.log(`[App] API key present: ${!!config.shopify.apiKey}`);
-    
+    // CRITICAL: If NOT authenticated → redirect to OAuth (NEVER show install form)
     if (!isAuthenticated) {
-      // Shop not authenticated - redirect to OAuth (NOT install form)
-      // This is the correct flow: Dashboard → OAuth → Dashboard
-      console.log(`[App] Shop ${shop} not authenticated after ${maxRetries} attempts, redirecting to OAuth`);
+      console.log(`[App] Shop ${shop} not authenticated, redirecting to OAuth`);
       const host = req.query.host;
       let oauthUrl = `/auth/install?shop=${encodeURIComponent(shop)}`;
       if (host) {
@@ -298,17 +306,16 @@ router.get('/app', async (req, res) => {
       return res.redirect(oauthUrl);
     }
     
-    // Render EJS template with API key injected
+    // ✅ AUTHENTICATED → Render dashboard (NEVER static HTML or public page)
     res.render('app', {
       SHOPIFY_API_KEY: config.shopify.apiKey || '',
       shop: shop,
-      isAuthenticated: isAuthenticated,
+      isAuthenticated: true,
     });
     
-    console.log(`[App] ✅ Successfully rendered app template for shop: ${shop}`);
+    console.log(`[App] ✅ Dashboard rendered for shop: ${shop}`);
   } catch (error) {
-    console.error('[App] ❌ Error rendering app:', error);
-    console.error('[App] Error stack:', error.stack);
+    console.error('[App] ❌ Error:', error);
     res.status(500).send(`Error loading app: ${error.message}`);
   }
 });

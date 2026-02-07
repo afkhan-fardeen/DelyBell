@@ -53,12 +53,23 @@ Delybell Order Sync is a production-ready Shopify embedded app that automaticall
 ### Application Flow
 
 ```
-1. Store Owner installs app → OAuth flow → Session stored in Supabase
+1. Store Owner installs app from Shopify App Store → OAuth flow → Session stored in Supabase
+   - OAuth callback verifies shop is saved (8 retries, 300ms delay)
+   - Redirects to /app with absolute URL (includes shop and host parameters)
 2. New order created → Webhook received → Saved as "pending_sync"
-3. Store Owner opens app → Views orders → Selects orders → Syncs manually
-4. Order synced → Status updated to "processed" → Delybell Order ID saved
-5. Order fulfilled/completed → Status updated to "completed"
+3. Store Owner opens app → /app route checks authentication (5 retries, 800ms delay)
+   - If authenticated → Dashboard loads
+   - If not authenticated → Redirects to /auth/install (never shows install form)
+4. Store Owner views orders → Selects orders → Syncs manually
+5. Order synced → Status updated to "processed" → Delybell Order ID saved
+6. Order fulfilled/completed → Status updated to "completed"
 ```
+
+**Key Points:**
+- No public install form - app must be installed from Shopify App Store
+- OAuth callback always redirects to `/app` (never to `/` or `/auth/success`)
+- Authentication uses retry mechanisms to handle Supabase write propagation delays
+- `/app` route trusts server-side authentication - no redundant client-side checks
 
 ### Middleware Order (Critical for Webhooks)
 
@@ -69,11 +80,13 @@ Delybell Order Sync is a production-ready Shopify embedded app that automaticall
 4. Health Check
 5. 🚨 WEBHOOK ROUTES (BEFORE body parsers)
 6. Body Parsers (express.json, express.urlencoded)
-7. Static Files
-8. OAuth Routes
-9. Admin Routes
+7. OAuth Routes
+8. Admin Routes (BEFORE static files - ensures /app and / routes are handled)
+9. Static Files (served last - only for assets, not routes)
 10. API Routes
 ```
+
+**Important:** Admin routes must come before static files to ensure `/app` and `/` routes are handled by Express routes, not static files. This prevents the public install page from being served when accessing the embedded app.
 
 ---
 
@@ -114,7 +127,7 @@ DelyBell/
 │   └── terms.ejs                # Terms of service
 │
 ├── public/                      # Static Files
-│   ├── index.html              # Public install page
+│   ├── index.html              # Public info page (no install form)
 │   ├── privacy-policy.html     # Privacy policy (static)
 │   └── terms-of-service.html   # Terms of service (static)
 │
@@ -145,20 +158,30 @@ DelyBell/
 ### Public Routes
 
 #### Landing & Installation
-- `GET /` - Public install page (static HTML)
+- `GET /` - Public info page (no install form - directs users to Shopify App Store)
 - `GET /privacy` - Privacy policy page
 - `GET /terms` - Terms of service page
+
+**Note:** The app does NOT have a public install form. Users must install from the Shopify App Store. The `/` route serves a simple informational page directing users to the App Store.
 
 #### OAuth & Authentication
 - `GET /auth/install?shop=store.myshopify.com` - Start OAuth flow
 - `GET /auth/callback` - OAuth callback handler
+  - **Session Verification:** Verifies shop is saved to Supabase (8 retries, 300ms delay) before redirecting
+  - **Redirect:** Always redirects to `/app` with absolute URL (includes shop and host parameters)
+  - **Never redirects to `/` or `/auth/success`** - always goes to embedded dashboard
 - `GET /auth/check?shop=store.myshopify.com` - Check authentication status
-- `GET /auth/success` - OAuth success page
+- `GET /auth/success` - OAuth success page (legacy, not used in App Store flow)
 
 ### Embedded App Routes (Shopify Admin)
 
 #### Main App
-- `GET /app?shop=store.myshopify.com` - Main embedded app UI
+- `GET /app?shop=store.myshopify.com&host=...` - Main embedded app UI
+  - **Authentication:** Requires authenticated session (checks Supabase)
+  - **Retry Mechanism:** Retries authentication up to 5 times with 800ms delays to handle race conditions after OAuth
+  - **Shop Detection:** Extracts shop from query params, headers, or referer URL
+  - **Redirect Behavior:** If not authenticated, redirects to `/auth/install` (never shows install form)
+  - **Client-Side:** Trusts server-side authentication check - no redundant client-side checks
 - `GET /app/help-center?shop=store.myshopify.com` - Help center page
 
 #### App API (Store Owner)
@@ -286,6 +309,7 @@ DelyBell/
   - Toast notifications
 
 **Key Functions:**
+- `loadAppStatus()` - Main initialization function (trusts server-side authentication)
 - `loadOrders()` - Load orders with filters
 - `loadConnectionHealth()` - Load connection status
 - `syncSingleOrder()` - Sync individual order
@@ -293,6 +317,12 @@ DelyBell/
 - `retryOrder()` - Retry failed order
 - `viewOrderDetails()` - Show order details modal
 - `switchTab()` - Switch between order tabs
+
+**Authentication Flow:**
+- Server-side route (`/app`) verifies authentication before rendering
+- Client-side code trusts server check - no redundant `/auth/check` calls
+- If authentication fails, server redirects to `/auth/install` (OAuth flow)
+- Prevents race conditions and ensures smooth App Store installation experience
 
 ### 2. `views/admin-dashboard.ejs` - Admin Operations Dashboard
 
@@ -359,15 +389,17 @@ DelyBell/
 - Simple password check
 - Redirect to admin dashboard
 
-### 5. `public/index.html` - Public Install Page
+### 5. `public/index.html` - Public Info Page
 
-**Purpose:** Public landing page for app installation
+**Purpose:** Simple informational landing page (no install form)
 
 **Features:**
-- Shop domain input
-- Install button
-- Instructions for finding Shopify domain
-- Links to privacy policy and terms
+- **No Install Form** - App must be installed from Shopify App Store
+- Instructions on how to install from App Store
+- Link to Shopify admin for already-installed users
+- Clean, minimal design matching app branding
+
+**Note:** This page is served when users visit the root URL directly. It does NOT contain an install form. The app is designed exclusively for Shopify App Store installation flow.
 
 ### 6. `views/privacy.ejs` & `views/terms.ejs` - Legal Pages
 
@@ -947,10 +979,16 @@ https://shopify.dev/docs/api
 
 ### Common Issues
 
-#### OAuth Not Working
+#### OAuth Not Working / Installation Issues
 - Verify `SHOPIFY_API_KEY` and `SHOPIFY_API_SECRET` are correct
 - Check `SHOPIFY_HOST` matches deployment URL (without https://)
 - Ensure Shopify Partner Dashboard URLs match app URL
+- **After Installation:** If you see the info page instead of dashboard:
+  - The app uses retry mechanisms (5 retries, 800ms delay) to handle race conditions
+  - Check server logs for authentication attempts
+  - Verify shop was saved to Supabase (check `shops` table)
+  - Try refreshing the page - session should be available after a few seconds
+  - OAuth callback verifies shop is saved (8 retries, 300ms delay) before redirecting
 
 #### Webhooks Not Receiving Orders
 - Verify webhook URLs are accessible
@@ -968,6 +1006,11 @@ https://shopify.dev/docs/api
 - Verify order is not already fulfilled/completed
 - Check database for order logs
 - Verify shop is authenticated
+- **Authentication Issues:** The `/app` route retries authentication up to 5 times. If authentication fails:
+  - Check Supabase `shops` table for shop entry
+  - Verify `access_token` is present and valid
+  - Check server logs for authentication retry attempts
+  - Ensure OAuth callback completed successfully (check logs for "✅ Verified shop saved")
 
 ---
 
@@ -986,5 +1029,16 @@ For issues or questions:
 
 ---
 
-**Last Updated:** February 2026  
-**Version:** 1.0.0
+**Last Updated:** February 3, 2026  
+**Version:** 1.0.1
+
+### Recent Changes (v1.0.1)
+
+- **Removed Public Install Form:** `/` route now shows info page directing users to Shopify App Store
+- **OAuth Callback Improvements:**
+  - Added session verification retry mechanism (8 retries, 300ms delay)
+  - Changed redirect to absolute URL for better Shopify embedded app compatibility
+  - Always redirects to `/app` (never to `/` or `/auth/success`)
+- **Authentication Retry Mechanism:** `/app` route retries authentication up to 5 times (800ms delay) to handle Supabase write propagation
+- **Middleware Reordering:** Admin routes now come before static files to ensure proper route handling
+- **Client-Side Simplification:** Removed redundant client-side authentication checks - trusts server-side verification
