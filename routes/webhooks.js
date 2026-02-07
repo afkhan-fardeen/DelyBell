@@ -735,9 +735,10 @@ router.post('/app/uninstalled', express.raw({ type: 'application/json' }), verif
  * - Response must be EXACTLY: res.status(200).send('OK');
  * - MUST be absolute no-op for background checks
  * 
- * ⚠️ WHY type: '*/*' MATTERS:
+ * ⚠️ WHY WILDCARD TYPE MATTERS:
  * - Shopify's background crawler sometimes sends Content-Type: application/json; charset=utf-8
  * - type: 'application/json' can silently skip raw parsing, causing HMAC failure
+ * - Using wildcard type ensures all Content-Type variations are handled correctly
  * - This is the #1 hidden reason for "passes → fails later"
  */
 router.post(
@@ -763,9 +764,10 @@ router.post(
  * - MUST be absolute no-op for background checks
  * - NO respondQuickly() pattern - respond after verification
  * 
- * ⚠️ WHY type: '*/*' MATTERS:
+ * ⚠️ WHY WILDCARD TYPE MATTERS:
  * - Shopify's background crawler sometimes sends Content-Type: application/json; charset=utf-8
  * - type: 'application/json' can silently skip raw parsing, causing HMAC failure
+ * - Using wildcard type ensures all Content-Type variations are handled correctly
  * - This is the #1 hidden reason for "passes → fails later"
  * 
  * NOTE: Actual data deletion can be handled separately if needed, but for Shopify
@@ -796,9 +798,10 @@ router.post(
  * 
  * Note: This is typically called 48 hours after app uninstall
  * 
- * ⚠️ WHY type: '*/*' MATTERS:
+ * ⚠️ WHY WILDCARD TYPE MATTERS:
  * - Shopify's background crawler sometimes sends Content-Type: application/json; charset=utf-8
  * - type: 'application/json' can silently skip raw parsing, causing HMAC failure
+ * - Using wildcard type ensures all Content-Type variations are handled correctly
  * - This is the #1 hidden reason for "passes → fails later"
  * 
  * NOTE: Actual data deletion can be handled separately if needed, but for Shopify
