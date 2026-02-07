@@ -208,28 +208,50 @@ router.get('/app', async (req, res) => {
     
     if (!shop || !shop.includes('.myshopify.com')) {
       // No shop parameter - this shouldn't happen for App Store apps
-      // But handle gracefully by showing error
-      console.error('[App] ❌ No shop parameter found - this should not happen for App Store apps');
-      return res.status(400).send(`
-        <!DOCTYPE html>
-        <html>
-        <head>
-          <title>App Error</title>
-          <style>
-            body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; 
-                   max-width: 600px; margin: 50px auto; padding: 20px; text-align: center; }
-            .error { background: #fee; border: 1px solid #fcc; padding: 20px; border-radius: 8px; }
-            h1 { color: #d72c0d; }
-          </style>
-        </head>
-        <body>
-          <div class="error">
-            <h1>App Error</h1>
-            <p>Unable to detect shop domain. Please install the app from the Shopify App Store.</p>
-          </div>
-        </body>
-        </html>
-      `);
+      // Log detailed error for debugging
+      console.error('[App] ❌ No shop parameter found in /app route');
+      console.error('[App] Request URL:', req.url);
+      console.error('[App] Query params:', req.query);
+      console.error('[App] Headers:', {
+        referer: req.headers.referer,
+        host: req.headers.host,
+      });
+      
+      // If we have a referer, try to extract shop from it
+      if (req.headers.referer) {
+        const refererMatch = req.headers.referer.match(/[?&]shop=([^&]+)/);
+        if (refererMatch) {
+          shop = decodeURIComponent(refererMatch[1]);
+          console.log('[App] ✅ Extracted shop from referer:', shop);
+        }
+      }
+      
+      // If still no shop, show error
+      if (!shop || !shop.includes('.myshopify.com')) {
+        return res.status(400).send(`
+          <!DOCTYPE html>
+          <html>
+          <head>
+            <title>App Error</title>
+            <style>
+              body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; 
+                     max-width: 600px; margin: 50px auto; padding: 20px; text-align: center; }
+              .error { background: #fee; border: 1px solid #fcc; padding: 20px; border-radius: 8px; }
+              h1 { color: #d72c0d; }
+            </style>
+          </head>
+          <body>
+            <div class="error">
+              <h1>App Error</h1>
+              <p>Unable to detect shop domain. Please install the app from the Shopify App Store.</p>
+              <p style="margin-top: 16px; font-size: 12px; color: #666;">
+                If you just installed the app, please refresh the page or try accessing it from your Shopify admin.
+              </p>
+            </div>
+          </body>
+          </html>
+        `);
+      }
     }
     
     console.log(`[App] Rendering embedded app dashboard for shop: ${shop}`);
@@ -239,21 +261,25 @@ router.get('/app', async (req, res) => {
     // Sometimes Supabase write hasn't propagated yet when /app loads immediately after redirect
     let session = null;
     let isAuthenticated = false;
-    const maxRetries = 3;
-    const retryDelay = 500; // 500ms between retries
+    const maxRetries = 5; // Increased retries for better reliability
+    const retryDelay = 800; // Increased delay to allow Supabase to commit
+    
+    console.log(`[App] Checking authentication for shop: ${shop}`);
     
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       session = await shopifyClient.getSession(shop);
       isAuthenticated = session && session.accessToken;
       
       if (isAuthenticated) {
-        console.log(`[App] Shop authenticated on attempt ${attempt}`);
+        console.log(`[App] ✅ Shop authenticated on attempt ${attempt}`);
         break;
       }
       
       if (attempt < maxRetries) {
-        console.log(`[App] Shop not authenticated on attempt ${attempt}, retrying in ${retryDelay}ms...`);
+        console.log(`[App] ⏳ Shop not authenticated on attempt ${attempt}/${maxRetries}, retrying in ${retryDelay}ms...`);
         await new Promise(resolve => setTimeout(resolve, retryDelay));
+      } else {
+        console.log(`[App] ❌ Shop not authenticated after ${maxRetries} attempts`);
       }
     }
     

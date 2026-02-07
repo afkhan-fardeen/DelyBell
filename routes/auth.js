@@ -344,25 +344,29 @@ router.get('/callback', async (req, res) => {
         // This ensures /app route can find the session immediately
         const { getShop } = require('../services/shopRepo');
         let verifyAttempts = 0;
-        const maxVerifyAttempts = 5;
+        const maxVerifyAttempts = 8; // Increased attempts
+        const verifyDelay = 300; // Increased delay
         let shopVerified = false;
+        
+        console.log('[Auth] Verifying shop was saved to Supabase...');
         
         while (verifyAttempts < maxVerifyAttempts && !shopVerified) {
           const savedShop = await getShop(normalizedShop);
           if (savedShop && savedShop.access_token) {
             shopVerified = true;
-            console.log(`[Auth] ✅ Verified shop saved in Supabase (attempt ${verifyAttempts + 1})`);
+            console.log(`[Auth] ✅ Verified shop saved in Supabase (attempt ${verifyAttempts + 1}/${maxVerifyAttempts})`);
           } else {
             verifyAttempts++;
             if (verifyAttempts < maxVerifyAttempts) {
-              console.log(`[Auth] ⏳ Shop not yet available, waiting 200ms (attempt ${verifyAttempts})...`);
-              await new Promise(resolve => setTimeout(resolve, 200));
+              console.log(`[Auth] ⏳ Shop not yet available in Supabase, waiting ${verifyDelay}ms (attempt ${verifyAttempts}/${maxVerifyAttempts})...`);
+              await new Promise(resolve => setTimeout(resolve, verifyDelay));
             }
           }
         }
         
         if (!shopVerified) {
-          console.warn('[Auth] ⚠️ Shop saved but not immediately verifiable - proceeding anyway');
+          console.warn('[Auth] ⚠️ Shop saved but not immediately verifiable after all attempts - proceeding anyway');
+          console.warn('[Auth] The /app route will retry authentication automatically');
         }
       } catch (dbError) {
         console.error('[Auth] ❌ Failed to save shop to Supabase:', dbError.message);
@@ -428,34 +432,42 @@ router.get('/callback', async (req, res) => {
     }
 
     // Redirect to main app (embedded in Shopify admin)
-    // Use normalized shop domain
-    const shopDomain = session.shop || shopParam;
-    let redirectShop = shopDomain;
+    // CRITICAL: Always use shopParam as fallback if session.shop is missing
+    const shopDomain = session?.shop || shopParam;
     
-    // Normalize shop domain for redirect ONCE using utility
-    if (redirectShop) {
-      redirectShop = normalizeShop(redirectShop);
+    if (!shopDomain) {
+      console.error('[Auth] ❌ CRITICAL: No shop domain available for redirect!');
+      console.error('[Auth] Session shop:', session?.shop);
+      console.error('[Auth] Shop param:', shopParam);
+      return res.status(500).send('OAuth callback error: Missing shop domain');
     }
+    
+    // Normalize shop domain for redirect
+    const redirectShop = normalizeShop(shopDomain);
     
     // Get host parameter from query (Shopify passes this for embedded apps)
     const host = req.query.host;
     
-    console.log('[Auth] Redirecting to app with shop:', redirectShop);
-    console.log('[Auth] Host parameter:', host);
+    console.log('[Auth] ✅ Redirecting to app dashboard');
+    console.log('[Auth] Shop:', redirectShop);
+    console.log('[Auth] Host parameter:', host || 'not provided');
     
-    if (redirectShop) {
-      // Redirect to /app (embedded admin UI) with shop and host parameters
-      // This is the correct flow for Shopify App Store apps
-      let redirectUrl = `/app?shop=${encodeURIComponent(redirectShop)}`;
-      if (host) {
-        redirectUrl += `&host=${encodeURIComponent(host)}`;
-      }
-      console.log(`[Auth] Redirect URL: ${redirectUrl}`);
-      res.redirect(redirectUrl);
-    } else {
-      console.log('[Auth] No shop for redirect, going to success page');
-      res.redirect('/auth/success');
+    // CRITICAL: Always redirect to /app with shop parameter
+    // This is the embedded dashboard route - never redirect to / or /auth/success
+    // Use absolute URL for embedded apps to ensure proper redirect
+    const protocol = req.protocol || 'https';
+    const baseUrl = config.shopify.hostName 
+      ? (config.shopify.hostName.includes('localhost') ? 'http://' : 'https://') + config.shopify.hostName
+      : `${protocol}://${req.get('host')}`;
+    
+    let redirectUrl = `${baseUrl}/app?shop=${encodeURIComponent(redirectShop)}`;
+    if (host) {
+      redirectUrl += `&host=${encodeURIComponent(host)}`;
     }
+    
+    console.log(`[Auth] Final redirect URL: ${redirectUrl}`);
+    console.log(`[Auth] Base URL: ${baseUrl}`);
+    res.redirect(redirectUrl);
   } catch (error) {
     console.error('OAuth callback failed:', error);
     res.status(500).send(`OAuth callback failed: ${error.message}`);
