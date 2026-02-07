@@ -21,6 +21,22 @@ app.use(cookieParser());
 // Trust proxy for proper cookie handling behind reverse proxy (Render, etc.)
 app.set('trust proxy', 1);
 
+// 🚨 CRITICAL: Shopify Embedded App - Iframe Embedding Configuration
+// Shopify requires CSP frame-ancestors header (NOT X-Frame-Options)
+// This MUST be set before any other middleware that might set headers
+app.use((req, res, next) => {
+  res.setHeader(
+    'Content-Security-Policy',
+    "frame-ancestors https://admin.shopify.com https://*.myshopify.com;"
+  );
+  next();
+});
+
+// ⚠️ NOTE: If you add helmet.js later, configure it like this:
+// const helmet = require('helmet');
+// app.use(helmet({ frameguard: false })); // REQUIRED - Shopify uses CSP, not X-Frame-Options
+// The CSP middleware above will still work correctly
+
 // 🚨 CRITICAL: Webhook routes MUST be defined FIRST, before any body parsers
 // This ensures the raw body is preserved exactly as Shopify sends it
 // Webhook routes will use express.raw() inline for HMAC verification
