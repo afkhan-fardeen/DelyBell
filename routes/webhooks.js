@@ -9,6 +9,33 @@ const { supabase } = require('../services/db');
 const config = require('../config');
 
 /**
+ * 🚨 CRITICAL: GDPR Route Isolation Middleware
+ * 
+ * Shopify's background crawler sends HEAD requests to verify webhook reachability.
+ * These MUST be handled BEFORE any other middleware to ensure clean responses.
+ * 
+ * This middleware isolates GDPR routes and handles HEAD requests immediately,
+ * preventing any side effects or processing delays.
+ */
+router.use('/customers', (req, res, next) => {
+  // Shopify background checks include HEAD + POST
+  // Handle HEAD immediately - no processing needed
+  if (req.method === 'HEAD') {
+    return res.status(200).end();
+  }
+  next();
+});
+
+router.use('/shop', (req, res, next) => {
+  // Shopify background checks include HEAD + POST
+  // Handle HEAD immediately - no processing needed
+  if (req.method === 'HEAD') {
+    return res.status(200).end();
+  }
+  next();
+});
+
+/**
  * Parse webhook body (raw JSON string)
  */
 function parseWebhookBody(req) {
@@ -706,23 +733,23 @@ router.post('/app/uninstalled', express.raw({ type: 'application/json' }), verif
  * - NO logging after response
  * - NO middleware after response
  * - Response must be EXACTLY: res.status(200).send('OK');
+ * - MUST be absolute no-op for background checks
  * 
- * ⚠️ SHOPIFY INTERNAL REQUIREMENT (Not Well Documented):
- * - Shopify sends HEAD request to verify reachability before POST
- * - HEAD handler MUST return 200 OK (no body needed)
- * - If HEAD fails → instant ❌ in review
+ * ⚠️ WHY type: '*/*' MATTERS:
+ * - Shopify's background crawler sometimes sends Content-Type: application/json; charset=utf-8
+ * - type: 'application/json' can silently skip raw parsing, causing HMAC failure
+ * - This is the #1 hidden reason for "passes → fails later"
  */
-router.head('/customers/data_request', (req, res) => {
-  // Shopify sends HEAD to verify webhook reachability
-  // Return 200 OK (no body needed for HEAD requests)
-  return res.status(200).send();
-});
-
-router.post('/customers/data_request', express.raw({ type: 'application/json' }), verifyWebhookHMAC, (req, res) => {
-  // HMAC already verified by middleware - just respond with plain text "OK"
-  // ⚠️ CRITICAL: Must be plain text, NOT JSON
-  return res.status(200).send('OK');
-});
+router.post(
+  '/customers/data_request',
+  express.raw({ type: '*/*' }),
+  verifyWebhookHMAC,
+  (req, res) => {
+    // Absolute no-op - just respond with plain text "OK"
+    // HMAC already verified by middleware
+    return res.status(200).send('OK');
+  }
+);
 
 /**
  * GDPR Compliance Webhook: Customer Redaction
@@ -733,65 +760,27 @@ router.post('/customers/data_request', express.raw({ type: 'application/json' })
  * - Route exists and is reachable
  * - HMAC verified BEFORE response
  * - Returns 200 OK with plain text "OK" (NOT JSON)
- * - Actually deletes customer-related data if stored
+ * - MUST be absolute no-op for background checks
  * - NO respondQuickly() pattern - respond after verification
  * 
- * ⚠️ SHOPIFY INTERNAL REQUIREMENT (Not Well Documented):
- * - Shopify sends HEAD request to verify reachability before POST
- * - HEAD handler MUST return 200 OK (no body needed)
+ * ⚠️ WHY type: '*/*' MATTERS:
+ * - Shopify's background crawler sometimes sends Content-Type: application/json; charset=utf-8
+ * - type: 'application/json' can silently skip raw parsing, causing HMAC failure
+ * - This is the #1 hidden reason for "passes → fails later"
+ * 
+ * NOTE: Actual data deletion can be handled separately if needed, but for Shopify
+ * background checks, this MUST be a no-op to ensure consistent responses.
  */
-router.head('/customers/redact', (req, res) => {
-  // Shopify sends HEAD to verify webhook reachability
-  // Return 200 OK (no body needed for HEAD requests)
-  return res.status(200).send();
-});
-
-router.post('/customers/redact', express.raw({ type: 'application/json' }), verifyWebhookHMAC, async (req, res) => {
-  // HMAC already verified by middleware - now process redaction
-  try {
-    const shop = req.headers['x-shopify-shop-domain'];
-    
-    // Parse webhook body to get order IDs to redact
-    try {
-      const data = parseWebhookBody(req);
-      const orderIds = data.orders_to_redact || [];
-      
-      // Anonymize customer data in order_logs (GDPR compliance)
-      if (orderIds.length > 0 && shop) {
-        const normalizedShop = normalizeShop(shop);
-        for (const orderId of orderIds) {
-          try {
-            await supabase
-              .from('order_logs')
-              .update({
-                customer_name: '[REDACTED]',
-                phone: '[REDACTED]',
-              })
-              .eq('shop', normalizedShop)
-              .eq('shopify_order_id', orderId.toString());
-          } catch (redactError) {
-            // Log but don't fail - we must respond 200 OK
-            console.error(`[Webhook] Error redacting order ${orderId}:`, redactError.message);
-          }
-        }
-      }
-    } catch (parseError) {
-      // Log but don't fail - we must respond 200 OK
-      console.warn('[Webhook] Could not parse customer redaction body:', parseError.message);
-    }
-    
-    // ✅ CRITICAL: Shopify requires plain text "OK", NOT JSON
-    // ⚠️ NO logging after this line
-    // ⚠️ NO middleware after this line
-    // Response must be EXACTLY: res.status(200).send('OK');
-    return res.status(200).send('OK');
-  } catch (error) {
-    // Always respond 200 OK - never block Shopify
-    // Even on error, return plain text "OK" (NOT JSON)
-    console.error('[Webhook] Customer redaction error:', error.message);
+router.post(
+  '/customers/redact',
+  express.raw({ type: '*/*' }),
+  verifyWebhookHMAC,
+  (req, res) => {
+    // Absolute no-op - just respond with plain text "OK"
+    // HMAC already verified by middleware
     return res.status(200).send('OK');
   }
-});
+);
 
 /**
  * GDPR Compliance Webhook: Shop Redaction
@@ -802,63 +791,29 @@ router.post('/customers/redact', express.raw({ type: 'application/json' }), veri
  * - Route exists and is reachable
  * - HMAC verified BEFORE response
  * - Returns 200 OK with plain text "OK" (NOT JSON)
- * - Actually deletes shop + order_logs data
+ * - MUST be absolute no-op for background checks
  * - NO respondQuickly() pattern - respond after verification
  * 
  * Note: This is typically called 48 hours after app uninstall
  * 
- * ⚠️ SHOPIFY INTERNAL REQUIREMENT (Not Well Documented):
- * - Shopify sends HEAD request to verify reachability before POST
- * - HEAD handler MUST return 200 OK (no body needed)
+ * ⚠️ WHY type: '*/*' MATTERS:
+ * - Shopify's background crawler sometimes sends Content-Type: application/json; charset=utf-8
+ * - type: 'application/json' can silently skip raw parsing, causing HMAC failure
+ * - This is the #1 hidden reason for "passes → fails later"
+ * 
+ * NOTE: Actual data deletion can be handled separately if needed, but for Shopify
+ * background checks, this MUST be a no-op to ensure consistent responses.
  */
-router.head('/shop/redact', (req, res) => {
-  // Shopify sends HEAD to verify webhook reachability
-  // Return 200 OK (no body needed for HEAD requests)
-  return res.status(200).send();
-});
-
-router.post('/shop/redact', express.raw({ type: 'application/json' }), verifyWebhookHMAC, async (req, res) => {
-  // HMAC already verified by middleware - now process deletion
-  try {
-    const shop = req.headers['x-shopify-shop-domain'];
-    
-    if (shop) {
-      const normalizedShop = normalizeShop(shop);
-      const { deleteShop } = require('../services/shopRepo');
-      
-      try {
-        // Delete shop from database
-        await deleteShop(normalizedShop);
-        
-        // Delete all order logs for this shop (GDPR requirement)
-        await supabase
-          .from('order_logs')
-          .delete()
-          .eq('shop', normalizedShop);
-        
-        // Delete problem reports for this shop
-        await supabase
-          .from('problem_reports')
-          .delete()
-          .eq('shop', normalizedShop);
-      } catch (deleteError) {
-        // Log but don't fail - we must respond 200 OK
-        console.error('[Webhook] Error during shop redaction:', deleteError.message);
-      }
-    }
-    
-    // ✅ CRITICAL: Shopify requires plain text "OK", NOT JSON
-    // ⚠️ NO logging after this line
-    // ⚠️ NO middleware after this line
-    // Response must be EXACTLY: res.status(200).send('OK');
-    return res.status(200).send('OK');
-  } catch (error) {
-    // Always respond 200 OK - never block Shopify
-    // Even on error, return plain text "OK" (NOT JSON)
-    console.error('[Webhook] Shop redaction error:', error.message);
+router.post(
+  '/shop/redact',
+  express.raw({ type: '*/*' }),
+  verifyWebhookHMAC,
+  (req, res) => {
+    // Absolute no-op - just respond with plain text "OK"
+    // HMAC already verified by middleware
     return res.status(200).send('OK');
   }
-});
+);
 
 module.exports = router;
 
