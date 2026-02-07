@@ -8,8 +8,9 @@ name = "Delybell Order Sync"
 client_id = "YOUR_CLIENT_ID"
 
 # App URL (your production domain)
-# This is where Shopify redirects when accessing the app from Admin
-application_url = "https://delybell.onrender.com/app"
+# This is the base URL - Shopify will automatically append /app?shop=...&host=...
+# For embedded apps, Shopify loads: https://delybell.onrender.com/app?shop=...&host=...
+application_url = "https://delybell.onrender.com"
 
 # Embedded app configuration
 embedded = true

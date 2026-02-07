@@ -5,14 +5,102 @@ const shopifyClient = require('../services/shopifyClient');
 const config = require('../config');
 
 /**
- * Public Landing/Install Page - STATIC
- * Purpose: Accept shop domain, redirect to OAuth
+ * Public Landing Page - Simple Info Page
+ * Purpose: Inform users to install from Shopify App Store
  * GET /
  */
 router.get('/', (req, res) => {
-  // Serve static install page (no App Bridge, no SHOPIFY_API_KEY)
-  // This is a public page - no shop detection needed
-  res.sendFile(path.join(__dirname, '../public/index.html'));
+  // Simple landing page - no install form
+  // Users should install from Shopify App Store
+  res.send(`
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>Delybell Order Sync</title>
+      <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+          background: #fafafa;
+          min-height: 100vh;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          padding: 20px;
+        }
+        .container {
+          background: white;
+          border-radius: 8px;
+          padding: 40px;
+          max-width: 600px;
+          text-align: center;
+          box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        h1 {
+          font-size: 28px;
+          color: #010a8b;
+          margin-bottom: 16px;
+        }
+        p {
+          color: #666;
+          font-size: 16px;
+          line-height: 1.6;
+          margin-bottom: 24px;
+        }
+        .info {
+          background: #f5f5f5;
+          border-radius: 6px;
+          padding: 20px;
+          margin-top: 24px;
+          text-align: left;
+        }
+        .info-title {
+          font-weight: 600;
+          color: #333;
+          margin-bottom: 12px;
+        }
+        .info-list {
+          list-style: none;
+          color: #666;
+          font-size: 14px;
+        }
+        .info-list li {
+          margin-bottom: 8px;
+          padding-left: 20px;
+          position: relative;
+        }
+        .info-list li:before {
+          content: "•";
+          position: absolute;
+          left: 0;
+          color: #010a8b;
+        }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <h1>Delybell Order Sync</h1>
+        <p>Seamlessly sync your Shopify orders with Delybell delivery management system.</p>
+        
+        <div class="info">
+          <div class="info-title">How to Install</div>
+          <ul class="info-list">
+            <li>Visit the Shopify App Store</li>
+            <li>Search for "Delybell Order Sync"</li>
+            <li>Click "Add app" to install</li>
+            <li>Authorize the app in your Shopify admin</li>
+          </ul>
+        </div>
+        
+        <p style="margin-top: 24px; font-size: 14px; color: #999;">
+          Already installed? <a href="https://admin.shopify.com/store" style="color: #010a8b;">Open your Shopify admin</a>
+        </p>
+      </div>
+    </body>
+    </html>
+  `);
 });
 
 /**
@@ -114,18 +202,37 @@ router.get('/app', async (req, res) => {
       shop = normalizeShop(shop);
     }
     
+    // CRITICAL: /app is DASHBOARD ONLY - requires authentication
+    // This is the correct flow for Shopify App Store apps
+    // No install form, no manual shop input - only authenticated dashboard
+    
     if (!shop || !shop.includes('.myshopify.com')) {
-      // If no shop detected, render app template anyway - let frontend App Bridge detect it
-      // This handles cases where shop is only available client-side
-      console.log('[App] No shop detected server-side, rendering app template (App Bridge will detect shop)');
-      return res.render('app', {
-        SHOPIFY_API_KEY: config.shopify.apiKey || '',
-        shop: '',
-        isAuthenticated: false,
-      });
+      // No shop parameter - this shouldn't happen for App Store apps
+      // But handle gracefully by showing error
+      console.error('[App] ❌ No shop parameter found - this should not happen for App Store apps');
+      return res.status(400).send(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <title>App Error</title>
+          <style>
+            body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; 
+                   max-width: 600px; margin: 50px auto; padding: 20px; text-align: center; }
+            .error { background: #fee; border: 1px solid #fcc; padding: 20px; border-radius: 8px; }
+            h1 { color: #d72c0d; }
+          </style>
+        </head>
+        <body>
+          <div class="error">
+            <h1>App Error</h1>
+            <p>Unable to detect shop domain. Please install the app from the Shopify App Store.</p>
+          </div>
+        </body>
+        </html>
+      `);
     }
     
-    console.log(`[App] Rendering embedded app for shop: ${shop}`);
+    console.log(`[App] Rendering embedded app dashboard for shop: ${shop}`);
     
     // Check if shop is authenticated (from Supabase - persists across devices)
     const session = await shopifyClient.getSession(shop);
@@ -135,9 +242,15 @@ router.get('/app', async (req, res) => {
     console.log(`[App] API key present: ${!!config.shopify.apiKey}`);
     
     if (!isAuthenticated) {
-      // Shop not authenticated - redirect to install
-      console.log(`[App] Shop ${shop} not authenticated, redirecting to install`);
-      return res.redirect(`/auth/install?shop=${encodeURIComponent(shop)}`);
+      // Shop not authenticated - redirect to OAuth (NOT install form)
+      // This is the correct flow: Dashboard → OAuth → Dashboard
+      console.log(`[App] Shop ${shop} not authenticated, redirecting to OAuth`);
+      const host = req.query.host;
+      let oauthUrl = `/auth/install?shop=${encodeURIComponent(shop)}`;
+      if (host) {
+        oauthUrl += `&host=${encodeURIComponent(host)}`;
+      }
+      return res.redirect(oauthUrl);
     }
     
     // Render EJS template with API key injected

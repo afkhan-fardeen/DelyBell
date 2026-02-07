@@ -1539,73 +1539,31 @@
         const authResponse = await fetch(`/auth/check?shop=${encodeURIComponent(shop)}`);
         const authData = await authResponse.json();
         
+        // CRITICAL: /app is DASHBOARD ONLY for authenticated users
+        // If not authenticated, server-side route will redirect to OAuth
+        // This view should NEVER show an install form (App Store apps don't use manual install)
         if (!authData.authenticated) {
+          // This shouldn't happen - server should redirect to OAuth before rendering
+          // But handle gracefully just in case
+          console.warn('[App] Warning: Reached /app without authentication - server should have redirected');
           if (appContent) {
             appContent.innerHTML = `
-              <div class="max-w-3xl mx-auto">
-                <!-- Hero Section - Minimal -->
-                <div class="text-center py-8 mb-8">
-                  <div class="inline-flex items-center justify-center w-16 h-16 bg-[#010a8b]/10 rounded-xl mb-4">
-                    <span class="material-icons-outlined text-3xl text-[#010a8b]">local_shipping</span>
-                  </div>
-                  <h1 class="text-2xl font-semibold text-slate-900 dark:text-white mb-2">Delybell Order Sync</h1>
-                  <p class="text-sm text-slate-500 dark:text-slate-400">Seamlessly sync your Shopify orders with Delybell</p>
+              <div class="max-w-3xl mx-auto text-center py-12">
+                <div class="inline-flex items-center justify-center w-16 h-16 bg-slate-100 dark:bg-slate-800 rounded-xl mb-4">
+                  <span class="material-icons-outlined text-3xl text-slate-400">hourglass_empty</span>
                 </div>
-                
-                <!-- Info Cards - Minimal Flat -->
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-6">
-                  <div class="bg-white dark:bg-surface-dark p-4 rounded-lg border border-border-light dark:border-border-dark">
-                    <div class="w-10 h-10 rounded-md bg-[#010a8b]/10 flex items-center justify-center mb-3">
-                      <span class="material-icons-outlined text-[#010a8b] text-lg">sync</span>
-                    </div>
-                    <h3 class="font-semibold text-sm text-slate-900 dark:text-white mb-1">Manual Sync</h3>
-                    <p class="text-xs text-slate-500 dark:text-slate-400">Review and sync orders when you're ready</p>
-                  </div>
-                  <div class="bg-white dark:bg-surface-dark p-4 rounded-lg border border-border-light dark:border-border-dark">
-                    <div class="w-10 h-10 rounded-md bg-[#7c3aed]/10 flex items-center justify-center mb-3">
-                      <span class="material-icons-outlined text-[#7c3aed] text-lg">check_circle</span>
-                    </div>
-                    <h3 class="font-semibold text-sm text-slate-900 dark:text-white mb-1">Track Orders</h3>
-                    <p class="text-xs text-slate-500 dark:text-slate-400">Monitor sync status and delivery progress</p>
-                  </div>
-                </div>
-                
-                <!-- Info Section - Minimal -->
-                <div class="bg-white dark:bg-surface-dark rounded-lg border border-border-light dark:border-border-dark p-5 mb-6">
-                  <div class="flex items-start gap-3">
-                    <span class="material-icons-outlined text-[#010a8b] flex-shrink-0 text-lg">info</span>
-                    <div>
-                      <h3 class="font-semibold text-sm text-slate-900 dark:text-white mb-2">How It Works</h3>
-                      <ul class="text-xs text-slate-600 dark:text-slate-400 space-y-1.5 list-disc list-inside">
-                        <li>Install the app from Shopify App Store</li>
-                        <li>Your store connects to Delybell automatically</li>
-                        <li>New orders appear in the dashboard</li>
-                        <li>Sync orders manually when ready</li>
-                        <li>Track delivery status in real-time</li>
-                      </ul>
-                    </div>
-                  </div>
-                </div>
-                
-                <!-- CTA -->
-                <div class="text-center">
-                  <a href="/auth/install?shop=${shop}" class="inline-flex items-center px-6 py-2.5 bg-[#010a8b] text-white rounded-md text-sm font-semibold hover:opacity-90 transition-opacity">
-                    <span class="material-icons-outlined text-base mr-2">install_mobile</span>
-                    Install App
-                  </a>
-                  <p class="text-xs text-slate-400 mt-3">Free to install • No credit card required</p>
-                </div>
+                <h2 class="text-xl font-semibold text-slate-900 dark:text-white mb-2">Redirecting...</h2>
+                <p class="text-sm text-slate-500 dark:text-slate-400">Please wait while we authenticate your store.</p>
               </div>
             `;
           }
           
-          // Load orders and stats after rendering (non-blocking)
-          setTimeout(() => {
-            Promise.all([
-              loadOrders(1).catch(err => console.error('Error loading orders:', err)),
-              updateOrderTabs().catch(err => console.error('Error updating tabs:', err))
-            ]).catch(err => console.error('Error in post-render load:', err));
-          }, 100);
+          // Redirect to OAuth if shop is available
+          if (shop) {
+            setTimeout(() => {
+              window.location.href = `/auth/install?shop=${encodeURIComponent(shop)}`;
+            }, 1000);
+          }
           
           return;
         }

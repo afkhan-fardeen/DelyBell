@@ -412,11 +412,19 @@ router.get('/callback', async (req, res) => {
       redirectShop = normalizeShop(redirectShop);
     }
     
+    // Get host parameter from query (Shopify passes this for embedded apps)
+    const host = req.query.host;
+    
     console.log('[Auth] Redirecting to app with shop:', redirectShop);
+    console.log('[Auth] Host parameter:', host);
     
     if (redirectShop) {
-      // Redirect to /app (embedded admin UI) instead of / (public install page)
-      const redirectUrl = `/app?shop=${encodeURIComponent(redirectShop)}`;
+      // Redirect to /app (embedded admin UI) with shop and host parameters
+      // This is the correct flow for Shopify App Store apps
+      let redirectUrl = `/app?shop=${encodeURIComponent(redirectShop)}`;
+      if (host) {
+        redirectUrl += `&host=${encodeURIComponent(host)}`;
+      }
       console.log(`[Auth] Redirect URL: ${redirectUrl}`);
       res.redirect(redirectUrl);
     } else {
