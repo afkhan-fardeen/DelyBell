@@ -1,21 +1,23 @@
 const express = require('express');
 const cookieParser = require('cookie-parser');
 const path = require('path');
-const config = require('./config');
+const { shopify } = require('./shopify');
+const config = require('../config');
+
+// Import routes
 const webhookRoutes = require('./routes/webhooks');
 const apiRoutes = require('./routes/api');
-const authRoutes = require('./routes/auth');
 const adminRoutes = require('./routes/admin');
+const authRoutes = require('./routes/auth');
 
 const app = express();
 
 // Configure EJS view engine for server-rendered templates
 app.set('view engine', 'ejs');
-app.set('views', path.join(__dirname, 'views'));
+app.set('views', path.join(__dirname, '../views'));
 
 // Middleware
 // CRITICAL: Cookie parser must be first (needed for OAuth flow)
-// Configure cookie parser with proper settings for production
 app.use(cookieParser());
 
 // Trust proxy for proper cookie handling behind reverse proxy (Render, etc.)
@@ -23,7 +25,6 @@ app.set('trust proxy', 1);
 
 // 🚨 CRITICAL: Shopify Embedded App - Iframe Embedding Configuration
 // Shopify requires CSP frame-ancestors header (NOT X-Frame-Options)
-// This MUST be set before any other middleware that might set headers
 app.use((req, res, next) => {
   res.setHeader(
     'Content-Security-Policy',
@@ -32,33 +33,22 @@ app.use((req, res, next) => {
   next();
 });
 
-// ⚠️ NOTE: If you add helmet.js later, configure it like this:
-// const helmet = require('helmet');
-// app.use(helmet({ frameguard: false })); // REQUIRED - Shopify uses CSP, not X-Frame-Options
-// The CSP middleware above will still work correctly
-
-// 🚨 CRITICAL: Webhook routes MUST be registered BEFORE any body parsers
-// Shopify requires the raw request body to be untouched for HMAC verification
-// Order is: Webhooks → Body Parsers → Other Routes
-
-// Request logging (non-body-modifying middleware is OK before webhooks)
+// Request logging
 app.use((req, res, next) => {
   console.log(`${new Date().toISOString()} - ${req.method} ${req.path}`);
   next();
 });
 
-// Health check endpoint (GET request, no body parsing needed)
+// Health check endpoint
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
 // 🚨 WEBHOOK ROUTES FIRST - MUST be before express.json() and express.urlencoded()
-// Webhook routes use express.raw() inline for HMAC verification
-// This ensures req.body remains a Buffer for HMAC calculation
+// Shopify CLI webhook handlers handle raw body parsing internally
 app.use('/webhooks', webhookRoutes);
 
 // ✅ NOW apply body parsers for all other routes (AFTER webhooks)
-// These will NOT affect /webhooks/* routes since they're already handled above
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -66,20 +56,13 @@ app.use(express.urlencoded({ extended: true }));
 app.use('/auth', authRoutes);
 
 // Admin routes (embedded app interface) - MUST be before static files
-// This ensures /app and / routes are handled by admin routes, not static files
 app.use('/', adminRoutes);
 
 // API routes (BEFORE static files to prevent static fallback hijacking /api/*)
-// This prevents "HTML instead of JSON" bugs at scale
 app.use('/api', apiRoutes);
 
 // Serve static files LAST (only for assets, not routes)
-// This ensures admin routes and API routes take precedence over static files
-app.use(express.static(path.join(__dirname, 'public')));
-
-
-// Root endpoint - Handled by admin routes
-// The admin route will handle both / and /app
+app.use(express.static(path.join(__dirname, '../public')));
 
 // Error handling middleware
 app.use((err, req, res, next) => {
@@ -92,13 +75,10 @@ app.use((err, req, res, next) => {
 
 // Start server
 const PORT = config.server.port;
-// Listen on 0.0.0.0 to accept connections from any network interface (required for production)
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`Server running on port ${PORT}`);
   console.log(`Health check: http://localhost:${PORT}/health`);
-  console.log(`API documentation: http://localhost:${PORT}/`);
   console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
 });
 
 module.exports = app;
-

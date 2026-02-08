@@ -2,7 +2,6 @@
 node_modules/
 # Keep lock files for reproducible builds (needed for production)
 # package-lock.json - COMMITTED (for npm)
-# pnpm-lock.yaml - COMMITTED (for pnpm)
 yarn.lock
 
 # Environment variables (NEVER commit these!)

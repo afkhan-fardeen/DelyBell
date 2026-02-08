@@ -43,6 +43,7 @@ Delybell Order Sync is a production-ready Shopify embedded app that automaticall
 ### Technology Stack
 
 - **Backend:** Node.js + Express.js
+- **Framework:** Shopify CLI compatible structure
 - **Database:** Supabase (PostgreSQL)
 - **Templating:** EJS (Embedded JavaScript)
 - **Styling:** Tailwind CSS + Custom CSS
@@ -94,7 +95,14 @@ Delybell Order Sync is a production-ready Shopify embedded app that automaticall
 
 ```
 DelyBell/
-├── server.js                    # Main Express server
+├── web/                         # Shopify CLI app structure
+│   ├── index.js                # Main Express server entry point
+│   ├── shopify.js              # Shopify API configuration
+│   └── routes/                 # Route handlers
+│       ├── api.js              # API endpoints
+│       ├── webhooks.js         # Webhook handlers
+│       ├── auth.js             # Shopify OAuth
+│       └── admin.js            # Admin UI routes
 ├── config.js                    # Configuration loader
 ├── package.json                 # Dependencies
 ├── shopify.app.toml            # Shopify app configuration

@@ -1,8 +1,8 @@
 const express = require('express');
 const router = express.Router();
-const orderProcessor = require('../services/orderProcessor');
-const shopifyClient = require('../services/shopifyClient');
-const delybellClient = require('../services/delybellClient');
+const orderProcessor = require('../../services/orderProcessor');
+const shopifyClient = require('../../services/shopifyClient');
+const delybellClient = require('../../services/delybellClient');
 
 /**
  * Get all orders from Shopify and process them

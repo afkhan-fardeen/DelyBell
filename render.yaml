@@ -15,11 +15,9 @@ services:
     env: node
     plan: starter  # Use 'free' for free tier (spins down when idle)
     region: singapore  # Choose closest to your users
-    # Both package-lock.json and pnpm-lock.yaml are committed
-    # Render will auto-detect pnpm if pnpm-lock.yaml exists
-    # Explicitly using pnpm for consistency
-    buildCommand: pnpm install
-    startCommand: pnpm start
+    # Using npm for package management
+    buildCommand: npm ci
+    startCommand: npm start
     healthCheckPath: /health
     autoDeploy: true  # Auto-deploy on git push
     envVars:

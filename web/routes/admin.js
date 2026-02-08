@@ -1,8 +1,8 @@
 const express = require('express');
 const router = express.Router();
 const path = require('path');
-const shopifyClient = require('../services/shopifyClient');
-const config = require('../config');
+const shopifyClient = require('../../services/shopifyClient');
+const config = require('../../config');
 
 /**
  * Public Landing Page - Simple Info Page
@@ -2004,11 +2004,11 @@ router.post('/admin/api/orders/fetch-historical', async (req, res) => {
       });
     }
 
-    const { normalizeShop } = require('../utils/normalizeShop');
+    const { normalizeShop } = require('../../utils/normalizeShop');
     const normalizedShop = normalizeShop(shop);
-    const shopifyClient = require('../services/shopifyClient');
-    const orderProcessor = require('../services/orderProcessor');
-    const { supabase } = require('../services/db');
+    // shopifyClient already imported at top of file
+    const orderProcessor = require('../../services/orderProcessor');
+    const { supabase } = require('../../services/db');
 
     // Get shop session
     const session = await shopifyClient.getSession(normalizedShop);

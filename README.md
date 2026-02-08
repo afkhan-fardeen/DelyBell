@@ -70,53 +70,49 @@ DEFAULT_SERVICE_TYPE_ID=1
    ```
    Edit `.env` with your credentials
 
-3. **Set up tunneling** (for webhooks):
+3. **Start development server** (using Shopify CLI - recommended):
    ```bash
-   # Option 1: Cloudflare Tunnel
-   brew install cloudflare/cloudflare/cloudflared
-   npm run tunnel
-   
-   # Option 2: LocalTunnel
-   npm install -g localtunnel
-   npm run tunnel:lt
+   npm run shopify app dev
+   ```
+   This automatically sets up tunneling and webhook registration.
+
+   **OR** use nodemon (legacy):
+   ```bash
+   npm run dev
    ```
 
-4. **Update `.env`** with tunnel URL (without `https://`)
-
-5. **Start server**:
-```bash
-npm run dev
-```
-
-6. **Install app**: Visit `https://YOUR-TUNNEL-URL/auth/install?shop=your-shop.myshopify.com`
+4. **Install app**: The Shopify CLI will provide you with a URL to install the app.
 
 ## Project Structure
 
 ```
 DelyBell/
-├── server.js                  # Main server file
-├── config.js                  # Configuration
-├── package.json               # Dependencies
-├── env.example               # Environment variables template
-├── shopify.app.toml          # Shopify app configuration
-├── services/
-│   ├── delybellClient.js     # Delybell API client
-│   ├── shopifyClient.js      # Shopify API client
-│   ├── orderTransformer.js   # Order transformation logic
-│   ├── orderProcessor.js     # Order processing workflow
+├── web/                       # Shopify CLI app structure
+│   ├── index.js              # Main server entry point
+│   ├── shopify.js            # Shopify API configuration
+│   └── routes/               # Route handlers
+│       ├── api.js            # API endpoints
+│       ├── webhooks.js      # Webhook handlers
+│       ├── auth.js          # Shopify OAuth
+│       └── admin.js         # Admin UI routes
+├── config.js                 # Configuration
+├── package.json              # Dependencies
+├── env.example              # Environment variables template
+├── shopify.app.toml         # Shopify app configuration
+├── services/                 # Business logic
+│   ├── delybellClient.js    # Delybell API client
+│   ├── shopifyClient.js     # Shopify API client
+│   ├── orderTransformer.js  # Order transformation logic
+│   ├── orderProcessor.js    # Order processing workflow
 │   ├── pickupLocationService.js # Fetches pickup from store address
-│   ├── addressMapper.js      # Address parsing from Shopify
-│   └── addressIdMapper.js    # Address ID lookup from Delybell
-├── routes/
-│   ├── api.js                # API endpoints
-│   ├── webhooks.js           # Webhook handlers
-│   ├── auth.js               # Shopify OAuth
-│   └── admin.js              # Admin UI routes
-├── middleware/
-│   └── webhookVerification.js # Webhook HMAC verification
-└── public/
-    ├── index.html            # Main app UI
-    ├── privacy-policy.html   # Privacy policy
+│   ├── addressMapper.js     # Address parsing from Shopify
+│   └── addressIdMapper.js   # Address ID lookup from Delybell
+├── views/                    # EJS templates
+│   ├── app.ejs             # Main app UI
+│   └── admin-dashboard.ejs # Admin dashboard
+└── public/                   # Static files
+    ├── index.html           # Landing page
+    ├── privacy-policy.html  # Privacy policy
     └── terms-of-service.html # Terms of service
 ```
 
