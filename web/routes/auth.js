@@ -55,22 +55,104 @@ router.get('/install', async (req, res) => {
  */
 router.get('/callback', async (req, res) => {
   try {
-    const { shop: shopParam, code } = req.query;
+    const { shop: shopParam, code, hmac } = req.query;
 
     console.log('[Auth] OAuth callback received:', {
       shop: shopParam,
       hasCode: !!code,
+      hasHmac: !!hmac,
+      cookies: req.cookies ? Object.keys(req.cookies) : 'no cookies',
+      cookieHeader: req.headers.cookie ? 'present' : 'missing',
     });
 
     if (!shopParam || !code) {
       return res.status(400).send('Missing required parameters: shop or code');
     }
 
-    // Use Shopify API's callback handler
-    const callbackResponse = await shopify.auth.callback({
-      rawRequest: req,
-      rawResponse: res,
-    });
+    let callbackResponse;
+    
+    // Try Shopify API's callback handler first
+    try {
+      callbackResponse = await shopify.auth.callback({
+        rawRequest: req,
+        rawResponse: res,
+      });
+    } catch (callbackError) {
+      // If cookie-based OAuth fails, try manual OAuth flow
+      // Check for various cookie-related error messages
+      const cookieErrorMessages = [
+        'cookie',
+        'OAuth cookie',
+        'Could not find an OAuth cookie',
+        'CookieNotFound',
+      ];
+      
+      const isCookieError = callbackError.message && 
+        cookieErrorMessages.some(msg => callbackError.message.includes(msg));
+      
+      if (isCookieError) {
+        console.error('[Auth] Cookie-based OAuth failed, attempting manual OAuth flow...');
+        console.error('[Auth] Error:', callbackError.message);
+        
+        // Manual OAuth fallback
+        const crypto = require('crypto');
+        
+        // Verify HMAC manually
+        if (hmac) {
+          const queryString = Object.keys(req.query)
+            .filter(key => key !== 'hmac' && key !== 'signature')
+            .sort()
+            .map(key => `${key}=${req.query[key]}`)
+            .join('&');
+          
+          const calculatedHmac = crypto
+            .createHmac('sha256', config.shopify.apiSecret)
+            .update(queryString)
+            .digest('hex');
+          
+          if (hmac !== calculatedHmac) {
+            throw new Error('Invalid HMAC signature');
+          }
+        }
+        
+        // Exchange code for access token manually
+        const tokenResponse = await fetch(`https://${shopParam}/admin/oauth/access_token`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            client_id: config.shopify.apiKey,
+            client_secret: config.shopify.apiSecret,
+            code: code,
+          }),
+        });
+        
+        if (!tokenResponse.ok) {
+          const errorText = await tokenResponse.text();
+          throw new Error(`Token exchange failed: ${errorText}`);
+        }
+        
+        const tokenData = await tokenResponse.json();
+        const accessToken = tokenData.access_token;
+        const scopes = tokenData.scope;
+        
+        console.log('[Auth] ✅ Manual OAuth successful, received access token');
+        
+        // Create session object manually
+        const session = {
+          id: `offline_${shopParam}`,
+          shop: shopParam,
+          accessToken: accessToken,
+          scope: scopes,
+          scopes: scopes,
+          isOnline: false,
+        };
+        
+        callbackResponse = { session };
+      } else {
+        // Re-throw if it's not a cookie error
+        throw callbackError;
+      }
+    }
 
     // Store the session
     const session = callbackResponse.session;

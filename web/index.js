@@ -18,10 +18,52 @@ app.set('views', path.join(__dirname, '../views'));
 
 // Middleware
 // CRITICAL: Cookie parser must be first (needed for OAuth flow)
+// Configure cookie parser with proper settings for production
 app.use(cookieParser());
 
 // Trust proxy for proper cookie handling behind reverse proxy (Render, etc.)
+// This is CRITICAL for cookies to work correctly on Render
 app.set('trust proxy', 1);
+
+// Configure cookie settings for OAuth (Shopify API library will use these)
+// Set secure cookies in production, but allow http in development
+app.use((req, res, next) => {
+  // Store original cookie function
+  const originalCookie = res.cookie.bind(res);
+  
+  // Override cookie function to set proper defaults
+  res.cookie = function(name, value, options = {}) {
+    const isProduction = process.env.NODE_ENV === 'production';
+    const isSecure = req.secure || req.headers['x-forwarded-proto'] === 'https';
+    
+    // Set secure cookies in production (HTTPS only)
+    if (isProduction && isSecure) {
+      options.secure = true;
+    }
+    
+    // Set SameSite to None for cross-site requests (Shopify OAuth)
+    // But only if secure is true (browsers require secure for SameSite=None)
+    if (isProduction && isSecure) {
+      options.sameSite = 'none';
+    } else {
+      options.sameSite = 'lax';
+    }
+    
+    // Set httpOnly for security (prevents JavaScript access)
+    if (options.httpOnly === undefined) {
+      options.httpOnly = true;
+    }
+    
+    // Set path to root
+    if (!options.path) {
+      options.path = '/';
+    }
+    
+    return originalCookie(name, value, options);
+  };
+  
+  next();
+});
 
 // 🚨 CRITICAL: Shopify Embedded App - Iframe Embedding Configuration
 // Shopify requires CSP frame-ancestors header (NOT X-Frame-Options)
