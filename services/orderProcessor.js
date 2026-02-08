@@ -774,6 +774,143 @@ class OrderProcessor {
       return { success: false, error: logError.message };
     }
   }
+
+  /**
+   * Update order status
+   * Updates only the status field of an existing order
+   * 
+   * @param {string} shop - Shop domain
+   * @param {string} shopifyOrderId - Shopify order ID (long ID)
+   * @param {string} status - New status (pending_sync, processed, failed, completed)
+   * @param {string} [delybellOrderId] - Optional DelyBell order ID (required if status is 'processed')
+   * @param {string} [errorMessage] - Optional error message (for failed status)
+   * @returns {Promise<Object>} Update result with success status
+   */
+  async updateOrderStatus(shop, shopifyOrderId, status, delybellOrderId = null, errorMessage = null) {
+    if (!process.env.SUPABASE_URL) {
+      return { success: true, skipped: true, reason: 'Supabase not configured' };
+    }
+
+    try {
+      // Validate status
+      const validStatuses = ['pending_sync', 'processed', 'failed', 'completed'];
+      if (!validStatuses.includes(status)) {
+        return { 
+          success: false, 
+          error: `Invalid status: ${status}. Must be one of: ${validStatuses.join(', ')}` 
+        };
+      }
+
+      // Validate status rules (same as logOrder)
+      // Rule: processed → delybell_order_id is REQUIRED
+      if (status === 'processed' && !delybellOrderId) {
+        console.error(`[OrderProcessor] ❌ Invalid state: status='processed' but delybell_order_id is null`);
+        return { 
+          success: false, 
+          error: 'delybell_order_id is required when status is "processed"' 
+        };
+      }
+      
+      // Rule: failed → delybell_order_id must be NULL
+      if (status === 'failed' && delybellOrderId !== null) {
+        console.warn(`[OrderProcessor] ⚠️ Invalid state: status='failed' but delybell_order_id is provided. Setting to null.`);
+        delybellOrderId = null;
+      }
+
+      // Build update object
+      const updateData = {
+        status,
+      };
+
+      // Update delybell_order_id if provided
+      if (delybellOrderId !== null) {
+        updateData.delybell_order_id = delybellOrderId;
+      } else if (status === 'failed') {
+        // Explicitly set to null for failed status
+        updateData.delybell_order_id = null;
+      }
+
+      // Add synced_at timestamp if order is processed
+      if (status === 'processed' && delybellOrderId) {
+        updateData.synced_at = new Date().toISOString();
+      }
+
+      // Add error_message if provided
+      if (errorMessage !== null) {
+        updateData.error_message = errorMessage;
+      } else if (status === 'failed' && errorMessage === null) {
+        // If status is failed but no error message provided, try to preserve existing one
+        // We'll fetch it first if needed
+      }
+
+      // Check if order exists
+      const { data: existing, error: findError } = await supabase
+        .from('order_logs')
+        .select('id, status, delybell_order_id, error_message')
+        .eq('shop', shop)
+        .eq('shopify_order_id', shopifyOrderId.toString())
+        .limit(1)
+        .single();
+
+      if (findError) {
+        if (findError.code === 'PGRST116') {
+          // Order doesn't exist
+          return { 
+            success: false, 
+            error: `Order ${shopifyOrderId} not found for shop ${shop}` 
+          };
+        }
+        console.error('[OrderProcessor] Error finding order:', findError);
+        return { success: false, error: findError.message };
+      }
+
+      if (!existing || !existing.id) {
+        return { 
+          success: false, 
+          error: `Order ${shopifyOrderId} not found for shop ${shop}` 
+        };
+      }
+
+      // Preserve error_message if status is failed and no new error message provided
+      if (status === 'failed' && errorMessage === null && existing.error_message) {
+        // Keep existing error message
+        updateData.error_message = existing.error_message;
+      }
+
+      // Update the order
+      const { error: updateError } = await supabase
+        .from('order_logs')
+        .update(updateData)
+        .eq('id', existing.id);
+
+      if (updateError) {
+        // Handle missing error_message column gracefully
+        if (updateError.message && updateError.message.includes('error_message')) {
+          console.warn('[OrderProcessor] error_message column not found, retrying without it');
+          delete updateData.error_message;
+          
+          const { error: retryError } = await supabase
+            .from('order_logs')
+            .update(updateData)
+            .eq('id', existing.id);
+          
+          if (retryError) {
+            console.error(`[OrderProcessor] Failed to update order ${shopifyOrderId}:`, retryError.message);
+            return { success: false, error: retryError.message };
+          }
+        } else {
+          console.error(`[OrderProcessor] Failed to update order ${shopifyOrderId}:`, updateError.message);
+          return { success: false, error: updateError.message };
+        }
+      }
+
+      console.log(`[OrderProcessor] ✅ Updated order ${shopifyOrderId} from "${existing.status}" to "${status}"`);
+      return { success: true };
+    } catch (error) {
+      console.error(`[OrderProcessor] Error updating order status:`, error.message);
+      return { success: false, error: error.message };
+    }
+  }
 }
 
 module.exports = new OrderProcessor();
