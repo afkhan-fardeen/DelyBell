@@ -2,6 +2,7 @@
   "name": "shopify-delybell-integration",
   "version": "1.0.0",
   "description": "Automatically sync Shopify orders to Delybell delivery management system. Production-ready Shopify App Store compliant app.",
+  "packageManager": "npm@10.0.0",
   "main": "web/index.js",
   "scripts": {
     "start": "node web/index.js",

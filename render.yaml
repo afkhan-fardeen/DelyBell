@@ -15,7 +15,10 @@ services:
     env: node
     plan: starter  # Use 'free' for free tier (spins down when idle)
     region: singapore  # Choose closest to your users
-    # Using npm for package management
+    # CRITICAL: Explicitly use npm (not pnpm)
+    # Render auto-detects package managers, but we force npm here
+    # The presence of package-lock.json and packageManager field in package.json
+    # ensures Render uses npm instead of pnpm
     buildCommand: npm ci
     startCommand: npm start
     healthCheckPath: /health
