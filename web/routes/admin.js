@@ -44,7 +44,7 @@ router.get('/', async (req, res) => {
   // CRITICAL: If shop exists → ALWAYS redirect to embedded app
   // This prevents Shopify iframe from landing on info page after install
   if (shop && shop.includes('.myshopify.com')) {
-    const { normalizeShop } = require('../utils/normalizeShop');
+    const { normalizeShop } = require('../../utils/normalizeShop');
     try {
       const normalizedShop = normalizeShop(shop);
       const host = req.query.host;
@@ -245,7 +245,7 @@ router.get('/app', async (req, res) => {
       
       // Normalize shop domain
       if (shop && shop.includes('.myshopify.com')) {
-        const { normalizeShop } = require('../utils/normalizeShop');
+        const { normalizeShop } = require('../../utils/normalizeShop');
         try {
           shop = normalizeShop(shop);
         } catch (error) {
@@ -268,7 +268,7 @@ router.get('/app', async (req, res) => {
     console.log(`[App] Loading dashboard for shop: ${shop}`);
     
     // Check authentication with retry mechanism (handles Supabase write propagation)
-    const { getShop } = require('../services/shopRepo');
+    const { getShop } = require('../../services/shopRepo');
     let session = null;
     let isAuthenticated = false;
     const maxRetries = 5;
@@ -916,7 +916,7 @@ router.get('/admin/api/synced-orders', async (req, res) => {
       });
     }
     
-    const { normalizeShop } = require('../utils/normalizeShop');
+    const { normalizeShop } = require('../../utils/normalizeShop');
     const normalizedShop = normalizeShop(shop);
     
     // Get session for fetching order details from Shopify
@@ -938,7 +938,7 @@ router.get('/admin/api/synced-orders', async (req, res) => {
       });
     }
     
-    const { supabase } = require('../services/db');
+    const { supabase } = require('../../services/db');
     const { data: orderLogs, error: logsError } = await supabase
       .from('order_logs')
       .select('*')
@@ -1084,7 +1084,7 @@ router.get('/admin/api/diagnose', async (req, res) => {
     // Try to normalize shop
     if (req.query.shop) {
       try {
-        const { normalizeShop } = require('../utils/normalizeShop');
+        const { normalizeShop } = require('../../utils/normalizeShop');
         diagnostics.shop.normalized = normalizeShop(req.query.shop);
         diagnostics.shop.isValid = diagnostics.shop.normalized.endsWith('.myshopify.com');
       } catch (error) {
@@ -1198,7 +1198,7 @@ router.get('/admin/api/webhooks/status', async (req, res) => {
       });
     }
     
-    const { normalizeShop } = require('../utils/normalizeShop');
+    const { normalizeShop } = require('../../utils/normalizeShop');
     const normalizedShop = normalizeShop(shop);
     const session = await shopifyClient.getSession(normalizedShop);
     
@@ -1219,7 +1219,7 @@ router.get('/admin/api/webhooks/status', async (req, res) => {
     const registeredWebhooks = webhooksResponse.body.webhooks || [];
     
     // Check which webhooks are registered
-    const config = require('../config');
+    const config = require('../../config');
     const hostName = config.shopify.hostName || 'localhost:3000';
     const protocol = hostName.includes('localhost') ? 'http' : 'https';
     const webhookBaseUrl = `${protocol}://${hostName}`;
@@ -1290,7 +1290,7 @@ router.get('/admin/api/order-logs', async (req, res) => {
       });
     }
     
-    const { normalizeShop } = require('../utils/normalizeShop');
+    const { normalizeShop } = require('../../utils/normalizeShop');
     const normalizedShop = normalizeShop(shop);
     
     if (!process.env.SUPABASE_URL) {
@@ -1300,7 +1300,7 @@ router.get('/admin/api/order-logs', async (req, res) => {
       });
     }
     
-    const { supabase } = require('../services/db');
+    const { supabase } = require('../../services/db');
     const { data, error } = await supabase
       .from('order_logs')
       .select('*')
@@ -1346,7 +1346,7 @@ router.get('/admin/api/test-order', async (req, res) => {
       });
     }
     
-    const { normalizeShop } = require('../utils/normalizeShop');
+    const { normalizeShop } = require('../../utils/normalizeShop');
     const normalizedShop = normalizeShop(shop);
     
     const session = await shopifyClient.getSession(normalizedShop);
@@ -1409,7 +1409,7 @@ router.get('/admin/api/test-order', async (req, res) => {
     }
     
     // Process the order
-    const orderProcessor = require('../services/orderProcessor');
+    const orderProcessor = require('../../services/orderProcessor');
     const mappingConfig = {
       service_type_id: parseInt(process.env.DEFAULT_SERVICE_TYPE_ID) || 1,
       shop: normalizedShop,
@@ -1485,7 +1485,7 @@ router.get('/admin/api/stats', async (req, res) => {
     }
 
     const { shop } = req.query;
-    const { supabase } = require('../services/db');
+    const { supabase } = require('../../services/db');
     
     // Build query for ALL orders (not just today's)
     let query = supabase
@@ -1494,7 +1494,7 @@ router.get('/admin/api/stats', async (req, res) => {
     
     // Filter by shop if provided
     if (shop) {
-      const { normalizeShop } = require('../utils/normalizeShop');
+      const { normalizeShop } = require('../../utils/normalizeShop');
       const normalizedShop = normalizeShop(shop);
       query = query.eq('shop', normalizedShop);
     }
@@ -1564,7 +1564,7 @@ router.get('/admin/api/stats', async (req, res) => {
  */
 router.get('/admin/api/delybell-health', async (req, res) => {
   try {
-    const delybellClient = require('../services/delybellClient');
+    const delybellClient = require('../../services/delybellClient');
     
     // Try to fetch blocks (simple API call to test connection)
     await delybellClient.getBlocks();
@@ -1596,7 +1596,7 @@ router.get('/admin/api/orders', async (req, res) => {
       });
     }
 
-    const { supabase } = require('../services/db');
+    const { supabase } = require('../../services/db');
     const {
       shop,
       status,
@@ -1633,7 +1633,7 @@ router.get('/admin/api/orders', async (req, res) => {
 
     // Apply filters to both queries
     if (shop) {
-      const { normalizeShop } = require('../utils/normalizeShop');
+      const { normalizeShop } = require('../../utils/normalizeShop');
       const normalizedShop = normalizeShop(shop);
       console.log(`[Admin API] Loading orders for shop: ${shop} (normalized: ${normalizedShop})`);
       query = query.eq('shop', normalizedShop);
@@ -1809,7 +1809,7 @@ router.get('/admin/api/orders/:id', async (req, res) => {
       });
     }
 
-    const { supabase } = require('../services/db');
+    const { supabase } = require('../../services/db');
     const { id } = req.params;
 
     const { data: order, error } = await supabase
@@ -1867,7 +1867,7 @@ router.post('/admin/api/orders/:id/retry', async (req, res) => {
       });
     }
 
-    const { supabase } = require('../services/db');
+    const { supabase } = require('../../services/db');
     const { id } = req.params;
 
     // Get order details
@@ -1919,7 +1919,7 @@ router.post('/admin/api/orders/:id/retry', async (req, res) => {
     const retryId = `${order.shopify_order_id}_retry_${Date.now()}`;
     
     // Process order with retry ID
-    const orderProcessor = require('../services/orderProcessor');
+    const orderProcessor = require('../../services/orderProcessor');
     const mappingConfig = {
       service_type_id: parseInt(process.env.DEFAULT_SERVICE_TYPE_ID) || 1,
       shop: order.shop,
@@ -1961,7 +1961,7 @@ router.get('/admin/api/shops', async (req, res) => {
       });
     }
 
-    const { supabase } = require('../services/db');
+    const { supabase } = require('../../services/db');
 
     // Select shop, sync_mode, and access_token (to determine if shop is active)
     const { data: shops, error } = await supabase
@@ -2129,7 +2129,7 @@ router.post('/admin/api/orders/fetch-historical', async (req, res) => {
 router.get('/admin/api/shops/:shop/sync-mode', async (req, res) => {
   try {
     const { shop } = req.params;
-    const { getShop } = require('../services/shopRepo');
+    const { getShop } = require('../../services/shopRepo');
     
     const shopData = await getShop(shop);
     if (!shopData) {
@@ -2170,7 +2170,7 @@ router.post('/admin/api/shops/:shop/sync-mode', async (req, res) => {
       });
     }
 
-    const { updateSyncMode } = require('../services/shopRepo');
+    const { updateSyncMode } = require('../../services/shopRepo');
     const updatedShop = await updateSyncMode(shop, sync_mode);
 
     res.json({
@@ -2203,9 +2203,9 @@ router.post('/admin/api/orders/sync-selected', async (req, res) => {
       });
     }
 
-    const { supabase } = require('../services/db');
-    const orderProcessor = require('../services/orderProcessor');
-    const { getShop } = require('../services/shopRepo');
+    const { supabase } = require('../../services/db');
+    const orderProcessor = require('../../services/orderProcessor');
+    const { getShop } = require('../../services/shopRepo');
 
     // Fetch orders from database
     const { data: orders, error: fetchError } = await supabase
@@ -2353,7 +2353,7 @@ router.post('/admin/api/orders/sync-selected', async (req, res) => {
 router.post('/admin/api/orders/sync-all', async (req, res) => {
   try {
     const { shop } = req.query;
-    const { supabase } = require('../services/db');
+    const { supabase } = require('../../services/db');
 
     // Build query
     let query = supabase
@@ -2431,8 +2431,8 @@ router.post('/app/api/report-problem', async (req, res) => {
       });
     }
     
-    const { supabase } = require('../services/db');
-    const { normalizeShop } = require('../utils/normalizeShop');
+    const { supabase } = require('../../services/db');
+    const { normalizeShop } = require('../../utils/normalizeShop');
     const normalizedShop = normalizeShop(shop);
     
     // Extract order number if provided (remove # if present)
@@ -2503,7 +2503,7 @@ router.get('/admin/api/problem-reports', async (req, res) => {
     }
     
     const { shop, status, limit = 50, offset = 0 } = req.query;
-    const { supabase } = require('../services/db');
+    const { supabase } = require('../../services/db');
     
     // Build query
     let query = supabase
@@ -2513,7 +2513,7 @@ router.get('/admin/api/problem-reports', async (req, res) => {
       .range(parseInt(offset), parseInt(offset) + parseInt(limit) - 1);
     
     if (shop) {
-      const { normalizeShop } = require('../utils/normalizeShop');
+      const { normalizeShop } = require('../../utils/normalizeShop');
       query = query.eq('shop', normalizeShop(shop));
     }
     
@@ -2531,7 +2531,7 @@ router.get('/admin/api/problem-reports', async (req, res) => {
       .select('*', { count: 'exact', head: true });
     
     if (shop) {
-      const { normalizeShop } = require('../utils/normalizeShop');
+      const { normalizeShop } = require('../../utils/normalizeShop');
       countQuery = countQuery.eq('shop', normalizeShop(shop));
     }
     
@@ -2572,7 +2572,7 @@ router.get('/admin/api/problem-reports/:id', async (req, res) => {
     }
     
     const { id } = req.params;
-    const { supabase } = require('../services/db');
+    const { supabase } = require('../../services/db');
     
     const { data: report, error } = await supabase
       .from('problem_reports')
@@ -2627,7 +2627,7 @@ router.patch('/admin/api/problem-reports/:id', async (req, res) => {
       });
     }
     
-    const { supabase } = require('../services/db');
+    const { supabase } = require('../../services/db');
     
     const updateData = {
       updated_at: new Date().toISOString(),
@@ -2695,7 +2695,7 @@ router.get('/admin/api/debug', async (req, res) => {
       });
     }
     
-    const { normalizeShop } = require('../utils/normalizeShop');
+    const { normalizeShop } = require('../../utils/normalizeShop');
     const normalizedShop = normalizeShop(shop);
     
     const debug = {
@@ -2706,14 +2706,14 @@ router.get('/admin/api/debug', async (req, res) => {
     
     // Check if shop exists in database
     if (process.env.SUPABASE_URL) {
-      const { getShop } = require('../services/shopRepo');
+      const { getShop } = require('../../services/shopRepo');
       const shopData = await getShop(normalizedShop);
       debug.shopInDatabase = !!shopData;
       debug.syncMode = shopData?.sync_mode || 'not set';
       debug.autoSyncEnabledAt = shopData?.auto_sync_enabled_at || null;
       
       // Check order logs
-      const { supabase } = require('../services/db');
+      const { supabase } = require('../../services/db');
       const { data: orderLogs, error: logsError } = await supabase
         .from('order_logs')
         .select('id, shopify_order_id, shopify_order_number, status, created_at')
@@ -2759,10 +2759,10 @@ router.post('/admin/api/fix-sync-mode', async (req, res) => {
       });
     }
     
-    const { normalizeShop } = require('../utils/normalizeShop');
+    const { normalizeShop } = require('../../utils/normalizeShop');
     const normalizedShop = normalizeShop(shop);
     
-    const { updateSyncMode } = require('../services/shopRepo');
+    const { updateSyncMode } = require('../../services/shopRepo');
     const updatedShop = await updateSyncMode(normalizedShop, 'manual');
     
     res.json({
